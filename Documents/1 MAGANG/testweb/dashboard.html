@@ -1,0 +1,1828 @@
+
+<!doctype html>
+
+<html
+  lang="en"
+  class="light-style layout-menu-fixed layout-compact"
+  dir="ltr"
+  data-theme="theme-dark"
+  data-assets-path="http://127.0.0.1:8000/backend/assets/"
+  data-template="vertical-menu-template-free"
+  data-style="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+
+<style>
+    #navs-justified-karyawan::-webkit-scrollbar-track {
+        display: none;
+    }
+</style>
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="http://127.0.0.1:8000/backend/assets/img/favicon/favicon.ico" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="http://127.0.0.1:8000/frontend/assets/costum.css" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="http://127.0.0.1:8000/frontend/assets/theme-default.css" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="http://127.0.0.1:8000/frontend/assets/carousel.css" />
+    <link rel="stylesheet" href="http://127.0.0.1:8000/backend/assets/vendor/css/core.css&quot; class=&quot;template-customizer-core-css" />
+    <link rel="stylesheet" href="http://127.0.0.1:8000/backend/assets/css/demo.css" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="http://127.0.0.1:8000/backend/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="http://127.0.0.1:8000/backend/assets/vendor/libs/apex-charts/apex-charts.css" />
+
+    <!-- Helpers -->
+    <script src="http://127.0.0.1:8000/frontend/assets/vendor/helpers.js"></script>
+    <script src="http://127.0.0.1:8000/frontend/assets/config.js"></script>
+  </head>
+
+  <body>
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <!-- Menu -->
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+            <div class="app-brand demo">
+                <a href="/beranda" class="app-brand-link">
+                    <span class="app-brand-logo demo">
+                        <strong>
+                            LMS
+                        </strong>
+                    </span>
+                </a>
+            </div>
+  
+            <div class="menu-inner-shadow"></div>
+  
+            <ul class="menu-inner py-1">
+                <!-- Dashboards -->
+                <li class="menu-item active">
+                    <a href="/dashboard" class="menu-link menu-link">
+                        <i class="menu-icon tf-icons bx bx-home-smile"></i>
+                        <div class="text-truncate" data-i18n="Dashboards">Dashboard</div>
+                    </a>
+                </li>
+  
+                <!-- Main Manage -->
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">UTAMA</span>
+                </li>
+  
+                <!-- Kelas -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-chalkboard"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Kelas</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item ">
+                            <a href="/kelolakelas" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola Kelas</div>
+                            </a>
+                        </li>
+                        <li class="menu-item ">
+                            <a href="/kategorikelas" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Kelas</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                <!--Modul dan Test -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-book-content"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Modul dan Test</div>
+                    </a>
+    
+                    <!-- Content wrapper -->
+                    <ul class="menu-sub">
+                      <li class="menu-item ">
+                          <a href="/kelolamodul" class="menu-link">
+                              <div class="text-truncate" data-i18n="Without menu">Kelola Modul</div>
+                          </a>
+                      </li>
+                      <li class="menu-item ">
+                          <a href="/kelolatest" class="menu-link">
+                              <div class="text-truncate" data-i18n="Without navbar">Kelola Test</div>
+                          </a>
+                      </li>
+                    </ul>
+                </li>
+    
+                <!-- Webinar dan Artikel -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-news"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Webinar & Artikel</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolawebinar" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola Webinar</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kelolaartikel" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kelola Artikel</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                <!-- Karyawan -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-user"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Karyawan</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolakaryawan" class="menu-link">
+                                <div class="/kelolakaryawan" data-i18n="Without menu">Data Karyawan</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kelolakoin" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Atur Koin</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                
+                <li class="menu-item ">
+                    <a
+                        href="/pemantauanTraining"
+                        class="menu-link">
+                        <i class='menu-icon tf-icons bx bx-spreadsheet'></i>
+                        <div class="text-truncate" data-i18n="Chat">Pemantauan Training</div>
+                    </a>
+                </li>
+              
+                
+                <li class="menu-item ">
+                    <a
+                        href="/aktivitaskaryawan"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-sitemap"></i>
+                        <div class="text-truncate" data-i18n="Chat">Aktivitas Karyawan</div>
+                        <div class="badge rounded-pill bg-label-primary text-uppercase fs-tiny ms-auto">4</div>
+                    </a>
+                </li>
+              
+                <!-- Components -->
+                <li class="menu-header small text-uppercase"><span class="menu-header-text">Components</span></li>
+                
+                
+                <li class="menu-item ">
+                    <a
+                        href="/kelolastruktur"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-buildings"></i>
+                        <div class="text-truncate" data-i18n="Chat">Kelola Struktur</div>
+                    </a>
+                </li>
+    
+                <!-- faq -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-help-circle"></i>
+                        <div class="text-truncate" data-i18n="Layouts">FAQ</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolafaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola FAQ</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                
+                <li class="menu-item">
+                    <a
+                        href="/komentar"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-message-dots"></i>
+                        <div class="text-truncate" data-i18n="Chat">Kelola Komentar</div>
+                        <div class="badge rounded-pill bg-label-warning text-uppercase fs-tiny ms-auto">
+                                                            4
+                                                    </div>
+                    </a>
+                </li>
+    
+                
+                <li class="menu-item">
+                    <a
+                        href="/pengaduan"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-error-circle"></i>
+                        <div class="text-truncate" data-i18n="Chat">Pengaduan</div>
+                        <div class="badge rounded-pill bg-label-primary text-uppercase fs-tiny ms-auto">4</div>
+                    </a>
+                </li>
+    
+                <!-- Website Components -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-globe"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Komponen Website</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolafaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Banner</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+          </aside>
+        <!-- / Menu -->
+
+        <!-- Layout container -->
+        <div class="layout-page">
+
+          <!-- Navbar -->
+          <nav
+            class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
+            id="layout-navbar">
+            <div class="layout-menu-toggle navbar-nav align-items-xl-center me-4 me-xl-0 d-xl-none">
+              <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
+                <i class="bx bx-menu bx-md"></i>
+              </a>
+            </div>
+
+            <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+              <!-- Search -->
+              <div class="navbar-nav align-items-center">
+                <div class="nav-item d-flex align-items-center">
+                  <i class="bx bx-search bx-sm"></i>
+                  <input
+                    type="text"
+                    class="form-control border-0 shadow-none ps-1 ps-sm-2"
+                    placeholder="Search..."
+                    aria-label="Search..." />
+                </div>
+              </div>
+              <!-- /Search -->
+
+              <ul class="navbar-nav flex-row align-items-center ms-auto">
+                <!-- Place this tag where you want the button to render. -->
+                <li class="nav-item bg-label-primary p-1 rounded lh-1 me-4" style="cursor: pointer;">
+                  <a class="nav-link text-primary" data-icon="octicon-star" data-size="large" onclick="logoutConfirm()">
+                    <i class='bx bx-log-out me-2'></i> Keluar
+                  </a>
+                </li>
+
+                <!-- User -->
+                <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow p-0"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown">
+                    <div class="avatar avatar-online">
+                      <img src="http://127.0.0.1:8000/backend/assets/img/avatars/1.png" alt class="w-px-40 h-auto rounded-circle" />
+                    </div>
+                  </a>
+                </li>
+                <!--/ User -->
+              </ul>
+            </div>
+          </nav>
+          <!-- / Navbar -->
+
+          <!-- Content wrapper -->
+          <div class="content-wrapper">
+
+            <!-- Content -->
+            
+            <div class="container-xxl flex-grow-1 container-p-y">
+    <nav class="navbar navbar-expand-lg border-secondary border-bottom mb-12 ">
+        <div class="container-fluid">
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active text-primary" aria-current="page" href="javascript:void(0)">Overview</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-secondary" href="/dashboarddeapartemen">Departemen</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-secondary" href="/index.html">Karyawan</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                </ul>
+                <form class="d-flex" onsubmit="return false">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-primary btn-sm py-0 px-2" type="submit"><i class='bx bxs-cloud-download me-2'></i> export</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="row">
+        <!-- Total Kelas -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-primary"><i class='bx bx-book-open bx-sm'></i></span>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn p-0" type="button" id="cardOpt1" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="bx bx-dots-vertical-rounded text-muted"></i>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="cardOpt1">
+                                <a class="dropdown-item" href="javascript:void(0);">View More</a>
+                                <a class="dropdown-item" href="javascript:void(0);">Delete</a>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mb-1">Total Kelas: <strong class="text-primary">46</strong></p>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Kelas Baru -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-slack"><i class='bx bx-book-add bx-sm'></i></span>
+                        </div>
+                    </div>
+                    <p class="mb-1">Kelas Baru: </p>
+                    <p>
+                        <strong class="text-slack">46</strong>
+                        <button type="button" class="btn btn-white btn-lg px-1 py-0" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="right" data-bs-html="true" title="<span>Ini adalah kelas yang baru ditambahkan di bulan ini</span>">
+                            <i class='bx bxs-help-circle text-slack' ></i>
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Video Pembelajaran -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-danger"><i class='bx bx-play-circle bx-sm'></i></span>
+                        </div>
+                    </div>
+                    <p class="mb-1">Video Pembelajaran</p>
+                    <small class="text-danger fw-medium"><i class='bx bx-down-arrow-alt'></i> 62</small>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Kuis dan Test -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-warning"><i class='bx bx-edit-alt bx-sm'></i></span>
+                        </div>
+                    </div>
+                    <p class="mb-1">Kuis dan Test</p>
+                    <small class="text-danger fw-medium"><i class='bx bx-down-arrow-alt'></i> 62</small>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Total Karyawan -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-info"><i class='bx bx-user bx-sm'></i></span>
+                        </div>
+                    </div>
+                    <p class="mb-1">Total Karyawan</p>
+                    <small class="text-danger fw-medium"><i class='bx bx-down-arrow-alt'></i> 62</small>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Karyawan Sedang Online -->
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title d-flex align-items-start justify-content-between mb-4">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-success"><i class='bx bx-user-check bx-sm'></i></span>
+                        </div>
+                    </div>
+                    <p class="mb-1">Karyawan Online</p>
+                    <small class="text-danger fw-medium"><i class='bx bx-down-arrow-alt'></i> 62</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="col-12 mb-6">
+        <div class="card">
+            <div class="row row-bordered g-0">                   
+                <div class="col-lg-4 d-flex flex-column">
+                    <div class="card-body p-0 m-0">
+                      <div class="d-sm-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-title card-title-dash p-5">Kategori Terpopuler</h5>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="py-2 d-flex flex-center position-relative card-body">
+                          <div class="position-relative w-100" style="height: 18rem;">
+                            <div class="d3-tooltip"></div>
+                            <svg class="packed-bubble-svg h-100 w-100 py-2" viewBox="0 0 460 400">
+                              <g text-anchor="middle" transform="translate(261.76223573383317, 122.66239483341009)">
+                                <circle r="53.69643095640707" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Blockchain</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(207.95442740829702, 183.4636055615327)">
+                                <circle r="19.572714632478704" fill="#1956A6" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">NFT</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(184.5263991175093, 53.91903889607278)">
+                                <circle r="40.49978183357956" fill="#195099" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">HTML</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(257.6846679482217, 217.35997529702004)">
+                                <circle r="32.41640241536476" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Crypto</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(134.3044316093979, 183.9359703523102)">
+                                <circle r="46.0493195356091" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Photoshop</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(310.1127115649746, 188.9229581487638)">
+                                <circle r="19.572714632478704" fill="#1956A6" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">UX</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(157.91489493614006, 297.53948444320054)">
+                                <circle r="40.49978183357956" fill="#195099" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">AWS</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(107.48309429726575, 57.27810270149587)">
+                                <circle r="24.88273809887447" fill="#9DBFEB" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">3D</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(333.6096705631174, 258.5999318605956)">
+                                <circle r="46.0493195356091" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Writing</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(74.42978229378812, 266.74887884302603)">
+                                <circle r="40.49978183357956" fill="#195099" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Blender</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(299.2944727604215, 44.651553577706125)">
+                                <circle r="24.88273809887447" fill="#9DBFEB" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">UI/UX</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(251.36220071257117, 315.92911111634317)">
+                                <circle r="46.0493195356091" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Blockchain</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(180.0438361395747, 125.71016789908212)">
+                                <circle r="19.572714632478704" fill="#1956A6" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">css</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(364.15532100449184, 147.57091301980455)">
+                                <circle r="40.49978183357956" fill="#195099" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Marketing</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(195.00906524685237, 234.283278325752)">
+                                <circle r="24.88273809887447" fill="#9DBFEB" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Meta</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(247.99462416038207, 46.86449349248164)">
+                                <circle r="15.366039281203811" fill="#0F67D9" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">js</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(411.2422770034418, 301.8556541378292)">
+                                <circle r="34.812639913448336" fill="#7FA5D5" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">FOREX</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(56.26609470115565, 195.64983202163782)">
+                                <circle r="24.88273809887447" fill="#8ABBFB" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">UI</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(333.53582918285565, 84.56586716919693)">
+                                <circle r="19.572714632478704" fill="#1956A6" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">sql</text>
+                              </g>
+                              
+                              <g text-anchor="middle" transform="translate(133.09331599700306, 106.93667815378727)">
+                                <circle r="22.99205207562853" fill="#6486B4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">CAD</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(411.6140360806507, 216.0310979138183)">
+                                <circle r="34.812639913448336" fill="#2A7BE4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Python</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(100.09002467962776, 357.41739511142055)">
+                                <circle r="34.812639913448336" fill="#68A0E9" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Adobe</text>
+                              </g>
+                              
+                              <g text-anchor="middle" transform="translate(338.1994003918835, 352.5974311559223)">
+                                <circle r="40.057422168875306" fill="#74A2DE" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Branding</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(64.8459039356456, 123.23251645721551)">
+                                <circle r="38.23559479986038" fill="#4E7AB4" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">Bitcoin</text>
+                              </g>
+                              <g text-anchor="middle" transform="translate(385.8197926548608, 77.08501358199385)">
+                                <circle r="25.243253120137716" fill="#71AFFF" stroke-width="0"></circle><text dy="4" fill="#fff"
+                                  text-anchor="middle" font-size="1rem" font-weight="normal" style="pointer-events: none;">AI</text>
+                              </g>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card-header d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title mb-1">Riwayat Pengeluaran</h5>
+                            <p class="card-subtitle">Ringkasan Semua Departemen</p>
+                        </div>
+                        <div class="dropdown">
+                            <select id="select2Basic" class="select2 form-select form-select-lg form-select-sm" data-allow-clear="true">
+                                <option value="2024" selected>2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                                <option value="2021">2021</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body" style="position: relative;">
+                        <div id="chartriwayattransaksi"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="row mb-6 g-6">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h6 class="m-0 me-2">Waktu yang dihabiskan</h6>
+                        <p class="card-subtitle">Ringkasan Semua Departemen</p>
+                    </div>
+                    <div class="d-flex">
+                        <form class="d-flex">
+                            <input type="text" id="dateRangePicker" class="form-control me-2" placeholder="Atur rentang tanggal">
+                            <button type="submit" class="btn btn-primary btn-sm">Terapkan</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="totalIncomeChart"></div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between">
+                    <div class="card-title mb-0">
+                        <h6 class="mb-0">Aktivitas Terbaru</h6>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn text-muted p-0" type="button" id="ordersCountries" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bx bx-dots-vertical-rounded bx-sm"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="ordersCountries">
+                            <a class="dropdown-item" href="javascript:void(0);">Select All</a>
+                            <a class="dropdown-item" href="javascript:void(0);">Refresh</a>
+                            <a class="dropdown-item" href="javascript:void(0);">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="nav-align-top">
+                        <ul class="nav nav-tabs nav-fill rounded-0 timeline-indicator-advanced" role="tablist">
+                            <li class="nav-item">
+                                <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#navs-justified-karyawan" aria-controls="navs-justified-karyawan" aria-selected="false">Karyawan</button>
+                            </li>
+                            <li class="nav-item">
+                                <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#navs-justified-admin" aria-controls="navs-justified-admin" aria-selected="true">Admin</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content border-0 mx-1">
+                            <!-- Aktivitas Karyawan -->
+                            <div class="tab-pane fade show active" id="navs-justified-karyawan" role="tabpanel" style="height: 320px; overflow-y: auto; overflow-x: hidden;">
+                                <ul class="timeline mb-0">
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 07.09
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 07.07
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 07.07
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.56
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.55
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Farizan zan</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.55
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.54
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.54
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Farizan zan</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.51
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                            <li class="timeline-item ps-6 border-left-dashed">
+                                            <span class="timeline-indicator-advanced timeline-indicator-success border-0 shadow-none">
+                                                <i class='bx bx-check-circle'></i>
+                                            </span>
+                                            <div class="timeline-event ps-1">
+                                                <div class="timeline-header">
+                                                    <small class="text-success"><strong>Keanu Reaves</strong></small>
+                                                </div>
+                                                <h6 class="my-50">Masuk ke aplikasi pembelajaran</h6>
+                                                <p class="text-body mb-0">
+                                                    Senin, 18 Nov 2024 - 06.43
+                                                </p>
+                                            </div>
+                                        </li>
+                                                                    </ul>
+                            </div>
+
+                            <!-- Aktivitas Admin -->
+                            <div class="tab-pane fade" id="navs-justified-admin" role="tabpanel">
+                                <ul class="timeline mb-0">
+                                                                    </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>        
+    </div>
+
+    <div class="col-lg-12 mb-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="card-title mb-4">
+                        <h6 class="m-0 me-2">Perbandingan Transaksi Tiap Departemen</h6>
+                        <p class="card-subtitle">Ringkasan Semua Departemen</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <form class="d-flex">
+                            <input type="text" id="dateRangePickerTransaksi" class="form-control me-2" placeholder="Atur rentang tanggal">
+                            <button type="submit" class="btn btn-primary btn-sm">Terapkan</button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Tambahkan wrapper dengan tinggi tetap -->
+                <div style="position: relative; height: 280px; width: 100%;">
+                    <canvas id="weeklyReportChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="col-12 order-3 order-lg-4 mb-6">
+        <div class="card text-center h-100">
+            <div class="card-header nav-align-top pb-1">
+                <ul class="nav nav-pills" role="tablist">
+                    <li class="nav-item">
+                        <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#navs-pills-os" aria-controls="navs-pills-os" aria-selected="false">Kelas Terpopuler</button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#navs-pills-browser" aria-controls="navs-pills-browser" aria-selected="true">Kelas Terbaru</button>
+                    </li>
+                    
+                </ul>
+            </div>
+            <div class="tab-content pt-0 pb-4">
+                <hr>
+                <div class="tab-pane fade  show active" id="navs-pills-os" role="tabpanel">
+                    <div class="table-responsive text-start text-nowrap">
+                        <table class="table table-borderless">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th class="w-50">Nama Kelas</th>
+                                    <th>Pendaftar</th>
+                                    <th>Rating</th>
+                                    <th>Dipublish pada:</th>
+                                    <th>Total Coin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                                                    <tr>
+                                        <td>1</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/image/kelas-sampul/1727794125.jpg" alt="The Complete Financial Analyst Course 2024" height="32" class="me-3 rounded">
+                                                <span class="text-heading">The Complete Financial Analyst Course 2024</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-heading">4</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star-half'></i></span>
+                                                                
+                                                                
+                                                <small class="fw-medium">(4.7)</small>
+                                            </div>
+                                        </td>
+                                        <td>01/10/2024</td>
+                                        <td>IDR 1.596.000,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>2</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/image/kelas-sampul/1730442956.webp" alt="Onboarding" height="32" class="me-3 rounded">
+                                                <span class="text-heading">Onboarding</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-heading">2</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                
+                                                                
+                                                                
+                                                <small class="fw-medium">(5.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>01/11/2024</td>
+                                        <td>IDR 1.198.000,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>3</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/image/kelas-sampul/1727678387.jpg" alt="Testing React App Untuk Pemula" height="32" class="me-3 rounded">
+                                                <span class="text-heading">Testing React App Untuk Pemula</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-heading">1</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                                                    <span class="text-warning me-1"><i class='bx bxs-star'></i></span>
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(4.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>30/09/2024</td>
+                                        <td>IDR 399.000,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>4</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/image/kelas-sampul/maxresdefault.jpg" alt="React Js Bahasa Indonesia (Next.Js + Spotify Rapid API)" height="32" class="me-3 rounded">
+                                                <span class="text-heading">React Js Bahasa Indonesia (Next.Js + Spotify Rapid API)</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>30/09/2024</td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>5</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/image/kelas-sampul/1727678557.jpg" alt="REST APIs with Flask and Python in 2024" height="32" class="me-3 rounded">
+                                                <span class="text-heading">REST APIs with Flask and Python in 2024</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>30/09/2024</td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                </div> 
+                <div class="tab-pane fade" id="navs-pills-browser" role="tabpanel">
+                    <div class="table-responsive text-start text-nowrap">
+                        <table class="table table-borderless">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th class="w-50">Nama Kelas</th>
+                                    <th>Dipublish pada:</th>
+                                    <th>Pendaftar</th>
+                                    <th>Rating</th>
+                                    <th>Total Transaksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                                                    <tr>
+                                        <td>1</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/1731569465.png" alt="Test Kelas Wajib" height="24" class="me-3">
+                                                <span class="text-heading">Test Kelas Wajib</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">5 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>2</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales2.jpg" alt="Advanced Sales Techniques" height="24" class="me-3">
+                                                <span class="text-heading">Advanced Sales Techniques</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>3</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales3.jpg" alt="Customer-Centric Selling" height="24" class="me-3">
+                                                <span class="text-heading">Customer-Centric Selling</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>4</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales4.jpg" alt="Sales and Negotiation Skills" height="24" class="me-3">
+                                                <span class="text-heading">Sales and Negotiation Skills</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>5</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales5.jpg" alt="B2B Sales Mastery" height="24" class="me-3">
+                                                <span class="text-heading">B2B Sales Mastery</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                </div>                
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="col-12 order-3 order-lg-4 mb-6">
+        <div class="card h-100">
+            <div class="card-header pb-1">
+                <div class="card-title mb-4">
+                    <h5 class="m-0 me-2">Statisktik Perolehan Bintang Karyawan</h5>
+                    <p class="card-subtitle">Laporan 3 Bulan</p>
+                </div>
+            </div>
+            <div class="tab-content pt-0 pb-4">
+                <hr>
+                <div class="tab-pane fade  show active" id="navs-pills-os" role="tabpanel">
+                    <div class="table-responsive text-start text-nowrap">
+                        <table class="table table-borderless">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama Karyawan</th>
+                                    <th>Departemen</th>
+                                    <th>Skor Diperoleh:</th>
+                                    <th>Video Ditonton:</th>
+                                    <th>Soal Dikerjakan:</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">#1</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="" alt="" height="32" class="me-3 rounded">
+                                            <span class="text-heading fw-bold">Leonardo Da Vinci</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-heading fw-bold">HCD</td>
+                                    <td><span class="fw-bold bg-label-warning p-1 rounded">64</span> ⭐</td>
+                                    <td> <span class="fw-bold bg-label-info p-1 rounded">41 Video</span></td>
+                                    <td> <span class="fw-bold bg-label-success p-1 rounded">19 Test</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> 
+                <div class="tab-pane fade" id="navs-pills-browser" role="tabpanel">
+                    <div class="table-responsive text-start text-nowrap">
+                        <table class="table table-borderless">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th class="w-50">Nama Kelas</th>
+                                    <th>Dipublish pada:</th>
+                                    <th>Pendaftar</th>
+                                    <th>Rating</th>
+                                    <th>Total Transaksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                                                    <tr>
+                                        <td>1</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/1731569465.png" alt="Test Kelas Wajib" height="24" class="me-3">
+                                                <span class="text-heading">Test Kelas Wajib</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">5 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>2</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales2.jpg" alt="Advanced Sales Techniques" height="24" class="me-3">
+                                                <span class="text-heading">Advanced Sales Techniques</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>3</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales3.jpg" alt="Customer-Centric Selling" height="24" class="me-3">
+                                                <span class="text-heading">Customer-Centric Selling</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>4</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales4.jpg" alt="Sales and Negotiation Skills" height="24" class="me-3">
+                                                <span class="text-heading">Sales and Negotiation Skills</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                                    <tr>
+                                        <td>5</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="http://127.0.0.1:8000/storage/sales5.jpg" alt="B2B Sales Mastery" height="24" class="me-3">
+                                                <span class="text-heading">B2B Sales Mastery</span>
+                                            </div>
+                                        </td>
+                                        <td ><span class="bg-label-info p-2 rounded">6 hari yang lalu</span></td>
+                                        <td class="text-heading">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                                
+                                                                
+                                                                
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                                                    <span class="text-muted me-1"><i class='bx bx-star'></i></span>
+                                                                
+                                                <small class="fw-medium">(0.0)</small>
+                                            </div>
+                                        </td>
+                                        <td>IDR 0,00</td>
+                                    </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                </div>                
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for error alert -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Rentang Tanggal Tidak Valid</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    Rentang tanggal yang dipilih melebihi batas maksimal 14 hari. Silakan pilih rentang tanggal yang lebih pendek.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- / Content -->
+
+            <!-- Footer -->
+            <footer class="content-footer footer bg-footer-theme">
+                <div class="container-xxl">
+                    <div
+                    class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
+                        <div class="text-body">
+                        ©2024
+                        
+                        , LMS Gondowangi
+                        
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            <!-- / Footer -->
+
+            <div class="content-backdrop fade"></div>
+          </div>
+          <!-- Content wrapper -->
+        </div>
+        <!-- / Layout page -->
+      </div>
+
+      <!-- Overlay -->
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+    <!-- / Layout wrapper -->
+
+    <div class="buy-now">
+        <a href class="btn btn-danger btn-buy-now">
+            <label for="" class="mr-4 me-3">Pengaduan</label>
+            <div class="badge rounded bg-label-danger text-uppercase fs-tiny ms-auto" style="margin-left: 8px;">4</div>
+        </a>
+    </div>
+
+    <!-- Core JS -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
+    <script>
+        // Initialize Flatpickr with max range of 14 days
+        flatpickr("#dateRangePicker", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            theme: "material_blue", // Use modern theme
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    const diff = (selectedDates[1] - selectedDates[0]) / (1000 * 60 * 60 * 24);
+                    if (diff > 14) {
+                        // Show error modal
+                        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                        errorModal.show();
+
+                        // Clear the selection
+                        instance.clear();
+                    }
+                }
+            },
+        });
+    </script>
+
+    <script>
+        // Initialize Flatpickr without date range limitation
+        flatpickr("#dateRangePickerTransaksi", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            theme: "material_blue", // Use modern theme
+            onChange: function(selectedDates, dateStr, instance) {
+                // No restrictions on date range
+            },
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videoData = ["21","10","5","10","24","33","17","17","49"];
+            const soalData = ["5","10","5",0,"7",0,0,0,0];
+            const dates = ["10 Nov","11 Nov","12 Nov","13 Nov","14 Nov","15 Nov","16 Nov","17 Nov","18 Nov"]; // Format tanggal seperti "03 Sep"
+
+            // Menyusun tooltip yang menampilkan hari, tanggal, dan bulan
+            const daysOfWeek = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const tooltips = dates.map(date => {
+                const [day, month] = date.split(' '); // Pisahkan tanggal dan bulan
+                const tempDate = new Date(`${month} ${day}, ${new Date().getFullYear()}`);
+                const dayName = daysOfWeek[tempDate.getDay()];
+                return `${dayName}, ${date}`; // Format seperti "Senin, 03 Sep"
+            });
+
+            const options = {
+                series: [
+                    {
+                        name: 'Video',
+                        data: videoData,
+                        zIndex: 0
+                    },
+                    {
+                        name: 'Soal',
+                        data: soalData,
+                        zIndex: 1
+                    }
+                ],
+                chart: {
+                    height: 350,
+                    type: 'area',
+                    toolbar: {
+                        show: false
+                    }
+                },
+                colors: ['#696cff', '#ff9900'],
+                dataLabels: {
+                    enabled: false
+                },
+                stroke: {
+                    curve: ['smooth', 'smooth'],
+                    width: [2, 2]
+                },
+                fill: {
+                    type: ['gradient', 'solid'],
+                    gradient: {
+                        shadeIntensity: 0.6,
+                        opacityFrom: 0.8,
+                        opacityTo: 0.2,
+                        stops: [0, 90, 100]
+                    },
+                    opacity: [0.5, 0]
+                },
+                xaxis: {
+                    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    labels: {
+                        style: {
+                            colors: '#697a8d'
+                        }
+                    },
+                    axisBorder: {
+                        show: false
+                    },
+                    axisTicks: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: function(value) {
+                            return '$' + value + 'k';
+                        },
+                        style: {
+                            colors: '#697a8d'
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: '#f0f0f0',
+                    strokeDashArray: 4,
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    },
+                    yaxis: {
+                        lines: {
+                            show: true
+                        }
+                    },
+                    padding: {
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        left: 0
+                    }
+                },
+                tooltip: {
+                    y: {
+                        formatter: function(value) {
+                            return '$' + value + 'k';
+                        }
+                    }
+                },
+                legend: {
+                    show: true,
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    markers: {
+                        width: 10,
+                        height: 10,
+                        radius: 4
+                    },
+                    itemMargin: {
+                        horizontal: 10
+                    }
+                }
+            };
+    
+            const chart = new ApexCharts(document.querySelector("#totalIncomeChart"), options);
+            chart.render();
+        });
+    </script>
+    
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var bulan = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            var dataTransaksi = [0,0,0,0,0,0,0,0,"599000","399000","2195000",0];
+
+            // Fungsi untuk memformat angka menjadi format Rupiah
+            const formatRupiah = (value) => {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value).replace(/\u00A0/g, " ");
+            };
+
+            var options = {
+                series: [{
+                    name: 'Total Transaksi',
+                    data: dataTransaksi
+                }],
+                chart: {
+                    type: 'line',
+                    height: 310,
+                    toolbar: { show: false },
+                    dropShadow: {
+                        enabled: true,
+                        color: '#6365f1b3',
+                        top: 10,
+                        left: 0,
+                        blur: 5,
+                        opacity: 1,
+                        opacityTo: 0
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3,
+                    colors: ['#6366F1']
+                },
+                fill: {
+                    type: 'gradient'
+                },
+                xaxis: {
+                    categories: bulan,
+                    labels: {
+                        style: {
+                            colors: '#9CA3AF'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => `IDR ${val.toLocaleString('id-ID')}`,
+                        style: {
+                            colors: '#9CA3AF'
+                        }
+                    }
+                },
+                grid: {
+                    show: true,
+                    borderColor: '#E5E7EB',
+                    strokeDashArray: 7,
+                },
+                tooltip: {
+                    enabled: true,
+                    y: {
+                        formatter: (val) => formatRupiah(val) // Menggunakan fungsi formatRupiah
+                    }
+                },
+                markers: {
+                    size: 5,
+                    colors: ['#6366F1'],
+                    strokeColors: '#fff',
+                    strokeWidth: 2,
+                    hover: {
+                        size: 8
+                    }
+                }
+            };
+
+            var chart = new ApexCharts(document.querySelector("#chartriwayattransaksi"), options);
+            chart.render();
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const ctx = document.getElementById('weeklyReportChart');
+            
+            // Data untuk grafik
+            const labels = ['HCD', 'Sales', 'Marekting', 'Bussines', 'Produksi', 'Dept 6', 'Dept 7'];
+            const thisWeekData = [40, 78, 82, 70, 72, 48, 75];
+            const lastWeekData = [82, 70, 60, 50, 65, 70, 85];
+            
+            // Hancurkan instance chart sebelumnya jika ada
+            if (window.weeklyChart instanceof Chart) {
+                window.weeklyChart.destroy();
+            }
+        
+            const data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Bulan Ini',
+                        data: thisWeekData,
+                        backgroundColor: 'rgb(102, 199, 50)',
+                        borderColor: '#696CFF',
+                        barThickness: 20,
+                        borderRadius: 4,
+                        maxBarThickness: 15
+                    },
+                    {
+                        label: 'Bulan Kemarin',
+                        data: lastWeekData,
+                        backgroundColor: 'rgb(198, 241, 175)',
+                        borderColor: '#E7E7FF',
+                        barThickness: 20,
+                        borderRadius: 4,
+                        maxBarThickness: 15
+                    }
+                ]
+            };
+        
+            // Konfigurasi grafik
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#566a7f',
+                            bodyColor: '#566a7f',
+                            borderColor: '#d9dee3',
+                            borderWidth: 1,
+                            padding: 10,
+                            usePointStyle: true,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return 'This Week';
+                                },
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        return `${context.label}: ${context.parsed.y}`;
+                                    }
+                                    return '';
+                                },
+                                afterLabel: function(context) {
+                                    return 'hr';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20,
+                                callback: function(value) {
+                                    return value + ' IDR';
+                                },
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                borderDash: [5, 5],
+                                drawBorder: false,
+                                color: '#ECEEF1'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#566a7f',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    bar: {
+                        barPercentage: 7,  // Mengontrol lebar bar
+                        categoryPercentage: 8,  // Mengontrol space antar group
+                    },
+                }
+            };
+        
+            // Inisialisasi grafik dan simpan instance-nya
+            window.weeklyChart = new Chart(ctx, config);
+        
+            // Tambahkan event listener untuk resize
+            window.addEventListener('resize', function() {
+                if (window.weeklyChart) {
+                    window.weeklyChart.resize();
+                }
+            });
+        });
+    </script>
+    <script src="http://127.0.0.1:8000/backend/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="http://127.0.0.1:8000/backend/assets/vendor/js/menu.js"></script>
+    <script src="http://127.0.0.1:8000/frontend/assets/vendor/popper.js"></script>
+    <script src="http://127.0.0.1:8000/frontend/assets/vendor/bootstrap.js"></script>
+    <script src="http://127.0.0.1:8000/frontend/assets/vendor/perfect-scrollbar.js"></script>
+  
+    <!-- Vendors JS -->
+    <script src="http://127.0.0.1:8000/frontend/assets/vendor/apexcharts.js"></script>
+  
+    <!-- Main JS -->
+    <script src="http://127.0.0.1:8000/backend/assets/js/main.js"></script>
+
+    <!-- Page JS -->
+    <script src="http://127.0.0.1:8000/frontend/assets/dashboards-analytics.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function logoutConfirm() {
+            Swal.fire({
+                title: 'Apakah Anda yakin ingin keluar?',
+                text: "Anda akan logout dari akun ini!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#6777ef',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, logout!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit form logout jika user mengonfirmasi
+                    document.getElementById('logout-form').submit();
+                }
+            });
+        }
+
+        
+            </script>
+
+    <!-- Form logout tersembunyi -->
+    <form id="logout-form" action="/keluar" method="POST" style="display: none;">
+        <input type="hidden" name="_token" value="88aopAMXGPKWsHEIP1t8pxWQIxHcvsaFFUlOH0Xi" autocomplete="off">    </form> 
+  </body>
+</html>

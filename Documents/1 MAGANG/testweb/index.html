@@ -1,0 +1,1721 @@
+
+<!doctype html>
+
+<html
+  lang="en"
+  class="light-style layout-menu-fixed layout-compact"
+  dir="ltr"
+  data-theme="theme-dark"
+  data-assets-path="backend/assets/"
+  data-template="vertical-menu-template-free"
+  data-style="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+        <title>Beranda - Gondowangi</title>
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+
+
+    <style>
+        .header-calender {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            background-color: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .month-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .weekdays, .days {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .weekdays span, .days div {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+        }
+
+        .weekdays span {
+            font-weight: bold;
+        }
+
+        .days div {
+            cursor: pointer;
+        }
+
+        .today {
+            background-color: #3f51b5;
+            color: white;
+        }
+
+        .selected {
+            background-color: #d5d5d5;
+            color: white;
+        }
+
+        .text-heading-wrap {
+            display: inline-block;
+            max-width: 300px; /* Sesuaikan dengan lebar yang diinginkan */
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        /* button untuk membuat blur */
+        .card-footer {
+            position: relative;
+        }
+
+        .blur-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(10px); /* Tingkatkan blur untuk lebih terlihat */
+            background: rgba(255, 255, 255, 0.7); /* Ubah transparansi agar lebih terlihat */
+            z-index: 1;
+        }
+
+        #applyVoucherBtn {
+            position: relative;
+            z-index: 2; /* Agar tombol berada di atas overlay */
+        }
+    </style>
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="backend/assets/img/favicon/favicon.ico" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="assets/costum.css" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="assets/theme-default.css" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="assets/carousel.css" />
+    <link rel="stylesheet" href="backend/assets/vendor/css/core.css&quot; class=&quot;template-customizer-core-css" />
+    <link rel="stylesheet" href="backend/assets/css/demo.css" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="backend/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="backend/assets/vendor/libs/apex-charts/apex-charts.css" />
+
+    <!-- Helpers -->
+    <script src="assets/vendor/helpers.js"></script>
+    <script src="assets/config.js"></script>
+  </head>
+
+  <body>
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <!-- Menu -->
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+            <div class="app-brand demo">
+                <a href="/beranda" class="app-brand-link">
+                    <span class="app-brand-logo demo">
+                        <strong>
+                            LMS
+                        </strong>
+                    </span>
+                </a>
+            </div>
+  
+            <div class="menu-inner-shadow"></div>
+  
+            <ul class="menu-inner py-1">
+                <!-- Dashboards -->
+                <li class="menu-item ">
+                    <a href="/dashboard" class="menu-link menu-link">
+                        <i class="menu-icon tf-icons bx bx-home-smile"></i>
+                        <div class="text-truncate" data-i18n="Dashboards">Dashboard</div>
+                    </a>
+                </li>
+  
+                <!-- Main Manage -->
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">UTAMA</span>
+                </li>
+  
+                <!-- Kelas -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-chalkboard"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Kelas</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item ">
+                            <a href="/kelolakelas" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola Kelas</div>
+                            </a>
+                        </li>
+                        <li class="menu-item ">
+                            <a href="/kategorikelas" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Kelas</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                <!--Modul dan Test -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-book-content"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Modul dan Test</div>
+                    </a>
+    
+                    <!-- Content wrapper -->
+                    <ul class="menu-sub">
+                      <li class="menu-item ">
+                          <a href="/kelolamodul" class="menu-link">
+                              <div class="text-truncate" data-i18n="Without menu">Kelola Modul</div>
+                          </a>
+                      </li>
+                      <li class="menu-item ">
+                          <a href="/kelolatest" class="menu-link">
+                              <div class="text-truncate" data-i18n="Without navbar">Kelola Test</div>
+                          </a>
+                      </li>
+                    </ul>
+                </li>
+    
+                <!-- Webinar dan Artikel -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-news"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Webinar & Artikel</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolawebinar" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola Webinar</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kelolaartikel" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kelola Artikel</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                <!-- Karyawan -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-user"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Karyawan</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolakaryawan" class="menu-link">
+                                <div class="/kelolakaryawan" data-i18n="Without menu">Data Karyawan</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kelolakoin" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Atur Koin</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                
+                <li class="menu-item ">
+                    <a
+                        href="/pemantauanTraining"
+                        class="menu-link">
+                        <i class='menu-icon tf-icons bx bx-spreadsheet'></i>
+                        <div class="text-truncate" data-i18n="Chat">Pemantauan Training</div>
+                    </a>
+                </li>
+              
+                
+                <li class="menu-item ">
+                    <a
+                        href="/aktivitaskaryawan"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-sitemap"></i>
+                        <div class="text-truncate" data-i18n="Chat">Aktivitas Karyawan</div>
+                        <div class="badge rounded-pill bg-label-primary text-uppercase fs-tiny ms-auto">4</div>
+                    </a>
+                </li>
+              
+                <!-- Components -->
+                <li class="menu-header small text-uppercase"><span class="menu-header-text">Components</span></li>
+                
+                
+                <li class="menu-item ">
+                    <a
+                        href="/kelolastruktur"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-buildings"></i>
+                        <div class="text-truncate" data-i18n="Chat">Kelola Struktur</div>
+                    </a>
+                </li>
+    
+                <!-- faq -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-help-circle"></i>
+                        <div class="text-truncate" data-i18n="Layouts">FAQ</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolafaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Kelola FAQ</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                
+                <li class="menu-item">
+                    <a
+                        href="/komentar"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-message-dots"></i>
+                        <div class="text-truncate" data-i18n="Chat">Kelola Komentar</div>
+                        <div class="badge rounded-pill bg-label-warning text-uppercase fs-tiny ms-auto">
+                                                            4
+                                                    </div>
+                    </a>
+                </li>
+    
+                
+                <li class="menu-item">
+                    <a
+                        href="/pengaduan"
+                        class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-error-circle"></i>
+                        <div class="text-truncate" data-i18n="Chat">Pengaduan</div>
+                        <div class="badge rounded-pill bg-label-primary text-uppercase fs-tiny ms-auto">4</div>
+                    </a>
+                </li>
+    
+                <!-- Website Components -->
+                <li class="menu-item ">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-globe"></i>
+                        <div class="text-truncate" data-i18n="Layouts">Komponen Website</div>
+                    </a>
+    
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="/kelolafaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without menu">Banner</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/kategorifaq" class="menu-link">
+                                <div class="text-truncate" data-i18n="Without navbar">Kategori Faq</div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+          </aside>
+        <!-- / Menu -->
+
+        <!-- Layout container -->
+        <div class="layout-page">
+
+          <!-- Navbar -->
+          <nav
+            class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
+            id="layout-navbar">
+            <div class="layout-menu-toggle navbar-nav align-items-xl-center me-4 me-xl-0 d-xl-none">
+              <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
+                <i class="bx bx-menu bx-md"></i>
+              </a>
+            </div>
+
+            <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+              <!-- Search -->
+              <div class="navbar-nav align-items-center">
+                <div class="nav-item d-flex align-items-center">
+                  <i class="bx bx-search bx-sm"></i>
+                  <input
+                    type="text"
+                    class="form-control border-0 shadow-none ps-1 ps-sm-2"
+                    placeholder="Search..."
+                    aria-label="Search..." />
+                </div>
+              </div>
+              <!-- /Search -->
+
+              <ul class="navbar-nav flex-row align-items-center ms-auto">
+                <!-- Place this tag where you want the button to render. -->
+                <li class="nav-item bg-label-primary p-1 rounded lh-1 me-4" style="cursor: pointer;">
+                  <a class="nav-link text-primary" data-icon="octicon-star" data-size="large" onclick="logoutConfirm()">
+                    <i class='bx bx-log-out me-2'></i> Keluar
+                  </a>
+                </li>
+
+                <!-- User -->
+                <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow p-0"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown">
+                    <div class="avatar avatar-online">
+                      <img src="backend/assets/img/avatars/1.png" alt class="w-px-40 h-auto rounded-circle" />
+                    </div>
+                  </a>
+                </li>
+                <!--/ User -->
+              </ul>
+            </div>
+          </nav>
+          <!-- / Navbar -->
+
+          <!-- Content wrapper -->
+          <div class="content-wrapper">
+
+            <!-- Content -->
+            
+                
+<div class="container-xxl flex-grow-1 container-p-y">    
+    <nav class="navbar navbar-expand-lg border-secondary border-bottom mb-5">
+        <div class="container-fluid">
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link text-secondary" aria-current="page" href="/dashboard.html">Overview</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-secondary" href="/dashboarddeapartemen">Departemen</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-primary" href="/dashboard.html">Karyawan</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link">|</a></li>
+                </ul>
+                <select id="select2Basic" class="select2 form-select w-20 form-select-md me-4" data-allow-clear="true">
+                    <option value="" disabled selected>Pilih Departemen</option>
+                    <option value="9d3ddb09-3389-4a81-82ae-26612ad2a776">PPIC &amp; Logistik</option>
+                    <option value="9d3ddb29-dd0a-4611-9d53-79c74cde9081">Produksi</option>
+                    <option value="9d3ddd06-daf5-497e-a4f3-28b7b862897a">HCD</option>
+                    <option value="9d7bd8ed-d1dc-4810-b5b5-f463b82e1c80">Sales</option>
+                    <option value="9d3c3bb7-f58d-4cbb-90f6-61f55216393a">IT</option>
+                                    </select>
+                <select id="select2Basic" class="select2 form-select w-20 form-select-md me-4" data-allow-clear="true">
+                    <option value="" disabled selected>Pilih Karyawan</option>
+                                            <option value="9d237165-0c53-456e-ac31-09b2657ceec2">Betrand Russel</option>
+                                            <option value="9d237165-0c53-456e-ac31-09b2657ceec2">Farizan</option>
+                                            <option value="9d3c4396-b9f6-4b81-b04d-c73f83e9e944">lemon</option>
+                                            <option value="9d69c1ae-3931-4f62-83d0-9055ae1c554c">Seteven Cury</option>
+                                            <option value="9d69c846-b07a-4295-a916-5e6fb85d3df6">Jhon Chena</option>
+                                            <option value="9d7bd944-a74e-4f5b-bac3-731ca0e6b94f">Keanu Reaves</option>
+                                    </select>
+                <form class="d-flex" onsubmit="return false">
+                    <button class="btn btn-primary btn-sm p-2" type="submit">
+                        <i class='bx bxs-cloud-download me-2'></i> export
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>      
+    
+    <!-- Topic and Instructors -->
+    <div class="row mb-6 g-6">
+        <div class="col-xl-8 col-md-6">
+    <div class="row">
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-primary"><i class='bx bxs-videos bx-sm'></i></span>
+                        </div>
+                        <h4 class="mb-0">1</h4>
+                    </div>
+                    <p class="mb-2">Total kelas yang dibeli</p>
+                    <p class="mb-0">
+                        <span class="text-heading fw-medium me-2">+1</span>
+                        <span class="text-muted">bulan ini</span>
+                    </p>
+                </div> 
+            </div>
+        </div>
+
+        <!-- Card Kelas Dalam Proses -->
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-danger h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-danger"><i class='bx bx-error bx-sm'></i></span>
+                        </div>
+                        <h4 class="mb-0">1</h4>
+                        <a href="#detailprogress" class="btn btn-label-danger p-1 ms-auto" id="detail" role="button">detail</a>
+                    </div>
+                    <p class="mb-2">Kelas dalam proses</p>
+                    <p class="mb-0">
+                        <span class="text-muted text-danger">selesaikan sekarang</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Kelas Selesai -->
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-success h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-success"><i class='bx bx-git-repo-forked bx-sm'></i></span>
+                        </div>
+                        <h4 class="mb-0 me-2">0</h4>
+                    </div>
+                    <p class="mb-2">Kelas selesai</p>
+                    <p class="mb-0">
+                        
+                        <span class="text-muted">Total keseluruhan</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Kelas Tidak Tuntas -->
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="avatar me-4">
+                            <span class="avatar-initial rounded bg-label-warning"><i class='bx bx-task-x bx-sm'></i></span>
+                        </div>
+                        <h4 class="mb-0 me-2">0</h4>
+                    </div>
+                    <p class="mb-2">Kelas tidak tuntas</p>
+                    <p class="mb-0">
+                        <span class="text-heading fw-medium me-2">+0</span>
+                        <span class="text-muted">bulan ini</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="card-info">
+                            <p class="text-heading mb-1">Pengeluaran</p>
+                            <div class="d-flex align-items-center mb-1">
+                                <h4 class="card-title mb-0 me-2">IDR 399.000</h4>
+                                
+                            </div>
+                            <span>Total keseluruhan</span>
+                        </div>
+                        <div class="card-icon">
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalCenter">
+                                detail
+                            </button>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-4 mb-6">
+            <div class="card card-border-shadow-info h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="avatar me-3">
+                            <span class="avatar-initial rounded bg-label-info"><i class='bx bx-credit-card-alt bx-sm'></i></span>
+                        </div>
+                        <h4 class="mb-0">801.000</h4>
+                        <button type="button" class="btn btn-white btn-lg p-1" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="right" data-bs-html="true" title="<span>Ini adalah coin yang dimiliki karyawan dibulan ini</span>">
+                            <i class='bx bxs-help-circle text-info' ></i>
+                        </button>
+                    </div>
+                    <p class="mb-2">Sisa Coin Anda</p>
+                    <p class="mb-0">
+                    
+                    <span class="text-muted">Total keseluruhan</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="card">
+        <div class="row row-bordered g-0">
+            <div class="col-lg-8">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">Waktu yang dihabiskan</h5>
+                    </div>
+                    <div class="d-flex">
+                        <form class="d-flex">
+                            <input type="text" id="dateRangePickerKaryawan" class="form-control me-2" placeholder="Atur rentang tanggal">
+                            <button type="submit" class="btn btn-primary btn-sm">Terapkan</button>
+                        </form>
+                        
+                    </div>
+                </div>
+                <canvas id="shipmentDeliveryChart"></canvas>
+            </div>
+
+            
+            <div class="col-lg-4 align-items-bottom">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">Statistik Status Kelas</h5>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn p-0" type="button" id="totalRevenue" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bx bx-dots-vertical-rounded bx-sm text-muted"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="totalRevenue">
+                        <a class="dropdown-item" href="javascript:void(0);">Select All</a>
+                        <a class="dropdown-item" href="javascript:void(0);">Refresh</a>
+                        <a class="dropdown-item" href="javascript:void(0);">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="myDoughnutChart" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="card mt-5">
+        <div class="row row-bordered g-0">
+            <div class="col-12">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">Kategori yang paling disukai</h5>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn p-0" type="button" id="totalRevenue" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bx bx-dots-vertical-rounded bx-sm text-muted"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="totalRevenue">
+                        <a class="dropdown-item" href="javascript:void(0);">Select All</a>
+                        <a class="dropdown-item" href="javascript:void(0);">Refresh</a>
+                        <a class="dropdown-item" href="javascript:void(0);">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="myHorizontalBarChart" class="px-3" width="160" height="40"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="col-xl-4 col-md-6">
+    <div class="card mb-5" style="background-color: #003161">
+        <div class="d-flex align-items-center">
+            <div class="row">
+                <div class="col-4">
+                    <div class="card-body ">
+                        <img src="https://img.freepik.com/fotos-premium/woman-smiling-wear-formal-uniform_519183-2075.jpg" width="91" height="91" class="rounded border-secondary border" alt="View Sales">
+                    </div>
+                </div>
+                <div class="col-8">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mt-1">
+                            <h5 class="card-title text-white mb-0"><strong>Betrand Russel</strong></h5>
+                        </div>
+                        <div class="d-flex align-items-center mt-1">
+                            <h6 class="card-title text-secondary mb-0"><strong>20201111129098</strong></h6>
+                        </div>
+                        <div class="d-flex align-items-center mt-1">
+                            <h6 class="card-title  text-secondary mb-0"><strong>Sales - II C</strong></h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="card mb-5 card-rounded">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-12" >
+                <div class="calendar">
+                    <div class="header-calender">
+                        <button id="prev-week" class="nav-btn">←</button>
+                        <div id="current-month" class="month-display"></div>
+                        <button id="next-week" class="nav-btn">→</button>
+                    </div>
+                    
+                    <div class="weekdays">
+                        <span>S</span>
+                        <span>M</span>
+                        <span>T</span>
+                        <span>W</span>
+                        <span>T</span>
+                        <span>F</span>
+                        <span>S</span>
+                    </div>
+                    <div id="days" class="days"></div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="card">
+        <h5 class="card-header">Aktivitas Terbaru</h5>
+        <div class="card-body" style="height: 550px;">
+            <ul class="timeline mb-0">
+                                    <li class="timeline-item timeline-item-transparent">
+                        <span class="timeline-point timeline-point-success"></span>
+                        <div class="timeline-event">
+                            <div class="timeline-header mb-3">
+                                <h6 class="mb-0">Pembelian</h6>
+                                <small class="text-muted">1 hari yang lalu</small>
+                            </div>
+                            <p class="mb-2">
+                                Membeli kelas: The Complete Financial Analyst Course 2024
+                            </p>
+                        </div>
+                    </li>
+                                    <li class="timeline-item timeline-item-transparent">
+                        <span class="timeline-point timeline-point-success"></span>
+                        <div class="timeline-event">
+                            <div class="timeline-header mb-3">
+                                <h6 class="mb-0">Login</h6>
+                                <small class="text-muted">1 hari yang lalu</small>
+                            </div>
+                            <p class="mb-2">
+                                Masuk ke aplikasi pembelajaran
+                            </p>
+                        </div>
+                    </li>
+                                    <li class="timeline-item timeline-item-transparent">
+                        <span class="timeline-point timeline-point-success"></span>
+                        <div class="timeline-event">
+                            <div class="timeline-header mb-3">
+                                <h6 class="mb-0">Login</h6>
+                                <small class="text-muted">1 hari yang lalu</small>
+                            </div>
+                            <p class="mb-2">
+                                Masuk ke aplikasi pembelajaran
+                            </p>
+                        </div>
+                    </li>
+                                    <li class="timeline-item timeline-item-transparent">
+                        <span class="timeline-point timeline-point-success"></span>
+                        <div class="timeline-event">
+                            <div class="timeline-header mb-3">
+                                <h6 class="mb-0">Logout</h6>
+                                <small class="text-muted">1 hari yang lalu</small>
+                            </div>
+                            <p class="mb-2">
+                                Pengguna keluar dari sistem
+                            </p>
+                        </div>
+                    </li>
+                                    <li class="timeline-item timeline-item-transparent">
+                        <span class="timeline-point timeline-point-success"></span>
+                        <div class="timeline-event">
+                            <div class="timeline-header mb-3">
+                                <h6 class="mb-0">Logout</h6>
+                                <small class="text-muted">5 hari yang lalu</small>
+                            </div>
+                            <p class="mb-2">
+                                Pengguna keluar dari sistem
+                            </p>
+                        </div>
+                    </li>
+                            </ul>
+        </div>
+        <div class="card-footer position-relative">
+            <button type="button" id="applyVoucherBtn" class="btn btn-label-warning w-100">Lihat Semua Aktivitas</button>
+            <div class="blur-overlay rounded"></div>
+        </div>
+    </div>
+</div>
+
+<div class="col-12">
+    <div class="card">
+        <div class="row row-bordered g-0">                   
+            <div class="col-lg-4 align-items-bottom">
+                <div class="card-header d-flex align-items-center mb-0 justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">Skor Anda</h5>
+                    </div>
+                    <div class="btn-group">
+                        <!-- Tombol utama yang menampilkan tahun -->
+                        <button type="button" class="btn btn-label-primary" id="selectedYear">
+                            <script>
+                                document.write(new Date().getFullYear());
+                            </script>
+                        </button>
+                        <!-- Tombol dropdown -->
+                        <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <!-- Daftar dropdown tahun -->
+                        <ul class="dropdown-menu" id="yearDropdown"></ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="scoreChart"></div>
+                    <div class="d-flex flex-column align-items-center">
+                        <p class="mb-0">Skor Anda dihitung dari 1 tahun terakhir</p>
+                        <h6>Peringkat <span class="text-danger fw-bold"><strong>#2</strong></span> dari 13 karyawan</h6>
+                    </div>
+                    <div class="resize-triggers">
+                        <div class="expand-trigger">
+                            <div style="width: 481px; height: 292px;"></div>
+                        </div>
+                        <div class="contract-trigger"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="card-header d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title mb-1">Riwayat Pengeluaran</h5>
+                        <p class="card-subtitle">Ringkasan laporan tahunan</p>
+                    </div>
+                    <form class="d-flex">
+                        <input type="text" id="dateRangePickerKaryawan" class="form-control me-2" placeholder="Atur rentang tanggal" style="height: 40px;">
+                        <button type="submit" class="btn btn-primary btn-sm"  style="height: 40px;">Terapkan</button>
+                    </form>
+                </div>
+                <div class="card-body" style="position: relative;">
+                    <div id="chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-12" id="detailprogress">
+    <div class="card mb-6">
+        <div class="table-responsive mb-4">
+            <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap5 no-footer">
+                <div class="card-header py-4 d-flex justify-content-between">
+                    <div class="head-label text-start">
+                        <h5 class="card-title mb-0 text-nowrap">Riwayat Kelas Anda</h5>
+                    </div>
+                    <div class="d-flex">
+                        <div class="dropdown me-5">
+                            <select id="select2Basic" class="select2 form-select form-select-lg form-select-sm" data-allow-clear="true">
+                                <option value="" selected>Terbaru</option>
+                                <option value="">Terlama</option>
+                            </select>
+                        </div>
+                        <div id="DataTables_Table_0_filter" class="dataTables_filter"><label><input type="search"
+                            class="form-control" placeholder="Cari Kelas" aria-controls="DataTables_Table_0"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="table table-sm datatables-academy-course dataTable no-footer dtr-column"
+                    id="DataTables_Table_0" aria-describedby="DataTables_Table_0_info">
+                    <thead class="border-top">
+                        <tr>
+                            <th>   
+                            </th>
+                            <th >Nama Kelas</th>
+                            <th >Tanggal Mulai</th>
+                            <th >Sisa Waktu</th>
+                            <th >Progress</th>
+                            <th ></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                                        <tr>
+                            <td class="dt-checkboxes-cell">
+                                1
+                            </td>
+                            <td class="sorting_1">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-4">
+                                        <span class="badge bg-label-warning rounded p-1_5">
+                                            <img src="image/kelas-sampul/1727794125.jpg" alt="" width="60px" class="rounded">
+                                        </span>
+                                    </span>
+                                    <div>
+                                        <a class="text-heading text-truncate fw-medium mb-2">
+                                            The Complete Financial Analyst Course 2024
+                                                                                    </a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-medium text-nowrap text-heading">
+                                    18 November 24
+                                </span>
+                            </td>                                       
+                            
+                            <td class="">
+                                <span class="fw-medium text-nowrap rounded p-1 bg-label-primary">
+                                    12 Hari Lagi
+                                </span>
+                            </td>
+                                                                                                                                    
+                            <td>
+                                <div class="d-flex align-items-center gap-3 text-warning">
+                                    <p class="fw-medium mb-0 text-heading">19%</p>
+                                    <div class="progress w-19" style="height: 6px;">
+                                        <div class="progress-bar bg-warning" style="width: 19%" aria-valuenow="19" aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </td>                                    
+                            <td>
+                                                                    <a href="" class="btn btn-label-primary ms-auto" role="button">Belajar Sekarang</a>    
+                                                            </td>
+                        </tr>
+                    
+                    </tbody>
+                </table>
+                <div class="row mx-md-4 mt-3 flex-column flex-md-row align-items-center">
+                    <div class="col-sm-6 col-12 text-center text-md-start pb-2 pb-xl-0 px-0">
+                        <div class="dataTables_info" id="DataTables_Table_0_info" role="status" aria-live="polite">Showing 1
+                            to 5 of 25 entries</div>
+                    </div>
+                    <div class="col-sm-6 col-12 d-flex justify-content-center justify-content-md-end px-0">
+                        <div class="dataTables_paginate paging_simple_numbers" id="DataTables_Table_0_paginate">
+                            <ul class="pagination">
+                                <li class="paginate_button page-item previous disabled" id="DataTables_Table_0_previous"><a
+                                        aria-controls="DataTables_Table_0" aria-disabled="true" role="link"
+                                        data-dt-idx="previous" tabindex="-1" class="page-link"><i
+                                            class="bx bx-chevron-left bx-18px"></i></a></li>
+                                <li class="paginate_button page-item active"><a href="#" aria-controls="DataTables_Table_0"
+                                        role="link" aria-current="page" data-dt-idx="0" tabindex="0" class="page-link">1</a>
+                                </li>
+                                <li class="paginate_button page-item next" id="DataTables_Table_0_next"><a href="#"
+                                        aria-controls="DataTables_Table_0" role="link" data-dt-idx="next" tabindex="0"
+                                        class="page-link"><i class="bx bx-chevron-right bx-18px"></i></a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div style="width: 1%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalCenter" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCenterTitle">Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card border border-success">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div class="card-info">
+                                        <p class="text-heading mb-1">Total Transaksi Pembelian</p>
+                                        <div class="d-flex align-items-center mb-1">
+                                            <h4 class="card-title mb-0 me-2">IDR 399.000</h4>
+                                            
+                                        </div>
+                                        <span>Total Keseluruhan</span>
+                                    </div>
+                                    <div class="card-icon">
+                                        <span class="badge bg-label-success rounded p-2">
+                                            <i class='bx bx-trending-up bx-sm'></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-6">
+                        <div class="card border border-danger">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div class="card-info">
+                                        <p class="text-heading mb-1">Total koin tidak digunakan</p>
+                                        <div class="d-flex align-items-center mb-1">
+                                            <h4 class="card-title mb-0 me-2">IDR 1.250.000</h4>
+                                        </div>
+                                        <span>Total Keseluruhan</span>
+                                    </div>
+                                    <div class="card-icon">
+                                        <span class="badge bg-label-danger rounded p-2">
+                                            <i class='bx bx-pie-chart-alt bx-sm'></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="card border shadow border-primary">
+                            <div class="card-header d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title mb-1">Riwayat Koin Tidak Terpakai</h5>
+                                </div>
+                                <div class="dropdown">
+                                    <select id="select2Basic" class="select2 form-select form-select-lg form-select-sm" data-allow-clear="true">
+                                        <option value="2024" selected>2024</option>
+                                        <option value="2023">2023</option>
+                                        <option value="2022">2022</option>
+                                        <option value="2021">2021</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body" style="position: relative;">
+                                <div id="chartKoinTerbuang"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- / Content -->
+
+            <!-- Footer -->
+            <footer class="content-footer footer bg-footer-theme">
+                <div class="container-xxl">
+                    <div
+                    class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
+                        <div class="text-body">
+                        ©2024
+                        
+                        , LMS Gondowangi
+                        
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            <!-- / Footer -->
+
+            <div class="content-backdrop fade"></div>
+          </div>
+          <!-- Content wrapper -->
+        </div>
+        <!-- / Layout page -->
+      </div>
+
+      <!-- Overlay -->
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+    <!-- / Layout wrapper -->
+
+    <div class="buy-now">
+        <a href class="btn btn-danger btn-buy-now">
+            <label for="" class="mr-4 me-3">Pengaduan</label>
+            <div class="badge rounded bg-label-danger text-uppercase fs-tiny ms-auto" style="margin-left: 8px;">4</div>
+        </a>
+    </div>
+
+    <!-- Core JS -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Initialize Flatpickr with max range of 14 days
+        flatpickr("#dateRangePickerKaryawan", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            theme: "material_blue", // Use modern theme
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    const diff = (selectedDates[1] - selectedDates[0]) / (1000 * 60 * 60 * 24);
+                    if (diff > 14) {
+                        // Show error modal
+                        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                        errorModal.show();
+
+                        // Clear the selection
+                        instance.clear();
+                    }
+                }
+            },
+        });
+    </script>
+
+    <script>
+        document.getElementById('select2Basic').addEventListener('change', function () {
+            const selectedEmployeeId = this.value;
+    
+            if (selectedEmployeeId) {
+                fetch(`/dashboard-data/${selectedEmployeeId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('dashboard-content').innerHTML = html;
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    </script>
+    
+    
+    <script>
+        // Data yang diambil dari controller
+        const videoData = ["21","40","33"];
+        const soalData = ["15","10","5"];
+    
+        // Fungsi untuk mendapatkan label hari berdasarkan tanggal real-time
+        function getDayLabels() {
+            const days = ['Rabu', 'Kamis', 'Jumat', 'Sabtu','Minggu', 'Senin', 'Selasa', ];
+            const today = new Date();
+            const week = [];
+    
+            // Mengambil label hari dimulai dari hari ini selama 7 hari ke belakang
+            for (let i = 6; i >= 0; i--) {
+                const day = new Date();
+                day.setDate(today.getDate() - i);
+                week.push(days[day.getDay()]);
+            }
+            return week;
+        }
+    
+        // Fungsi untuk memfilter data hanya pada hari yang ada aktivitasnya
+        function filterData(data) {
+            return data.map((value, index) => value > 0 ? value : null);
+        }
+    
+        const labels = getDayLabels();
+    
+        const data = {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Video',
+                    data: filterData(videoData),
+                    barThickness: 42,
+                    backgroundColor: 'rgba(255, 171, 0, 0.8)',
+                    borderWidth: 1,
+                    borderRadius: {
+                        topLeft: 0, topRight: 0, bottomLeft: 10, bottomRight: 10
+                    },
+                    order: 2,
+                    stack: 'combined'
+                },
+                {
+                    label: 'Soal',
+                    data: filterData(soalData),
+                    barThickness: 42,
+                    backgroundColor: 'rgba(255, 223, 160, 0.8)',
+                    borderWidth: 1,
+                    borderRadius: {
+                        topLeft: 10, topRight: 10, bottomLeft: 0, bottomRight: 0
+                    },
+                    order: 2,
+                    stack: 'combined'
+                }
+            ]
+        };
+    
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value < 60 ? value + ' menit' : (value / 60).toFixed(1) + ' jam';
+                            }
+                        },
+                        grid: {
+                            display: true,
+                            drawBorder: false
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        },
+                        onClick: null
+                    },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: true,
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                let label = tooltipItem.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const value = tooltipItem.raw;
+                                label += value < 60 ? `${value} menit` : `${(value / 60).toFixed(1)} jam`;
+                                return label;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    intersect: true
+                }
+            }
+        };
+    
+        const ctx = document.getElementById('shipmentDeliveryChart').getContext('2d');
+        new Chart(ctx, config);
+    </script>    
+    
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const data = {
+            labels: ['Selesai', 'Proses', 'Expired'],
+            datasets: [{
+                data: [0,1,0],
+                backgroundColor: ['#4477CE', '#8CABFF', '#CBDCEB'],
+                hoverOffset: 20,
+                borderRadius: 10
+            }]
+          };
+      
+          const config = {
+            type: 'doughnut',
+            data: data,
+            options: {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    usePointStyle: true,  // Mengubah ikon legend menjadi lingkaran
+                    pointStyle: 'circle',
+                    padding: 20,
+                  },
+                },
+                tooltip: {
+                  enabled: true
+                },
+            },
+            layout: {
+                padding: {
+                    top: 20,
+                }
+            },
+              onClick: function (event, elements) {
+                if (elements.length > 0) {
+                  const clickedElementIndex = elements[0].index;
+                  let dataset = this.data.datasets[0];
+                  if (!dataset._originalHoverOffset) {
+                    dataset._originalHoverOffset = dataset.hoverOffset;
+                  }
+                  dataset.hoverOffset = (dataset.hoverOffset === 20 && dataset.data[clickedElementIndex] === dataset._originalHoverOffset) ? 0 : 20;
+                  this.update();
+                }
+              }
+            }
+          };
+      
+          const myDoughnutChart = new Chart(
+            document.getElementById('myDoughnutChart'),
+            config
+          );
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Data kursus yang disukai (dalam persentase)
+            const data = {
+                labels: ["Produksi"],
+                datasets: [{
+                    label: 'Persentase Kursus yang Disukai',
+                    data: [1], // Data dalam persentase
+                    backgroundColor: [
+                        '#ff6384', // Warna untuk masing-masing bar
+                        '#36a2eb',
+                        '#cc65fe',
+                        '#ffce56',
+                        '#4bc0c0'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 10, // Membuat bar rounded
+                    barThickness: 20, // Atur ketebalan bar
+                    maxBarThickness: 20, // Batasi ketebalan maksimum bar
+                }]
+            };
+    
+            // Konfigurasi chart
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    indexAxis: 'y', // Membuat bar chart horizontal
+                    scales: {
+                        x: {
+                            beginAtZero: true, // Mulai dari 0 di sumbu X
+                            suggestedMax: Math.max(...data.datasets[0].data) + 10, // Sesuaikan sumbu X berdasarkan data
+                            grid: {
+                                display: true, // Tampilkan garis vertikal
+                                drawBorder: false, // Hilangkan garis batas
+                                color: 'rgba(0, 0, 0, 0.1)', // Garis vertikal lembut
+                                borderDash: [5, 5], // Gaya garis-garis
+                                lineWidth: 0.5 // Atur ketebalan garis vertikal agar lebih kecil
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false, // Hilangkan garis horizontal
+                            }
+                        }
+                    },
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            enabled: true, // Aktifkan tooltips
+                        },
+                        legend: {
+                            display: false // Sembunyikan legenda
+                        }
+                    },
+                    onLeave: function() {
+                        const chart = this;
+    
+                        // Kembalikan warna asli ketika tidak ada hover
+                        chart.data.datasets[0].backgroundColor = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0'];
+                        chart.update();
+                    },
+                    barPercentage: 0.8, // Kurangi sedikit lebar bar
+                    categoryPercentage: 0.6, // Kurangi jarak antar bar lebih agresif
+                    layout: {
+                        padding: {
+                            top: 0,
+                            bottom: 0
+                        }
+                    }
+                }
+            };
+    
+            // Inisialisasi chart dengan ID canvas 'myHorizontalBarChart'
+            const myHorizontalBarChart = new Chart(
+                document.getElementById('myHorizontalBarChart'),
+                config
+            );
+        });
+    </script>
+
+    
+    <script>
+        document.getElementById("detail").addEventListener("click", function(event) {
+            event.preventDefault();
+            document.querySelector("#detailprogress").scrollIntoView({ behavior: "smooth" });
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const options = {
+                chart: {
+                    height: 250,
+                    type: 'radialBar',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                    },
+                    toolbar: {
+                        show: false
+                    },
+                },
+                series: [13.17], // Persentase dari controller
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '60%'
+                        },
+                        dataLabels: {
+                            name: {
+                                offsetY: -10,
+                                color: '#646e78',
+                                fontSize: '15px',
+                                fontWeight: 500
+                            },
+                            value: {
+                                offsetY: 5,
+                                color: '#384551',
+                                fontSize: '24px',
+                                fontWeight: 500,
+                                show: true
+                            }
+                        },
+                        track: {
+                            strokeWidth: '18',
+                            background: '#e0e0e0',
+                            strokeDashArray: 5
+                        }
+                    }
+                },
+                labels: ['Memiliki 74 ⭐'] // Skor dari controller
+            };
+    
+            const chart = new ApexCharts(document.querySelector("#scoreChart"), options);
+            chart.render();
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var bulan = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            var dataTransaksi = [0,0,0,0,0,0,0,0,0,0,"399000",0];
+
+            var options = {
+                series: [{
+                name: 'Total Transaksi',
+                data: dataTransaksi
+                // data: "["3000", "8000", "7000", "5000", "5000", "9000"]" // example data
+                }],
+                chart: {
+                    type: 'line',
+                    height: 310,
+                    toolbar: { show: false },
+                    dropShadow: {
+                        enabled: true,
+                        color: '#6365f1b3',
+                        top: 10,        // Menggeser shadow ke bawah
+                        left: 0,       // Tetap lurus vertikal
+                        blur: 5,      // Lebar blur shadow
+                        opacity: 1,  // Opacity awal shadow
+                        opacityTo: 0
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3,
+                    colors: ['#6366F1']
+                },
+                fill: {
+                    type: 'gradient'
+                },
+                xaxis: {
+                    categories: bulan,
+                    // categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    labels: {
+                        style: {
+                        colors: '#9CA3AF'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => `${val / 1000}k`,
+                        style: {
+                        colors: '#9CA3AF'
+                        }
+                    }
+                },
+                grid: {
+                show: true,
+                borderColor: '#E5E7EB',
+                strokeDashArray: 7,
+                },
+                tooltip: {
+                enabled: true,
+                y: {
+                    formatter: (val) => `IDR ${val}`
+                }
+                },
+                markers: {
+                size: 5,
+                colors: ['#6366F1'],
+                strokeColors: '#fff',
+                strokeWidth: 2,
+                hover: {
+                    size: 8
+                }
+                }
+            };
+
+            var chart = new ApexCharts(document.querySelector("#chart"), options);
+            chart.render();
+            });
+
+    </script>
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var bulan = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            var dataTransaksi = ["0","0","0","0","0","0","0","0","450000","800000","0","0"];
+
+            var options = {
+                series: [{
+                name: 'Total Transaksi',
+                data: dataTransaksi
+                // data: "["3000", "8000"]" // example data
+                }],
+                chart: {
+                    type: 'line',
+                    height: 310,
+                    toolbar: { show: false },
+                    dropShadow: {
+                        enabled: true,
+                        color: '#6365f1b3',
+                        top: 10,        // Menggeser shadow ke bawah
+                        left: 0,       // Tetap lurus vertikal
+                        blur: 5,      // Lebar blur shadow
+                        opacity: 1,  // Opacity awal shadow
+                        opacityTo: 0
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3,
+                    colors: ['#6366F1']
+                },
+                fill: {
+                    type: 'gradient'
+                },
+                xaxis: {
+                    categories: bulan,
+                    // categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    labels: {
+                        style: {
+                        colors: '#9CA3AF'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => `${val / 1000}k`,
+                        style: {
+                        colors: '#9CA3AF'
+                        }
+                    }
+                },
+                grid: {
+                show: true,
+                borderColor: '#E5E7EB',
+                strokeDashArray: 7,
+                },
+                tooltip: {
+                enabled: true,
+                y: {
+                    formatter: (val) => `IDR ${val}`
+                }
+                },
+                markers: {
+                size: 5,
+                colors: ['#6366F1'],
+                strokeColors: '#fff',
+                strokeWidth: 2,
+                hover: {
+                    size: 8
+                }
+                }
+            };
+
+            var chart = new ApexCharts(document.querySelector("#chartKoinTerbuang"), options);
+            chart.render();
+            });
+    </script>
+
+    
+    <script>
+        // Mendapatkan elemen tombol utama yang menampilkan tahun
+        const selectedYearButton = document.getElementById('selectedYear');
+        // Mendapatkan tahun saat ini
+        const currentYear = new Date().getFullYear();
+        const yearDropdown = document.getElementById('yearDropdown');
+    
+        // Menambahkan beberapa tahun ke dropdown, mulai dari tahun ini hingga 4 tahun sebelumnya
+        for (let i = 0; i < 5; i++) {
+            const yearItem = document.createElement('li');
+            yearItem.innerHTML = `<a class="dropdown-item" href="javascript:void(0);">${currentYear - i}</a>`;
+            
+            // Menambahkan event listener untuk mengubah teks tahun pada tombol utama ketika dipilih
+            yearItem.addEventListener('click', function() {
+                selectedYearButton.innerText = this.innerText;
+            });
+    
+            yearDropdown.appendChild(yearItem);
+        }
+    </script>
+
+    
+    <script>
+        const daysElement = document.getElementById("days");
+        const monthDisplay = document.getElementById("current-month");
+        const prevWeekBtn = document.getElementById("prev-week");
+        const nextWeekBtn = document.getElementById("next-week");
+
+        let currentDate = new Date();
+        let startOfWeek = getStartOfWeek(currentDate);
+
+        function getStartOfWeek(date) {
+            const day = date.getDay();
+            const diff = date.getDate() - day; // Get the first day of the current week (Sunday)
+            return new Date(date.setDate(diff));
+        }
+
+        function updateCalendar() {
+            const year = startOfWeek.getFullYear();
+            const month = startOfWeek.getMonth();
+
+            // Set month display
+            const monthNames = [
+                "January", "February", "March", "April", "May", "June", 
+                "July", "August", "September", "October", "November", "December"
+            ];
+            monthDisplay.innerText = `${monthNames[month]} ${year}`;
+
+            // Generate 7 days starting from the current week
+            daysElement.innerHTML = "";  // Clear previous days
+
+            for (let i = 0; i < 7; i++) {
+                const dayDiv = document.createElement("div");
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+
+                dayDiv.innerText = date.getDate();
+
+                // Highlight today's date
+                const today = new Date();
+                if (
+                    date.getDate() === today.getDate() &&
+                    date.getMonth() === today.getMonth() &&
+                    date.getFullYear() === today.getFullYear()
+                ) {
+                    dayDiv.classList.add("today");
+                }
+
+                // Select day on click
+                dayDiv.addEventListener("click", () => {
+                    const selectedDay = document.querySelector(".selected");
+                    if (selectedDay) {
+                        selectedDay.classList.remove("selected");
+                    }
+                    dayDiv.classList.add("selected");
+                });
+
+                daysElement.appendChild(dayDiv);
+            }
+        }
+
+        // Navigate to the previous week
+        prevWeekBtn.addEventListener("click", () => {
+            startOfWeek.setDate(startOfWeek.getDate() - 7);
+            updateCalendar();
+        });
+
+        // Navigate to the next week
+        nextWeekBtn.addEventListener("click", () => {
+            startOfWeek.setDate(startOfWeek.getDate() + 7);
+            updateCalendar();
+        });
+
+        // Initialize calendar
+        updateCalendar();
+
+    </script>
+    <script src="backend/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="backend/assets/vendor/js/menu.js"></script>
+    <script src="assets/vendor/popper.js"></script>
+    <script src="assets/vendor/bootstrap.js"></script>
+    <script src="assets/vendor/perfect-scrollbar.js"></script>
+  
+    <!-- Vendors JS -->
+    <script src="assets/vendor/apexcharts.js"></script>
+  
+    <!-- Main JS -->
+    <script src="backend/assets/js/main.js"></script>
+
+    <!-- Page JS -->
+    <script src="assets/dashboards-analytics.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function logoutConfirm() {
+            Swal.fire({
+                title: 'Apakah Anda yakin ingin keluar?',
+                text: "Anda akan logout dari akun ini!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#6777ef',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, logout!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit form logout jika user mengonfirmasi
+                    document.getElementById('logout-form').submit();
+                }
+            });
+        }
+
+        
+            </script>
+
+    <!-- Form logout tersembunyi -->
+    <form id="logout-form" action="/keluar" method="POST" style="display: none;">
+        <input type="hidden" name="_token" value="88aopAMXGPKWsHEIP1t8pxWQIxHcvsaFFUlOH0Xi" autocomplete="off">    </form> 
+  </body>
+</html>
