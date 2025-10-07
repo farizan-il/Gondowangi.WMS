@@ -211,13 +211,17 @@
 
           <!-- Form Header -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <!--  -->
+
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No PO *</label>
               <select v-model="newShipment.noPo" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                <option value="">Pilih No PO</option>
-                <option v-for="po in dummyPOs" :key="po" :value="po">{{ po }}</option>
+                  <option value="">Pilih No PO</option>
+                  <option v-for="po in purchaseOrders" :key="po.id" :value="po.id">
+                      {{ po.no_po }}
+                  </option>
               </select>
-            </div>
+          </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No Surat Jalan *</label>
@@ -225,10 +229,21 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier *</label>
-              <select v-model="newShipment.supplier" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Supplier *
+              </label>
+              <select 
+                v-model="newShipment.supplier" 
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
                 <option value="">Pilih Supplier</option>
-                <option v-for="supplier in dummySuppliers" :key="supplier" :value="supplier">{{ supplier }}</option>
+                <option 
+                  v-for="supplier in suppliers" 
+                  :key="supplier.id" 
+                  :value="supplier.id"
+                >
+                  {{ supplier.nama_supplier }}
+                </option>
               </select>
             </div>
 
@@ -295,9 +310,11 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
                   <tr v-for="(item, index) in newShipment.items" :key="index">
                     <td class="px-3 py-2 whitespace-nowrap">
-                      <select v-model="item.kodeItem" @change="updateNamaMaterial(index)" class="w-32 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <select v-model="item.kodeItem" @change="updateNamaMaterial(index)" class="...">
                         <option value="">Pilih SKU</option>
-                        <option v-for="sku in dummySKUs" :key="sku.code" :value="sku.code">{{ sku.code }}</option>
+                        <option v-for="material in materials" :key="material.id" :value="material.id">
+                          {{ material.code }}
+                        </option>
                       </select>
                     </td>
                     <td class="px-3 py-2 whitespace-nowrap">
@@ -466,31 +483,23 @@
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
+import { router, usePage } from '@inertiajs/vue3'
+
+
+// Props dari backend
+const props = defineProps({
+  shipments: Array,
+  purchaseOrders: Array,
+  suppliers: Array,
+  materials: Array
+})
 
 // Data reaktif
 const showModal = ref(false)
 const showQRCodeModal = ref(false)
 const showDetailModal = ref(false)
 const selectedShipment = ref(null)
-const shipments = ref([])
 
-// Data dummy untuk dropdown
-const dummyPOs = ref(['PO-001/2025', 'PO-002/2025', 'PO-003/2025'])
-const dummySuppliers = ref([
-  'PT Supplier A',
-  'PT Supplier B', 
-  'CV Supplier C',
-  'Sinar Universal Labelindo,PT'
-])
-const dummySKUs = ref([
-  { code: 'RM-001', name: 'Tepung Terigu', mfg: 'PT Indofood' },
-  { code: 'RM-002', name: 'Gula Pasir', mfg: 'PT Gulaku' },
-  { code: 'PM-001', name: 'Kardus Box 20x30', mfg: 'PT Kemasan Indo' },
-  { code: 'PM-002', name: 'Plastik Wrap', mfg: 'PT Plastik Jaya' },
-  { code: '23412', name: 'Sticker Botol Natur Natural Extract Hair Tonic Aloe Vera Extract 90 ML - Redesign', mfg: 'Sinar Universal Labelindo' }
-])
-
-// Form data
 const newShipment = ref({
   noPo: '',
   noSuratJalan: '',
@@ -501,78 +510,6 @@ const newShipment = ref({
   kategori: '',
   items: []
 })
-
-// Data dummy untuk tabel
-const initDummyData = () => {
-  shipments.value = [
-    {
-      id: 1,
-      incomingNumber: 'IN/26760',
-      noPo: 'PO62860',
-      noSuratJalan: 'LBL202501532',
-      supplier: 'Sinar Universal Labelindo,PT',
-      tanggalTerima: '2025-08-27T14:50:06',
-      noKendaraan: 'B 2222 FFF',
-      namaDriver: 'Anton S',
-      status: 'Karantina',
-      kategori: 'Packaging Material',
-      items: [
-        {
-          kodeItem: '23412',
-          namaMaterial: 'Sticker Botol Natur Natural Extract Hair Tonic Aloe Vera Extract 90 ML - Redesign',
-          batchLot: 'BATCH001',
-          expDate: '2025-12-31',
-          qtyWadah: '10',
-          qtyUnit: '20000',
-          pabrikPembuat: 'Sinar Universal Labelindo',
-          kondisiBaik: true,
-          kondisiTidakBaik: false,
-          coaAda: true,
-          coaTidakAda: false,
-          labelMfgAda: true,
-          labelMfgTidakAda: false,
-          labelCoaSesuai: true,
-          labelCoaTidakSesuai: false,
-          statusQC: 'To QC',
-          qrCode: 'IN/26760|23412|BATCH001|20000|2025-12-31'
-        }
-      ]
-    },
-    {
-      id: 2,
-      incomingNumber: 'IN/20250918/0002',
-      noPo: 'PO-002/2025',
-      noSuratJalan: 'SJ-002/2025',
-      supplier: 'PT Supplier B',
-      tanggalTerima: '2025-09-17T14:15:00',
-      noKendaraan: 'B 5678 EF',
-      namaDriver: 'Budi Santoso',
-      status: 'Karantina',
-      kategori: 'Raw Material',
-      items: [
-        {
-          kodeItem: 'RM-002',
-          namaMaterial: 'Gula Pasir',
-          batchLot: 'BATCH003',
-          expDate: '2025-11-15',
-          qtyWadah: '5',
-          qtyUnit: '25',
-          pabrikPembuat: 'PT Gulaku',
-          kondisiBaik: true,
-          kondisiTidakBaik: false,
-          coaAda: false,
-          coaTidakAda: true,
-          labelMfgAda: true,
-          labelMfgTidakAda: false,
-          labelCoaSesuai: false,
-          labelCoaTidakSesuai: true,
-          statusQC: 'To QC',
-          qrCode: 'IN/20250917/0002|RM-002|BATCH003|25|2025-11-15'
-        }
-      ]
-    }
-  ]
-}
 
 // Computed
 const isFormValid = computed(() => {
@@ -635,7 +572,7 @@ const addNewItem = () => {
     labelMfgTidakAda: false,
     labelCoaSesuai: false,
     labelCoaTidakSesuai: false,
-    statusQC: 'To QC'
+    statusQC: 'Karantina'
   })
 }
 
@@ -664,47 +601,51 @@ const toggleCheckbox = (item, field) => {
 }
 
 const updateNamaMaterial = (index) => {
-  const selectedSKU = dummySKUs.value.find(sku => sku.code === newShipment.value.items[index].kodeItem)
-  if (selectedSKU) {
-    newShipment.value.items[index].namaMaterial = selectedSKU.name
-    newShipment.value.items[index].pabrikPembuat = selectedSKU.mfg
-    // Auto set status QC based on SKU type
-    if (selectedSKU.code.startsWith('RM-')) {
-      newShipment.value.items[index].statusQC = 'To QC'
-    } else {
-      newShipment.value.items[index].statusQC = 'Direct Putaway'
-    }
+  const materialId = parseInt(newShipment.value.items[index].kodeItem)
+  const selectedMaterial = props.materials.find(m => m.id === materialId)
+  
+  if (selectedMaterial) {
+    newShipment.value.items[index].namaMaterial = selectedMaterial.name
+    newShipment.value.items[index].pabrikPembuat = selectedMaterial.mfg
+    newShipment.value.items[index].statusQC = selectedMaterial.qcRequired ? 'To QC' : 'Direct Putaway'
   }
 }
 
 const saveShipment = () => {
-  // Generate ID dan incoming number
-  const newId = shipments.value.length + 1
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const incomingNumber = `IN/${today}/${String(newId).padStart(4, '0')}`
-  
-  // Buat record shipment baru
-  const shipment = {
-    id: newId,
-    incomingNumber,
-    noPo: newShipment.value.noPo,
-    noSuratJalan: newShipment.value.noSuratJalan,
-    supplier: newShipment.value.supplier,
-    tanggalTerima: newShipment.value.tanggalTerima,
-    noKendaraan: newShipment.value.noKendaraan,
-    namaDriver: newShipment.value.namaDriver,
-    kategori: newShipment.value.kategori,
-    status: 'Karantina', // Status otomatis karantina
-    items: newShipment.value.items.map(item => ({
-      ...item,
-      qrCode: generateQR(incomingNumber, item.kodeItem, item.batchLot, item.qtyUnit, item.expDate)
-    }))
+  if (!isFormValid.value) {
+    alert('Mohon lengkapi semua field yang diperlukan')
+    return
   }
   
-  shipments.value.unshift(shipment)
+  // Debug: Log data sebelum dikirim
+  console.log('Data yang akan dikirim:', JSON.stringify(newShipment.value, null, 2))
   
-  alert(`Penerimaan berhasil disimpan dengan nomor: ${incomingNumber}`)
-  closeModal()
+  router.post('/transaction/goods-receipt', newShipment.value, {
+    preserveScroll: true,
+    onBefore: () => {
+      console.log('Request dimulai...')
+    },
+    onSuccess: (page) => {
+      console.log('Response sukses:', page)
+      console.log('Flash messages:', page.props.flash)
+      closeModal()
+      
+      // Reload data setelah sukses
+      router.reload({ only: ['shipments'] })
+      alert('Penerimaan berhasil disimpan')
+    },
+    onError: (errors) => {
+      console.error('Validation errors:', errors)
+      let errorMsg = 'Gagal menyimpan:\n'
+      Object.entries(errors).forEach(([key, value]) => {
+        errorMsg += `${key}: ${value}\n`
+      })
+      alert(errorMsg)
+    },
+    onFinish: () => {
+      console.log('Request selesai')
+    }
+  })
 }
 
 const generateQR = (shipmentId, itemId, lot, qty, expDate) => {
@@ -1559,7 +1500,9 @@ const printAllQR = () => {
 
 // Lifecycle
 onMounted(() => {
-  initDummyData()
+  // console.log('Purchase Orders:', props.purchaseOrders)
+  // console.log('Suppliers:', props.suppliers)
+  // console.log('Materials:', props.materials)
   resetForm()
 })
 </script>

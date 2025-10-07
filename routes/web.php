@@ -1,8 +1,17 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\Transaction\GoodsReceiptController;
+use App\Http\Controllers\Transaction\QualityControlController;
+use App\Http\Controllers\Transaction\PutawayTransferController;
+use App\Http\Controllers\Transaction\ReservationController;
+use App\Http\Controllers\Transaction\PickingListController;
+use App\Http\Controllers\Transaction\ReturnController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -16,57 +25,71 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:incoming.view')
+        ->name('dashboard');
 
-    Route::get('/activity-log', function () {
-        return Inertia::render('RiwayatAktivitas');
-    })->name('activity-log');
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
 
-    // Master Data Routes (menggunakan satu file MasterData.vue dengan props)
-    Route::get('/master-data', function () {
-        return Inertia::render('MasterData');
-    })->name('master-data');
+    // Master Data - requires central_data permissions
+    Route::get('/master-data', [MasterDataController::class, 'index'])
+        ->middleware('permission:central_data.sku_management_view')
+        ->name('master-data');
+    
+    // Role Permission routes - only for admins
+    Route::middleware('permission:central_data.role_management_view')->group(function () {
+        Route::get('/role-permission', [RolePermissionController::class, 'index'])->name('role-permission');
+        Route::post('/role-permission', [RolePermissionController::class, 'store'])->name('role-permission.store');
+        Route::delete('/role-permission/{id}', [RolePermissionController::class, 'destroy'])->name('role-permission.destroy');
+        Route::get('/role-permission/{id}/permissions', [RolePermissionController::class, 'getPermissions'])->name('role-permission.permissions');
+        Route::put('/role-permission/{id}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('role-permission.update-permissions');
+    });
 
-    // Role Permission
-    Route::get('/role-permission', function () {
-        return Inertia::render('RolePermission');
-    })->name('role-permission');
-
-    // Transaction Routes
+    // Transaction Routes with Permission Protection
     Route::prefix('transaction')->name('transaction.')->group(function () {
-        // Penerimaan Barang
-        Route::get('/goods-receipt', function () {
-            return Inertia::render('PenerimaanBarang');
-        })->name('goods-receipt');
+        // Awal Route Goods Receipt
+        Route::get('/goods-receipt', [GoodsReceiptController::class, 'index'])
+            ->middleware('permission:incoming.view')
+            ->name('goods-receipt');
+        Route::post('/goods-receipt', [GoodsReceiptController::class, 'store'])
+            ->middleware('permission:incoming.create')
+            ->name('goods-receipt.store');
+        // Akhir Route Goods Receipt
 
-        // Quality Control
-        Route::get('/quality-control', function () {
-            return Inertia::render('QualityControl');
-        })->name('quality-control');
+        // Awal Route Quality Control
+        Route::get('/quality-control', [QualityControlController::class, 'index'])
+            ->middleware('permission:qc.view')
+            ->name('quality-control');
+
+        Route::post('/quality-control/scan', [QualityControlController::class, 'scanQR'])
+            ->middleware('permission:qc.view')
+            ->name('quality-control.scan');
+
+        Route::post('/quality-control', [QualityControlController::class, 'store'])
+            ->middleware('permission:qc.create')
+            ->name('quality-control.store');
+        // Akhir Route Quality Control
 
         // PutAway & Transfer Order
-        Route::get('/putaway-transfer', function () {
-            return Inertia::render('PutAwasTO');
-        })->name('putaway-transfer');
+        Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
+            ->middleware('permission:putaway.view')
+            ->name('putaway-transfer');
 
         // Reservation
-        Route::get('/reservation', function () {
-            return Inertia::render('Reservation');
-        })->name('reservation');
+        Route::get('/reservation', [ReservationController::class, 'index'])
+            ->middleware('permission:reservation.view')
+            ->name('reservation');
 
         // Picking List
-        Route::get('/picking-list', function () {
-            return Inertia::render('PickingList');
-        })->name('picking-list');
+        Route::get('/picking-list', [PickingListController::class, 'index'])
+            ->middleware('permission:picking.view')
+            ->name('picking-list');
 
-        // Return (nama file: Retum.vue)
-        Route::get('/return', function () {
-            return Inertia::render('Return');
-        })->name('return');
+        // Return
+        Route::get('/return', [ReturnController::class, 'index'])
+            ->middleware('permission:return.view')
+            ->name('return');
     });
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
-

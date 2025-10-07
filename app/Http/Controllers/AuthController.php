@@ -25,8 +25,8 @@ class AuthController extends Controller
         // Cek apakah identifier adalah email atau NIK
         $fieldType = filter_var($credentials['identifier'], FILTER_VALIDATE_EMAIL) ? 'email' : 'nik';
 
-        // Cari user dan cek status
-        $user = User::where($fieldType, $credentials['identifier'])->first();
+        // Cari user dan cek status - LOAD RELATION ROLE
+        $user = User::with('role')->where($fieldType, $credentials['identifier'])->first();
 
         if (!$user) {
             return back()->withErrors([
@@ -68,13 +68,13 @@ class AuthController extends Controller
 
         $user = User::create([
             'nik' => $validated['nik'],
-            'nama_lengkap' => $validated['nama_lengkap'],
+            'name' => $validated['nama_lengkap'], // PERBAIKI INI
             'email' => $validated['email'],
             'departement' => $validated['departement'] ?? null,
             'jabatan' => $validated['jabatan'] ?? null,
             'password' => Hash::make($validated['password']),
             'status' => 'active',
-            'role_id' => null, // Akan di-set oleh admin
+            'role_id' => null,
         ]);
 
         Auth::login($user);

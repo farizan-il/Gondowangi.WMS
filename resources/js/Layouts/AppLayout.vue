@@ -40,18 +40,21 @@
             <!-- Navigation Menu -->
             <nav class="flex-1 overflow-y-auto py-4">
                 <div class="space-y-1 px-2">
-                    <!-- Central Data -->
+                    <!-- Dashboard (visible to all) -->
                     <Link 
+                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view', 'central_data.user_management_view'])"
                         href="/dashboard"
                         :class="navLinkClass('/dashboard')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Central Data</span>
+                        <span v-show="sidebarOpen" class="font-medium">Data Center</span>
                     </Link>
+
                     <!-- Riwayat Aktivitas -->
                     <Link 
+                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view'])"
                         href="/activity-log"
                         :class="navLinkClass('/activity-log')"
                     >
@@ -60,8 +63,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Riwayat Aktivitas</span>
                     </Link>
+
                     <!-- Master Data -->
                     <Link 
+                        v-if="hasAnyPermission(['central_data.sku_management_view', 'central_data.supplier_management_view', 'central_data.bin_management_view'])"
                         href="/master-data"
                         :class="navLinkClass('/master-data')"
                     >
@@ -70,8 +75,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Master Data</span>
                     </Link>
-                    <!-- Role Permission -->
+
+                    <!-- Role Permission (hanya untuk admin) -->
                     <Link 
+                        v-if="hasAnyPermission(['central_data.role_management_view', 'central_data.role_management_admin'])"
                         href="/role-permission"
                         :class="navLinkClass('/role-permission')"
                     >
@@ -82,8 +89,8 @@
                         <span v-show="sidebarOpen" class="font-medium">Role Permission</span>
                     </Link>
 
-                    <!-- DIVIDER / SEPARATOR -->
-                    <div class="my-4 px-2">
+                    <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->
+                    <div v-if="hasAnyTransactionPermission" class="my-4 px-2">
                         <div class="border-t border-gray-700"></div>
                         <div v-show="sidebarOpen" class="mt-3 mb-2 px-2">
                             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -94,6 +101,7 @@
 
                     <!-- Penerimaan Barang -->
                     <Link 
+                        v-if="hasAnyPermission(['incoming.view', 'incoming.create', 'incoming.edit'])"
                         href="/transaction/goods-receipt"
                         :class="navLinkClass('/transaction/goods-receipt')"
                     >
@@ -102,8 +110,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Penerimaan Barang</span>
                     </Link>
+
                     <!-- Quality Control -->
                     <Link 
+                        v-if="hasAnyPermission(['qc.view', 'qc.input_qc_result', 'qc.approve'])"
                         href="/transaction/quality-control"
                         :class="navLinkClass('/transaction/quality-control')"
                     >
@@ -113,8 +123,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Quality Control</span>
                     </Link>
+
                     <!-- PutAway & Transfer Order -->
                     <Link 
+                        v-if="hasAnyPermission(['putaway.view', 'putaway.kerjakan_to'])"
                         href="/transaction/putaway-transfer"
                         :class="navLinkClass('/transaction/putaway-transfer')"
                     >
@@ -123,8 +135,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">PutAway & Transfer Order</span>
                     </Link>
+
                     <!-- Reservation -->
                     <Link 
+                        v-if="hasAnyPermission(['reservation.view', 'reservation.create_request', 'reservation.approve_request'])"
                         href="/transaction/reservation"
                         :class="navLinkClass('/transaction/reservation')"
                     >
@@ -134,8 +148,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Reservation</span>
                     </Link>
+
                     <!-- Picking List -->
                     <Link 
+                        v-if="hasAnyPermission(['picking.view', 'picking.kerjakan_picking'])"
                         href="/transaction/picking-list"
                         :class="navLinkClass('/transaction/picking-list')"
                     >
@@ -145,8 +161,10 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Picking List</span>
                     </Link>
+
                     <!-- Return -->
                     <Link 
+                        v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
                         href="/transaction/return"
                         :class="navLinkClass('/transaction/return')"
                     >
@@ -168,10 +186,10 @@
                     </div>
                     <div v-show="sidebarOpen" class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-white truncate">
-                            {{ $page.props.auth.user.nama_lengkap }}
+                            {{ $page.props.auth.user.name }}
                         </p>
                         <p class="text-xs text-gray-400 truncate">
-                            {{ $page.props.auth.user.jabatan || 'Staff' }}
+                            {{ $page.props.auth.user.role?.name || 'Staff' }}
                         </p>
                     </div>
                 </div>
@@ -212,7 +230,7 @@
                         <!-- User Info -->
                         <div class="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
                             <div class="text-right">
-                                <p class="text-sm font-medium text-gray-800">{{ $page.props.auth.user.nama_lengkap }}</p>
+                                <p class="text-sm font-medium text-gray-800">{{ $page.props.auth.user.name }}</p>
                                 <p class="text-xs text-gray-500">{{ $page.props.auth.user.nik }}</p>
                             </div>
                         </div>
@@ -230,6 +248,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { usePermissions } from '@/Composables/usePermissions';
 
 const props = defineProps({
     pageTitle: {
@@ -243,24 +262,28 @@ const props = defineProps({
 });
 
 const page = usePage();
+const { hasPermission, hasAnyPermission } = usePermissions();
 const sidebarOpen = ref(true);
-const openSubmenu = ref(null);
 const darkMode = ref(false);
 
-const toggleSubmenu = (menu) => {
-    openSubmenu.value = openSubmenu.value === menu ? null : menu;
-};
+// Check if user has any transaction permissions
+const hasAnyTransactionPermission = computed(() => {
+    return hasAnyPermission([
+        'incoming.view', 'incoming.create',
+        'qc.view', 'qc.input_qc_result',
+        'putaway.view', 'putaway.kerjakan_to',
+        'reservation.view', 'reservation.create_request',
+        'picking.view', 'picking.kerjakan_picking',
+        'return.view', 'return.create_return'
+    ]);
+});
 
 const isActive = (path) => {
     return page.url === path;
 };
 
-const isActiveSubmenu = (prefix) => {
-    return page.url.startsWith(prefix);
-};
-
 const getUserInitials = computed(() => {
-    const name = page.props.auth.user.nama_lengkap;
+    const name = page.props.auth.user.name;
     const words = name.split(' ');
     if (words.length >= 2) {
         return words[0][0] + words[1][0];
@@ -272,15 +295,7 @@ const logout = () => {
     router.post('/logout');
 };
 
-// Helper for nav link styling
-// const navLinkClass = (path) => [
-//     'flex items-center space-x-3 px-3 py-3 rounded-lg transition',
-//     isActive(path)
-//         ? (darkMode.value ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white')
-//         : (darkMode.value ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white')
-// ];
 const navLinkClass = (path) => {
-    // Check if current URL matches the path
     const isActive = page.url === path || page.url.startsWith(path + '/')
     
     const baseClasses = 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200'
@@ -291,18 +306,4 @@ const navLinkClass = (path) => {
     
     return `${baseClasses} text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`
 }
-
-const navButtonClass = (menu, prefix) => [
-    'w-full flex items-center justify-between px-3 py-3 rounded-lg transition',
-    openSubmenu.value === menu || isActiveSubmenu(prefix)
-        ? (darkMode.value ? 'bg-gray-800 text-white' : 'bg-gray-700 text-white')
-        : (darkMode.value ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white')
-];
-
-const subNavLinkClass = (path) => [
-    'block px-3 py-2 rounded-lg text-sm transition',
-    isActive(path)
-        ? (darkMode.value ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white')
-        : (darkMode.value ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white')
-];
 </script>
