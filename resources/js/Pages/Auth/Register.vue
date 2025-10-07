@@ -1,7 +1,7 @@
 <template>
     <div class="min-h-screen flex items-center justify-center bg-gray-100">
         <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-            <h2 class="text-2xl font-bold text-center mb-6">Daftar Akun WMS</h2>
+            <h2 class="text-2xl font-bold text-center mb-6">Daftar Akun WMS [test git]</h2>
             
             <form @submit.prevent="submit">
                 <div class="mb-4">
