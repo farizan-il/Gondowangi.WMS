@@ -11,6 +11,7 @@ use App\Http\Controllers\Transaction\PutawayTransferController;
 use App\Http\Controllers\Transaction\ReservationController;
 use App\Http\Controllers\Transaction\PickingListController;
 use App\Http\Controllers\Transaction\ReturnController;
+use App\Http\Controllers\Transaction\BintobinController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/master-data', [MasterDataController::class, 'index'])
         ->middleware('permission:central_data.sku_management_view')
         ->name('master-data');
+    
+    // SKU/Material
+    Route::post('/master-data/sku', [MasterDataController::class, 'storeSku'])->name('sku.store');
+    Route::put('/master-data/sku/{id}', [MasterDataController::class, 'updateSku'])->name('sku.update');
+    Route::delete('/master-data/sku/{id}', [MasterDataController::class, 'deleteSku'])->name('sku.delete');
+    
+    // Supplier
+    Route::post('/master-data/supplier', [MasterDataController::class, 'storeSupplier'])->name('supplier.store');
+    Route::put('/master-data/supplier/{id}', [MasterDataController::class, 'updateSupplier'])->name('supplier.update');
+    Route::delete('/master-data/supplier/{id}', [MasterDataController::class, 'deleteSupplier'])->name('supplier.delete');
+    
+    // Bin Location
+    Route::post('/master-data/bin', [MasterDataController::class, 'storeBin'])->name('bin.store');
+    Route::put('/master-data/bin/{id}', [MasterDataController::class, 'updateBin'])->name('bin.update');
+    Route::delete('/master-data/bin/{id}', [MasterDataController::class, 'deleteBin'])->name('bin.delete');
+    // Akhir master Data - requires central_data permissions
+
+    // User
+    Route::post('/master-data/user', [MasterDataController::class, 'storeUser'])->name('user.store');
+    Route::put('/master-data/user/{id}', [MasterDataController::class, 'updateUser'])->name('user.update');
+    Route::delete('/master-data/user/{id}', [MasterDataController::class, 'deleteUser'])->name('user.delete');
     
     // Role Permission routes - only for admins
     Route::middleware('permission:central_data.role_management_view')->group(function () {
@@ -66,7 +88,7 @@ Route::middleware('auth')->group(function () {
             ->name('quality-control.scan');
 
         Route::post('/quality-control', [QualityControlController::class, 'store'])
-            ->middleware('permission:qc.create')
+            ->middleware('permission:qc.input_qc_result')
             ->name('quality-control.store');
         // Akhir Route Quality Control
 
@@ -74,6 +96,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
             ->middleware('permission:putaway.view')
             ->name('putaway-transfer');
+
+        // Bin to bin
+        Route::get('/bin-to-bin', [BintobinController::class, 'index'])
+            ->middleware('permission:bin-to-bin.view')
+            ->name('bin-to-bin');
 
         // Reservation
         Route::get('/reservation', [ReservationController::class, 'index'])

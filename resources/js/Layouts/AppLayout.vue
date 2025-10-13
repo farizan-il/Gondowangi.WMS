@@ -1,9 +1,9 @@
 <template>
-    <div :class="['min-h-screen flex', darkMode ? 'bg-gray-900' : 'bg-gray-100']">
+    <div class="min-h-screen flex bg-gray-100">
         <!-- Sidebar -->
         <aside 
             :class="[
-                darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-800 text-white',
+                'bg-gray-800 text-white',
                 'transition-all duration-300 flex flex-col',
                 sidebarOpen ? 'w-64' : 'w-20'
             ]"
@@ -17,15 +17,6 @@
                     <span class="text-xl font-bold">WMS</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <!-- Dark mode toggle -->
-                    <button @click="darkMode = !darkMode" class="p-2 rounded hover:bg-gray-700 transition">
-                        <svg v-if="!darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-8.66l-.71.71M4.05 4.05l-.71.71M21 12h-1M4 12H3m16.24 4.24l-.71-.71M4.05 19.95l-.71-.71"/>
-                        </svg>
-                        <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
-                        </svg>
-                    </button>
                     <button 
                         @click="sidebarOpen = !sidebarOpen"
                         class="p-2 rounded hover:bg-gray-700 transition"
@@ -49,7 +40,7 @@
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Data Center</span>
+                        <span v-show="sidebarOpen" class="font-medium">On Hand</span>
                     </Link>
 
                     <!-- Riwayat Aktivitas -->
@@ -136,6 +127,17 @@
                         <span v-show="sidebarOpen" class="font-medium">PutAway & Transfer Order</span>
                     </Link>
 
+                    <!-- Bin to Bin -->
+                    <Link 
+                        v-if="hasAnyPermission(['bin-to-bin.view', 'bin-to-bin.pindah_barang'])"
+                        href="/transaction/bin-to-bin"
+                        :class="navLinkClass('/transaction/bin-to-bin')">
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium">Bin to Bin</span>
+                    </Link>
+
                     <!-- Reservation -->
                     <Link 
                         v-if="hasAnyPermission(['reservation.view', 'reservation.create_request', 'reservation.approve_request'])"
@@ -209,13 +211,13 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0">
             <!-- Top Navbar -->
-            <header :class="darkMode ? 'bg-gray-800 shadow-sm' : 'bg-white shadow-sm'">
+            <header class="bg-white shadow-sm">
                 <div class="px-6 py-4 flex items-center justify-between">
                     <div>
-                        <h1 :class="darkMode ? 'text-2xl font-bold text-gray-100' : 'text-2xl font-bold text-gray-800'">
+                        <h1 class="text-2xl font-bold text-gray-800">
                             {{ pageTitle }}
                         </h1>
-                        <p :class="darkMode ? 'text-sm text-gray-400 mt-1' : 'text-sm text-gray-500 mt-1'">
+                        <p class="text-sm text-gray-500 mt-1">
                             {{ pageDescription }}
                         </p>
                     </div>
@@ -263,8 +265,7 @@ const props = defineProps({
 
 const page = usePage();
 const { hasPermission, hasAnyPermission } = usePermissions();
-const sidebarOpen = ref(true);
-const darkMode = ref(false);
+const sidebarOpen = ref(false);
 
 // Check if user has any transaction permissions
 const hasAnyTransactionPermission = computed(() => {
@@ -297,13 +298,14 @@ const logout = () => {
 
 const navLinkClass = (path) => {
     const isActive = page.url === path || page.url.startsWith(path + '/')
-    
+
     const baseClasses = 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200'
-    
+
     if (isActive) {
-        return `${baseClasses} bg-blue-600 text-white shadow-lg`
+        return `${baseClasses} bg-[#157347] text-white shadow-lg` 
     }
-    
-    return `${baseClasses} text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`
+
+    return `${baseClasses} text-gray-700 hover:bg-gray-100`
 }
+
 </script>

@@ -1,10 +1,4 @@
 <?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class QCChecklist extends Model
 {
     use HasFactory;
+
+    protected $table = 'qc_checklists';
 
     protected $fillable = [
         'no_form_checklist',

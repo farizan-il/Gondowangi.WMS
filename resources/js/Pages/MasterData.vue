@@ -1,6 +1,6 @@
 <template>
     <AppLayout pageTitle="Master Data" pageDescription="Kelola data master sistem WMS">
-        <div :class="isDarkMode ? 'dark' : ''" class="min-h-screen transition-colors duration-300">
+        <div class="min-h-screen transition-colors duration-300">
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <!-- Header -->
       <div class="mb-6">
@@ -902,49 +902,84 @@ const editItem = (item: any) => {
   showEditModal.value = true
 }
 
-const saveData = () => {
-  const newItem = {
-    id: editingItem.value?.id || Date.now().toString(),
-    ...formData.value
-  }
-
-  const dataArrays: Record<string, any> = {
-    sku: skuData,
-    supplier: supplierData,
-    bin: binData,
-    user: userData
-  }
-
-  if (editingItem.value) {
-    // Update existing item
-    const index = dataArrays[activeTab.value].value.findIndex((item: any) => item.id === editingItem.value.id)
-    if (index !== -1) {
-      dataArrays[activeTab.value].value[index] = newItem
-      showMessage('success', `${getCurrentTabLabel()} berhasil diupdate`)
+const saveData = async () => {
+  try {
+    // Validasi form data
+    if (!formData.value.code || !formData.value.name) {
+      showMessage('error', 'Kode dan nama wajib diisi')
+      return
     }
-  } else {
-    // Add new item
-    dataArrays[activeTab.value].value.unshift(newItem)
-    showMessage('success', `${getCurrentTabLabel()} berhasil ditambahkan`)
-  }
 
-  closeModal()
+    const endpoint = showEditModal.value 
+      ? `/master-data/${activeTab.value}/${editingItem.value.id}`
+      : `/master-data/${activeTab.value}`
+    
+    const method = showEditModal.value ? 'PUT' : 'POST'
+
+    console.log('Submit data:', {
+      endpoint,
+      method,
+      data: formData.value
+    })
+
+    const response = await fetch(endpoint, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(formData.value)
+    })
+
+    console.log('Response status:', response.status)
+    console.log('Response headers:', response.headers)
+
+    const result = await response.json()
+    console.log('Response body:', result)
+
+    if (!response.ok) {
+      showMessage('error', result.message || 'Terjadi kesalahan')
+      return
+    }
+
+    showMessage('success', result.message || 'Data berhasil disimpan')
+    closeModal()
+    // Reload page setelah 1 detik
+    setTimeout(() => window.location.reload(), 1000)
+
+  } catch (error) {
+    console.error('Save error:', error)
+    showMessage('error', 'Error: ' + (error as Error).message)
+  }
 }
 
-const deleteItem = (id: string) => {
-  if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
-    const dataArrays: Record<string, any> = {
-      sku: skuData,
-      supplier: supplierData,
-      bin: binData,
-      user: userData
+const deleteItem = async (id: string) => {
+  if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return
+
+  try {
+    const response = await fetch(`/master-data/${activeTab.value}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'Accept': 'application/json'
+      }
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      showMessage('error', result.message || 'Terjadi kesalahan')
+      return
     }
 
-    const index = dataArrays[activeTab.value].value.findIndex((item: any) => item.id === id)
-    if (index !== -1) {
-      dataArrays[activeTab.value].value.splice(index, 1)
-      showMessage('success', `${getCurrentTabLabel()} berhasil dihapus`)
-    }
+    showMessage('success', result.message)
+    setTimeout(() => window.location.reload(), 1000)
+
+  } catch (error) {
+    console.error('Delete error:', error)
+    showMessage('error', 'Error: ' + (error as Error).message)
   }
 }
 
@@ -1010,224 +1045,11 @@ const showMessage = (type: 'success' | 'error', text: string) => {
   }, 3000)
 }
 
-// Initialize data
-onMounted(() => {
-  // Load dark mode preference
-  const savedDarkMode = localStorage.getItem('darkMode')
-  if (savedDarkMode) {
-    isDarkMode.value = JSON.parse(savedDarkMode)
-  }
-
-  // Initialize dummy data
-  skuData.value = [
-    {
-      id: '1',
-      code: 'ITM001',
-      name: 'Raw Material A - Chemical Component',
-      uom: 'KG',
-      category: 'Raw Material',
-      qcRequired: true,
-      expiry: true,
-      supplierDefault: 'PT. Supplier A',
-      abcClass: 'A',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      code: 'ITM002',
-      name: 'Packaging Material - Cardboard Box',
-      uom: 'PCS',
-      category: 'Packaging',
-      qcRequired: false,
-      expiry: false,
-      supplierDefault: 'PT. Supplier B',
-      abcClass: 'B',
-      status: 'Active'
-    },
-    {
-      id: '3',
-      code: 'ITM003',
-      name: 'Finished Product - Assembly Unit',
-      uom: 'PCS',
-      category: 'Finished Goods',
-      qcRequired: true,
-      expiry: false,
-      supplierDefault: '',
-      abcClass: 'A',
-      status: 'Active'
-    },
-    {
-      id: '4',
-      code: 'ITM004',
-      name: 'Spare Parts - Motor Component',
-      uom: 'PCS',
-      category: 'Spare Parts',
-      qcRequired: false,
-      expiry: false,
-      supplierDefault: 'PT. Supplier C',
-      abcClass: 'C',
-      status: 'Inactive'
-    }
-  ]
-
-  supplierData.value = [
-    {
-      id: '1',
-      code: 'SUP001',
-      name: 'PT. Supplier A',
-      address: 'Jl. Industri No. 123, Jakarta Timur',
-      contactPerson: 'Budi Santoso',
-      phone: '021-1234-5678',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      code: 'SUP002',
-      name: 'PT. Supplier B',
-      address: 'Jl. Raya Bekasi No. 456, Bekasi',
-      contactPerson: 'Siti Rahayu',
-      phone: '021-8765-4321',
-      status: 'Active'
-    },
-    {
-      id: '3',
-      code: 'SUP003',
-      name: 'PT. Supplier C',
-      address: 'Jl. Gatot Subroto No. 789, Tangerang',
-      contactPerson: 'Ahmad Rahman',
-      phone: '021-5555-6666',
-      status: 'Active'
-    },
-    {
-      id: '4',
-      code: 'SUP004',
-      name: 'PT. Supplier D',
-      address: 'Jl. Sudirman No. 321, Jakarta Pusat',
-      contactPerson: 'Diana Sari',
-      phone: '021-7777-8888',
-      status: 'Inactive'
-    }
-  ]
-
-  binData.value = [
-    {
-      id: '1',
-      code: 'A1-001',
-      zone: 'A',
-      capacity: 1000,
-      type: 'Normal',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      code: 'A1-002',
-      zone: 'A',
-      capacity: 1000,
-      type: 'Normal',
-      status: 'Active'
-    },
-    {
-      id: '3',
-      code: 'QC-001',
-      zone: 'QC',
-      capacity: 500,
-      type: 'Quarantine',
-      status: 'Active'
-    },
-    {
-      id: '4',
-      code: 'REJ-001',
-      zone: 'Reject',
-      capacity: 200,
-      type: 'Reject',
-      status: 'Active'
-    },
-    {
-      id: '5',
-      code: 'COLD-001',
-      zone: 'Cold',
-      capacity: 800,
-      type: 'Normal',
-      status: 'Active'
-    },
-    {
-      id: '6',
-      code: 'PROD-001',
-      zone: 'Production',
-      capacity: 600,
-      type: 'Production',
-      status: 'Active'
-    },
-    {
-      id: '7',
-      code: 'B1-001',
-      zone: 'B',
-      capacity: 1200,
-      type: 'Normal',
-      status: 'Inactive'
-    }
-  ]
-
-  userData.value = [
-    {
-      id: '1',
-      jabatan: 'admin',
-      fullName: 'Administrator System',
-      role: 'Admin',
-      department: 'IT',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      jabatan: 'johndoe',
-      fullName: 'John Doe',
-      role: 'Warehouse',
-      department: 'Gudang',
-      status: 'Active'
-    },
-    {
-      id: '3',
-      jabatan: 'marys',
-      fullName: 'Mary Smith',
-      role: 'QC',
-      department: 'QC',
-      status: 'Active'
-    },
-    {
-      id: '4',
-      jabatan: 'bobw',
-      fullName: 'Bob Wilson',
-      role: 'Receiving',
-      department: 'Gudang',
-      status: 'Active'
-    },
-    {
-      id: '5',
-      jabatan: 'aliceb',
-      fullName: 'Alice Brown',
-      role: 'Production',
-      department: 'Produksi',
-      status: 'Active'
-    },
-    {
-      id: '6',
-      jabatan: 'tomj',
-      fullName: 'Tom Johnson',
-      role: 'Supervisor',
-      department: 'PPIC',
-      status: 'Active'
-    },
-    {
-      id: '7',
-      jabatan: 'sarahd',
-      fullName: 'Sarah Davis',
-      role: 'Supervisor',
-      department: 'HRD',
-      status: 'Inactive'
-    }
-  ]
-
-  // Reset form for current tab
+const loadData = () => {
   resetForm()
-  })
+}
+
+onMounted(() => {
+  loadData();
+});
 </script>

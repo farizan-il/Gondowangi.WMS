@@ -9,6 +9,8 @@ class QCPhoto extends Model
 {
     use HasFactory;
 
+    protected $table = 'qc_photos';
+
     protected $fillable = [
         'qc_checklist_id',
         'file_name',

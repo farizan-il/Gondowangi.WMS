@@ -18,7 +18,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
               <svg v-else class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-lin    ; ;ecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </button>
             
@@ -114,16 +114,6 @@
                 </svg>
                 <span>Export</span>
               </button>
-              
-              <!-- <button 
-                @click="openAddModal"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span>Tambah</span>
-              </button> -->
             </div>
           </div>
         </div>
@@ -184,23 +174,14 @@
                     </svg>
                   </button>
                   <button 
-                    @click.stop="transferItem(item)"
+                    @click.stop="openBinToBinModal(item)"
                     class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 transition-colors"
-                    title="Transfer"
+                    title="Bin to Bin Transfer"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                   </button>
-                  <!-- <button 
-                    @click.stop="reserveItem(item)"
-                    class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 transition-colors"
-                    title="Reserve"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                    </svg>
-                  </button> -->
                 </td>
               </tr>
             </tbody>
@@ -210,16 +191,192 @@
         <!-- Empty State -->
         <div v-if="filteredItems.length === 0" class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-4.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 009.586 13H7" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-4.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 009.586 13H7" />
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada data</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Data material tidak ditemukan atau filter terlalu spesifik</p>
         </div>
       </div>
 
+      <!-- Bin to Bin Transfer Modal -->
+      <div v-if="showBinToBinModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Bin to Bin Transfer</h3>
+            <button @click="closeBinToBinModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Material Info -->
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Informasi Material</h4>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="text-gray-600 dark:text-gray-400">Kode:</span>
+                <span class="ml-2 font-medium text-gray-900 dark:text-white">{{ transferData.material?.kode }}</span>
+              </div>
+              <div>
+                <span class="text-gray-600 dark:text-gray-400">Nama:</span>
+                <span class="ml-2 font-medium text-gray-900 dark:text-white">{{ transferData.material?.nama }}</span>
+              </div>
+              <div>
+                <span class="text-gray-600 dark:text-gray-400">Lot:</span>
+                <span class="ml-2 font-medium text-gray-900 dark:text-white">{{ transferData.material?.lot }}</span>
+              </div>
+              <div>
+                <span class="text-gray-600 dark:text-gray-400">Lokasi Saat Ini:</span>
+                <span class="ml-2 font-medium text-blue-600 dark:text-blue-400">{{ transferData.material?.lokasi }}</span>
+              </div>
+              <div>
+                <span class="text-gray-600 dark:text-gray-400">Qty Tersedia:</span>
+                <span class="ml-2 font-medium text-gray-900 dark:text-white">{{ transferData.material?.qty }} {{ transferData.material?.uom }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transfer Form -->
+          <div class="space-y-4">
+            <!-- Qty to Transfer -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Quantity Transfer <span class="text-red-500">*</span>
+              </label>
+              <div class="flex items-center space-x-2">
+                <input
+                  v-model.number="transferData.qty"
+                  type="number"
+                  :max="transferData.material?.qty"
+                  min="0"
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  placeholder="Masukkan qty yang akan di-transfer"
+                >
+                <span class="text-gray-600 dark:text-gray-400">{{ transferData.material?.uom }}</span>
+              </div>
+              <p v-if="transferData.qty > (transferData.material?.qty || 0)" class="text-red-500 text-xs mt-1">
+                Qty transfer melebihi qty tersedia!
+              </p>
+            </div>
+
+            <!-- Destination Bin Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Bin Tujuan <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="transferData.destinationBin"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Pilih Bin Tujuan --</option>
+                <optgroup label="Standard Storage">
+                  <option v-for="bin in availableBins.standard" :key="bin.code" :value="bin.code">
+                    {{ bin.code }} - {{ bin.zone }} ({{ bin.currentItems }}/{{ bin.maxItems }} items)
+                  </option>
+                </optgroup>
+                <optgroup label="Hazardous Storage">
+                  <option v-for="bin in availableBins.hazardous" :key="bin.code" :value="bin.code">
+                    {{ bin.code }} - {{ bin.zone }} ({{ bin.currentItems }}/{{ bin.maxItems }} items)
+                  </option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- Selected Bin Details -->
+            <div v-if="transferData.destinationBin" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h5 class="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">Detail Bin Tujuan</h5>
+              <div class="space-y-1 text-sm text-blue-800 dark:text-blue-400">
+                <div class="flex justify-between">
+                  <span>Kode Bin:</span>
+                  <span class="font-medium">{{ selectedDestBin?.code }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Zona:</span>
+                  <span class="font-medium">{{ selectedDestBin?.zone }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Kapasitas:</span>
+                  <span class="font-medium">{{ selectedDestBin?.currentItems }}/{{ selectedDestBin?.maxItems }} items</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Status:</span>
+                  <span :class="getBinCapacityClass(selectedDestBin)" class="px-2 py-0.5 text-xs rounded-full">
+                    {{ getBinCapacityText(selectedDestBin) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transfer Reason -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Alasan Transfer <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="transferData.reason"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 mb-2"
+              >
+                <option value="">-- Pilih Alasan --</option>
+                <option value="optimization">Optimasi Ruang Gudang</option>
+                <option value="consolidation">Konsolidasi Material</option>
+                <option value="reorganization">Reorganisasi Zona</option>
+                <option value="safety">Alasan Keamanan</option>
+                <option value="quality">Segregasi Quality</option>
+                <option value="other">Lainnya</option>
+              </select>
+              
+              <textarea
+                v-if="transferData.reason === 'other' || transferData.reason"
+                v-model="transferData.notes"
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="Catatan tambahan..."
+              ></textarea>
+            </div>
+
+            <!-- Approval Section (Admin/Manager) -->
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <div class="flex items-start space-x-2">
+                <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex-1">
+                  <h5 class="text-sm font-medium text-yellow-900 dark:text-yellow-300">Persetujuan Manager</h5>
+                  <p class="text-xs text-yellow-800 dark:text-yellow-400 mt-1">
+                    Transfer Order Bin to Bin akan dibuat dan memerlukan approval dari manager/admin sebelum dapat dieksekusi.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3 justify-end mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              @click="closeBinToBinModal"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              @click="createBinToBinTO"
+              :disabled="!isTransferValid"
+              :class="isTransferValid ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
+              class="px-4 py-2 text-white rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Buat Transfer Order</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Detail Panel -->
       <div v-if="selectedItem" 
-           class="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-800 shadow-xl z-999 transform transition-transform duration-300 border-l border-gray-200 dark:border-gray-700"
+           class="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-800 shadow-xl z-[998] transform transition-transform duration-300 border-l border-gray-200 dark:border-gray-700"
            :class="showDetailPanel ? 'translate-x-0' : 'translate-x-full'"
            style="max-height: 100vh; overflow: hidden;">
         <div class="h-full flex flex-col">
@@ -353,7 +510,7 @@
       </div>
 
       <!-- Backdrop for detail panel -->
-      <div v-if="showDetailPanel" @click="closeDetailPanel" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-99"></div>
+      <div v-if="showDetailPanel" @click="closeDetailPanel" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[997]"></div>
     </div>
   </div>
     </AppLayout>
@@ -361,9 +518,7 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link } from '@inertiajs/vue3';
-
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 
 // Types
 interface MaterialItem {
@@ -394,6 +549,24 @@ interface Alert {
   message: string
 }
 
+interface BinLocation {
+  code: string
+  zone: string
+  warehouse: string
+  type: 'STD' | 'HAZ' | 'QTN' | 'FG'
+  currentItems: number
+  maxItems: number
+  capacity: string
+}
+
+interface TransferData {
+  material: MaterialItem | null
+  qty: number
+  destinationBin: string
+  reason: string
+  notes: string
+}
+
 // Reactive data
 const isDarkMode = ref(false)
 const searchQuery = ref('')
@@ -404,11 +577,34 @@ const sortColumn = ref('kode')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const selectedItem = ref<MaterialItem | null>(null)
 const showDetailPanel = ref(false)
+const showBinToBinModal = ref(false)
+
+// Transfer Data
+const transferData = ref<TransferData>({
+  material: null,
+  qty: 0,
+  destinationBin: '',
+  reason: '',
+  notes: ''
+})
 
 // Alerts
 const alerts = ref<Alert[]>([
   { id: '1', type: 'warning', message: '5 item akan expired dalam 30 hari' },
   { id: '2', type: 'error', message: '2 item sudah expired!' }
+])
+
+// Bin Locations Data
+const binLocations = ref<BinLocation[]>([
+  { code: 'STD-A-01-01', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 3, maxItems: 10, capacity: '1000 KG' },
+  { code: 'STD-A-01-02', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 5, maxItems: 10, capacity: '1000 KG' },
+  { code: 'STD-A-02-01', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 2, maxItems: 10, capacity: '800 KG' },
+  { code: 'STD-B-01-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 1, maxItems: 8, capacity: '500 L' },
+  { code: 'STD-B-02-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 0, maxItems: 8, capacity: '500 L' },
+  { code: 'STD-B-03-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 8, maxItems: 8, capacity: '500 L' },
+  { code: 'HAZ-A-01-01', zone: 'Hazardous Zone A', warehouse: 'WH-002', type: 'HAZ', currentItems: 1, maxItems: 5, capacity: '200 L' },
+  { code: 'HAZ-A-01-02', zone: 'Hazardous Zone A', warehouse: 'WH-002', type: 'HAZ', currentItems: 0, maxItems: 5, capacity: '200 L' },
+  { code: 'HAZ-B-01-01', zone: 'Hazardous Zone B', warehouse: 'WH-002', type: 'HAZ', currentItems: 5, maxItems: 5, capacity: '300 L' }
 ])
 
 // Table columns
@@ -432,7 +628,7 @@ const materialItems = ref<MaterialItem[]>([
     kode: 'RM001',
     nama: 'Alcohol 96%',
     lot: 'LOT240901001',
-    lokasi: 'BIN-A01',
+    lokasi: 'STD-A-01-01',
     qty: 250,
     uom: 'L',
     expiredDate: '2025-12-31',
@@ -440,7 +636,7 @@ const materialItems = ref<MaterialItem[]>([
     history: [
       { id: '1', date: '2024-09-12T08:00:00', action: 'Incoming GR001', detail: 'Diterima dari Supplier A', user: 'Admin' },
       { id: '2', date: '2024-09-13T10:30:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-14T14:15:00', action: 'Put Away', detail: 'Disimpan di BIN-A01', user: 'Operator' }
+      { id: '3', date: '2024-09-14T14:15:00', action: 'Put Away', detail: 'Disimpan di STD-A-01-01', user: 'Operator' }
     ]
   },
   {
@@ -449,7 +645,7 @@ const materialItems = ref<MaterialItem[]>([
     kode: 'PM001',
     nama: 'Plastic Bottle 500ml',
     lot: 'LOT240902001',
-    lokasi: 'BIN-B02',
+    lokasi: 'STD-B-01-01',
     qty: 5000,
     uom: 'pcs',
     expiredDate: '2026-08-15',
@@ -457,7 +653,7 @@ const materialItems = ref<MaterialItem[]>([
     history: [
       { id: '1', date: '2024-09-02T09:00:00', action: 'Incoming GR002', detail: 'Diterima dari Supplier B', user: 'Admin' },
       { id: '2', date: '2024-09-02T11:00:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-03T08:30:00', action: 'Put Away', detail: 'Disimpan di BIN-B02', user: 'Operator' }
+      { id: '3', date: '2024-09-03T08:30:00', action: 'Put Away', detail: 'Disimpan di STD-B-01-01', user: 'Operator' }
     ]
   },
   {
@@ -466,82 +662,14 @@ const materialItems = ref<MaterialItem[]>([
     kode: 'RM002',
     nama: 'Sodium Lauryl Sulfate',
     lot: 'LOT240903001',
-    lokasi: 'BIN-A03',
+    lokasi: 'STD-A-02-01',
     qty: 100,
     uom: 'kg',
     expiredDate: '2024-10-15',
-    status: 'Waiting QC',
+    status: 'Released',
     history: [
       { id: '1', date: '2024-09-03T14:00:00', action: 'Incoming GR003', detail: 'Diterima dari Supplier C', user: 'Admin' },
-      { id: '2', date: '2024-09-03T15:30:00', action: 'Put Away', detail: 'Disimpan di BIN-A03 untuk QC', user: 'Operator' }
-    ]
-  },
-  {
-    id: '4',
-    type: 'PM',
-    kode: 'PM002',
-    nama: 'Label Shampoo 500ml',
-    lot: 'LOT240904001',
-    lokasi: 'BIN-C01',
-    qty: 10000,
-    uom: 'pcs',
-    expiredDate: '2027-01-30',
-    status: 'In Production',
-    history: [
-      { id: '1', date: '2024-09-04T08:00:00', action: 'Incoming GR004', detail: 'Diterima dari Supplier D', user: 'Admin' },
-      { id: '2', date: '2024-09-04T10:00:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-05T07:00:00', action: 'Reserved', detail: 'Reserved untuk MO-2024-001', user: 'Planner' },
-      { id: '4', date: '2024-09-05T08:30:00', action: 'Picked', detail: 'Diambil untuk produksi', user: 'Picker' }
-    ]
-  },
-  {
-    id: '5',
-    type: 'RM',
-    kode: 'RM003',
-    nama: 'Glycerin',
-    lot: 'LOT240905001',
-    lokasi: 'BIN-A05',
-    qty: 75,
-    uom: 'L',
-    expiredDate: '2024-09-20',
-    status: 'Reject',
-    history: [
-      { id: '1', date: '2024-09-05T09:00:00', action: 'Incoming GR005', detail: 'Diterima dari Supplier E', user: 'Admin' },
-      { id: '2', date: '2024-09-06T11:00:00', action: 'QC Rejected', detail: 'Tidak lulus quality control - kontaminasi', user: 'QC Team' }
-    ]
-  },
-  {
-    id: '6',
-    type: 'RM',
-    kode: 'RM004',
-    nama: 'Citric Acid',
-    lot: 'LOT240906001',
-    lokasi: 'BIN-A07',
-    qty: 50,
-    uom: 'kg',
-    expiredDate: '2025-06-30',
-    status: 'Karantina',
-    history: [
-      { id: '1', date: '2024-09-06T13:00:00', action: 'Incoming GR006', detail: 'Diterima dari Supplier F', user: 'Admin' },
-      { id: '2', date: '2024-09-06T14:30:00', action: 'Put Away', detail: 'Disimpan di karantina untuk investigasi', user: 'Operator' }
-    ]
-  },
-  {
-    id: '7',
-    type: 'PM',
-    kode: 'PM003',
-    nama: 'Pump Dispenser',
-    lot: 'LOT240907001',
-    lokasi: 'BIN-D01',
-    qty: 2500,
-    uom: 'pcs',
-    expiredDate: '2028-12-31',
-    status: 'Returned',
-    history: [
-      { id: '1', date: '2024-09-07T08:00:00', action: 'Incoming GR007', detail: 'Diterima dari Supplier G', user: 'Admin' },
-      { id: '2', date: '2024-09-07T10:00:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-08T09:00:00', action: 'Issued to Production', detail: 'Dikeluarkan untuk produksi MO-2024-002', user: 'Picker' },
-      { id: '4', date: '2024-09-08T16:00:00', action: 'Returned', detail: 'Dikembalikan - kelebihan produksi', user: 'Production' }
+      { id: '2', date: '2024-09-03T15:30:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' }
     ]
   }
 ])
@@ -549,6 +677,28 @@ const materialItems = ref<MaterialItem[]>([
 // Computed properties
 const uniqueLocations = computed(() => {
   return [...new Set(materialItems.value.map(item => item.lokasi))].sort()
+})
+
+const availableBins = computed(() => {
+  const currentBin = transferData.value.material?.lokasi
+  return {
+    standard: binLocations.value.filter(bin => bin.type === 'STD' && bin.code !== currentBin),
+    hazardous: binLocations.value.filter(bin => bin.type === 'HAZ' && bin.code !== currentBin)
+  }
+})
+
+const selectedDestBin = computed(() => {
+  return binLocations.value.find(bin => bin.code === transferData.value.destinationBin)
+})
+
+const isTransferValid = computed(() => {
+  return (
+    transferData.value.material !== null &&
+    transferData.value.qty > 0 &&
+    transferData.value.qty <= (transferData.value.material?.qty || 0) &&
+    transferData.value.destinationBin !== '' &&
+    transferData.value.reason !== ''
+  )
 })
 
 const filteredItems = computed(() => {
@@ -598,7 +748,6 @@ const filteredItems = computed(() => {
 // Methods
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value
-  localStorage.setItem('darkMode', isDarkMode.value.toString())
 }
 
 const sortBy = (column: string) => {
@@ -651,6 +800,22 @@ const getAlertClass = (type: string) => {
   return alertClasses[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
 }
 
+const getBinCapacityClass = (bin: BinLocation | undefined) => {
+  if (!bin) return ''
+  const percentage = (bin.currentItems / bin.maxItems) * 100
+  if (percentage >= 90) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+  if (percentage >= 70) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+}
+
+const getBinCapacityText = (bin: BinLocation | undefined) => {
+  if (!bin) return ''
+  const percentage = (bin.currentItems / bin.maxItems) * 100
+  if (percentage >= 90) return 'Hampir Penuh'
+  if (percentage >= 70) return 'Cukup Terisi'
+  return 'Tersedia'
+}
+
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('id-ID', {
     day: '2-digit',
@@ -688,6 +853,61 @@ const dismissAlert = (alertId: string) => {
   }
 }
 
+// Bin to Bin Transfer Methods
+const openBinToBinModal = (item: MaterialItem) => {
+  transferData.value = {
+    material: { ...item },
+    qty: item.qty,
+    destinationBin: '',
+    reason: '',
+    notes: ''
+  }
+  showBinToBinModal.value = true
+}
+
+const closeBinToBinModal = () => {
+  showBinToBinModal.value = false
+  transferData.value = {
+    material: null,
+    qty: 0,
+    destinationBin: '',
+    reason: '',
+    notes: ''
+  }
+}
+
+const createBinToBinTO = () => {
+  if (!isTransferValid.value || !transferData.value.material) return
+
+  const toNumber = `TO-B2B-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+  
+  const transferOrder = {
+    toNumber: toNumber,
+    type: 'Bin to Bin Transfer',
+    status: 'Pending Approval',
+    material: transferData.value.material,
+    sourceBin: transferData.value.material.lokasi,
+    destinationBin: transferData.value.destinationBin,
+    qty: transferData.value.qty,
+    reason: transferData.value.reason,
+    notes: transferData.value.notes,
+    createdBy: 'Admin User',
+    createdAt: new Date().toISOString(),
+    approvalRequired: true
+  }
+
+  console.log('Transfer Order Created:', transferOrder)
+
+  alert(`✅ Transfer Order ${toNumber} berhasil dibuat!\n\n` +
+    `Material: ${transferData.value.material.kode} - ${transferData.value.material.nama}\n` +
+    `Dari: ${transferData.value.material.lokasi}\n` +
+    `Ke: ${transferData.value.destinationBin}\n` +
+    `Qty: ${transferData.value.qty} ${transferData.value.material.uom}\n\n` +
+    `Status: Menunggu approval dari Manager/Admin`)
+
+  closeBinToBinModal()
+}
+
 // Action methods
 const openQRScanner = () => {
   alert('QR Scanner akan dibuka - integrasi dengan camera device')
@@ -708,21 +928,7 @@ const exportData = () => {
   URL.revokeObjectURL(url)
 }
 
-const openAddModal = () => {
-  alert('Form tambah material baru akan dibuka')
-}
-
 const printQR = (item: MaterialItem) => {
   alert(`Print QR Code untuk ${item.kode} - ${item.nama}`)
 }
-
-const transferItem = (item: MaterialItem) => {
-  alert(`Transfer item ${item.kode} ke lokasi baru`)
-}
-
-const reserveItem = (item: MaterialItem) => {
-  alert(`Reserve item ${item.kode} untuk produksi`)
-}
-
-// Lifecycle
 </script>

@@ -1013,100 +1013,10 @@ onMounted(() => {
       materials: []
     }
   ]
-
+s
   // Initialize dummy TO data
   const dummyData: TransferOrder[] = [
-    {
-      id: '1',
-      toNumber: 'TO-2024-09-001',
-      creationDate: new Date('2024-09-18T08:00:00'),
-      warehouse: 'WH-001',
-      type: 'Putaway - QC Release',
-      status: 'Pending',
-      reservationNo: 'RSV-2024-045',
-      items: [
-        {
-          itemCode: 'CHM-001',
-          materialName: 'Sodium Chloride - QC Released',
-          sourceBin: 'QTN-A-01',
-          destBin: 'STD-A-02-01',
-          qty: 50,
-          uom: 'KG',
-          status: 'pending',
-          boxScanned: false,
-          sourceBinScanned: false,
-          destBinScanned: false
-        }
-      ]
-    },
-    {
-      id: '2',
-      toNumber: 'TO-2024-09-002',
-      creationDate: new Date('2024-09-18T09:15:00'),
-      warehouse: 'WH-001',
-      type: 'Transfer - Bin to Bin',
-      status: 'In Progress',
-      items: [
-        {
-          itemCode: 'CHM-003',
-          materialName: 'Potassium Hydroxide',
-          sourceBin: 'STD-A-01-05',
-          destBin: 'STD-B-02-03',
-          qty: 15,
-          uom: 'L',
-          status: 'in_progress',
-          boxScanned: true,
-          sourceBinScanned: false,
-          destBinScanned: false
-        }
-      ]
-    },
-    {
-      id: '3',
-      toNumber: 'TO-2024-09-003',
-      creationDate: new Date('2024-09-17T14:30:00'),
-      warehouse: 'WH-001',
-      type: 'Picking - Production',
-      status: 'Completed',
-      items: [
-        {
-          itemCode: 'CHM-004',
-          materialName: 'Magnesium Sulfate',
-          sourceBin: 'STD-C-01-01',
-          destBin: 'PROD-OUT-01',
-          qty: 30,
-          actualQty: 30,
-          uom: 'KG',
-          status: 'completed',
-          boxScanned: true,
-          sourceBinScanned: true,
-          destBinScanned: true
-        }
-      ]
-    },
-    {
-      id: '4',
-      toNumber: 'TO-2024-09-004',
-      creationDate: new Date('2024-09-18T10:45:00'),
-      warehouse: 'WH-002',
-      type: 'Picking - Sales Order',
-      status: 'Pending',
-      reservationNo: 'SO-2024-128',
-      items: [
-        {
-          itemCode: 'CHM-005',
-          materialName: 'Hydrochloric Acid',
-          sourceBin: 'HAZ-A-01-01',
-          destBin: 'SHIP-OUT-01',
-          qty: 20,
-          uom: 'L',
-          status: 'pending',
-          boxScanned: false,
-          sourceBinScanned: false,
-          destBinScanned: false
-        }
-      ]
-    }
+    
   ]
 
   transferOrders.value = dummyData

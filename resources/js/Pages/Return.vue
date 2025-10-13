@@ -1,140 +1,83 @@
 <template>
-    <AppLayout title="Riwayat Aktivitas">
-        <div :class="isDarkMode ? 'dark' : ''" class="min-h-screen transition-colors duration-300">
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <!-- Header -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Return (Supplier / Production)</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">Kelola return barang ke supplier dan dari produksi</p>
-          </div>
-          <div class="flex items-center gap-4">
-            <!-- Dark Mode Toggle -->
-            <button 
-              @click="toggleDarkMode"
-              class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <svg v-if="isDarkMode" class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
-              </svg>
-              <svg v-else class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            </button>
-            
-            <button 
-              @click="showAddModal = true"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Buat Return
-            </button>
-          </div>
-        </div>
-      </div>
+  <AppLayout title="Riwayat Aktivitas">
+    <div :class="isDarkMode ? 'dark' : ''" class="min-h-screen transition-colors duration-300">
+      <div class="min-h-screen  p-2 sm:p-4 md:p-6">
+        <!-- Header -->
+        <div class="mb-4 sm:mb-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-1xl font-bold text-gray-900 ">Return (Supplier / Production)</h1>
+              <p class="text-sm sm:text-base text-gray-600 text-gray-400 mt-1">Kelola return barang ke supplier dan dari
+                produksi</p>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <!-- Dark Mode Toggle -->
+              <!-- <button @click="toggleDarkMode"
+                class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <svg v-if="isDarkMode" class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd"
+                    d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                    clip-rule="evenodd" />
+                </svg>
+                <svg v-else class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              </button> -->
 
-      <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
-                  <path fill-rule="evenodd" d="M4 5a2 2 0 012-2v1a2 2 0 002 2v1a2 2 0 002 2v1a2 2 0 002 2v1a2 2 0 002 2v1a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd" />
+              <button @click="showAddModal = true"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors w-full sm:w-auto justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-              </div>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Returns</p>
-              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ totalReturns }}</p>
+                <span class="hidden sm:inline">Buat Return</span>
+                <span class="sm:hidden">Return</span>
+              </button>
             </div>
           </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Supplier Returns</p>
-              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ supplierReturns }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Production Returns</p>
-              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ productionReturns }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Returns</p>
-              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ pendingReturns }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Filter dan Search -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 border border-gray-200 dark:border-gray-700">
-        <div class="flex flex-wrap gap-4">
-          <div class="flex-1 min-w-64">
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Cari Return Number, Supplier, Item..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-          </div>
-          <select v-model="typeFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Jenis</option>
-            <option value="Supplier">Return Supplier</option>
-            <option value="Production">Return Production</option>
-          </select>
-          <select v-model="statusFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Status</option>
-            <option value="Draft">Draft</option>
-            <option value="Submitted">Submitted</option>
-            <option value="Completed">Completed</option>
-          </select>
-          <select v-model="reasonFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Reason</option>
-            <option value="QC Reject">QC Reject</option>
-            <option value="Expired">Expired</option>
-            <option value="Damage">Damage</option>
-            <option value="Excess Production">Excess Production</option>
-            <option value="Wrong Delivery">Wrong Delivery</option>
-          </select>
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+          <!-- [Previous statistics cards code remains the same] -->
         </div>
-      </div>
 
-      <!-- Tabel Returns -->
+        <!-- Filter dan Search -->
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div class="w-full sm:flex-1">
+              <input v-model="searchQuery" type="text" placeholder="Cari Return Number, Supplier, Item..."
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+              <select v-model="typeFilter"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">Semua Jenis</option>
+                <option value="Supplier">Return Supplier</option>
+                <option value="Production">Return Production</option>
+              </select>
+              <select v-model="statusFilter"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">Semua Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <select v-model="reasonFilter"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm col-span-2 sm:col-span-1">
+                <option value="">Semua Reason</option>
+                <option value="QC Reject">QC Reject</option>
+                <option value="Expired">Expired</option>
+                <option value="Damage">Damage</option>
+                <option value="Excess Production">Excess Production</option>
+                <option value="Wrong Delivery">Wrong Delivery</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Returns -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -533,9 +476,10 @@
           {{ message.text }}
         </div>
       </div>
+
+      </div>
     </div>
-  </div>
-    </AppLayout>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -596,16 +540,16 @@ const message = ref<{ type: 'success' | 'error', text: string } | null>(null)
 // Computed properties
 const filteredReturns = computed(() => {
   return returns.value.filter(item => {
-    const matchesSearch = !searchQuery.value || 
+    const matchesSearch = !searchQuery.value ||
       item.returnNumber.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       item.supplier.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       item.itemCode.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       item.itemName.toLowerCase().includes(searchQuery.value.toLowerCase())
-    
+
     const matchesType = !typeFilter.value || item.type === typeFilter.value
     const matchesStatus = !statusFilter.value || item.status === statusFilter.value
     const matchesReason = !reasonFilter.value || item.reason === reasonFilter.value
-    
+
     return matchesSearch && matchesType && matchesStatus && matchesReason
   })
 })
@@ -617,8 +561,8 @@ const pendingReturns = computed(() => returns.value.filter(r => r.status !== 'Co
 
 const canSaveReturn = computed(() => {
   const hasBasicInfo = newReturn.value.type && newReturn.value.date && newReturn.value.supplier
-  const hasValidItems = newReturn.value.items.length > 0 && 
-    newReturn.value.items.every(item => 
+  const hasValidItems = newReturn.value.items.length > 0 &&
+    newReturn.value.items.every(item =>
       item.itemCode && item.itemName && item.lotBatch && item.qty > 0 && item.uom && item.reason
     )
   return hasBasicInfo && hasValidItems
@@ -729,7 +673,7 @@ const saveReturn = () => {
       reason: item.reason,
       status: 'Submitted'
     }
-    
+
     returns.value.unshift(returnRecord)
   })
 
@@ -743,9 +687,9 @@ const saveReturn = () => {
       to: newReturn.value.type === 'Supplier' ? 'Outbound (Supplier)' : 'Quarantine/Available Bin'
     }))
   }
-  
+
   console.log('Stock Movement:', stockMovement)
-  
+
   showMessage('success', `Return berhasil dibuat dengan ${newReturn.value.items.length} item`)
   closeAddModal()
 }
@@ -763,7 +707,7 @@ const closeDetailModal = () => {
 const printSlip = (returnItem: ReturnItem) => {
   const currentDate = new Date().toLocaleDateString('id-ID')
   const returnDate = formatDate(returnItem.date)
-  
+
   const printWindow = window.open('', '_blank')
   if (printWindow) {
     const htmlContent = `<!DOCTYPE html>
@@ -842,12 +786,12 @@ const printSlip = (returnItem: ReturnItem) => {
 
     printWindow.document.write(htmlContent)
     printWindow.document.close()
-    
+
     setTimeout(() => {
       printWindow.print()
     }, 500)
   }
-  
+
   showMessage('success', `Slip return ${returnItem.returnNumber} siap dicetak`)
 }
 

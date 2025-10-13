@@ -3,7 +3,7 @@
         <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Riwayat Aktivitas</h2>
+      <h2 class="text-2xl font-bold text-gray-900">Riwayat Aktivitas</h2>
       <div class="flex space-x-3">
         <button @click="exportToExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,10 +21,10 @@
     </div>
 
     <!-- Advanced Filter Panel -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="bg-white rounded-lg shadow">
+      <div class="p-4 border-b border-gray-200">
         <button @click="showAdvancedFilter = !showAdvancedFilter" class="flex items-center justify-between w-full text-left">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Advanced Filter</h3>
+          <h3 class="text-lg font-semibold text-gray-900">Advanced Filter</h3>
           <svg class="w-5 h-5 transform transition-transform" :class="showAdvancedFilter ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
           </svg>
@@ -35,8 +35,8 @@
         <!-- Row 1: Time Filters -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quick Time Filter</label>
-            <select v-model="filters.quickTime" @change="applyQuickTimeFilter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quick Time Filter</label>
+            <select v-model="filters.quickTime" @change="applyQuickTimeFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Custom Range</option>
               <option value="today">Hari Ini</option>
               <option value="this_week">Minggu Ini</option>
@@ -45,16 +45,16 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Awal</label>
-            <input v-model="filters.startDate" type="date" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Awal</label>
+            <input v-model="filters.startDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Akhir</label>
-            <input v-model="filters.endDate" type="date" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+            <input v-model="filters.endDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-            <select v-model="filters.status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select v-model="filters.status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua Status</option>
               <option value="Success">Success</option>
               <option value="Pending">Pending</option>
@@ -67,8 +67,8 @@
         <!-- Row 2: User & Activity Filters -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-            <select v-model="filters.role" @change="updateUsersByRole" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select v-model="filters.role" @change="updateUsersByRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua Role</option>
               <option value="Admin">Admin</option>
               <option value="QC Staff">QC Staff</option>
@@ -79,15 +79,15 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">User</label>
-            <select v-model="filters.user" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">User</label>
+            <select v-model="filters.user" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua User</option>
               <option v-for="user in availableUsers" :key="user" :value="user">{{ user }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenis Aktivitas</label>
-            <select v-model="filters.module" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Aktivitas</label>
+            <select v-model="filters.module" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua Aktivitas</option>
               <option value="Incoming">Incoming / Receipt</option>
               <option value="QC">QC</option>
@@ -100,8 +100,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lokasi/Bin</label>
-            <select v-model="filters.bin" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi/Bin</label>
+            <select v-model="filters.bin" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua Lokasi</option>
               <option v-for="bin in availableBins" :key="bin" :value="bin">{{ bin }}</option>
             </select>
@@ -111,30 +111,30 @@
         <!-- Row 3: Material & Quantity Filters -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Material/SKU</label>
-            <input v-model="filters.sku" type="text" placeholder="Cari kode atau nama SKU..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Material/SKU</label>
+            <input v-model="filters.sku" type="text" placeholder="Cari kode atau nama SKU..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lot/Batch No</label>
-            <input v-model="filters.lotBatch" type="text" placeholder="Cari lot/batch..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Lot/Batch No</label>
+            <input v-model="filters.lotBatch" type="text" placeholder="Cari lot/batch..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qty Min</label>
-            <input v-model="filters.qtyMin" type="number" placeholder="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Qty Min</label>
+            <input v-model="filters.qtyMin" type="number" placeholder="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qty Max</label>
-            <input v-model="filters.qtyMax" type="number" placeholder="9999" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Qty Max</label>
+            <input v-model="filters.qtyMax" type="number" placeholder="9999" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
           </div>
         </div>
 
         <!-- Filter Actions -->
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-600">
-          <div class="text-sm text-gray-600 dark:text-gray-400">
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+          <div class="text-sm text-gray-600">
             Showing {{ filteredActivities.length }} of {{ activities.length }} records
           </div>
           <div class="flex space-x-3">
-            <button @click="resetFilters" class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">
+            <button @click="resetFilters" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
               Reset Filter
             </button>
             <button @click="applyFilters" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
@@ -146,63 +146,63 @@
     </div>
 
     <!-- Activity Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Timestamp</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role/User</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aktivitas</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Material/SKU</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lot/Batch</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Qty</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lokasi/Bin</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Referensi Dokumen</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role/User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material/SKU</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot/Batch</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi/Bin</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referensi Dokumen</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="activity in paginatedActivities" :key="activity.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="activity in paginatedActivities" :key="activity.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div>{{ formatDateTime(activity.timestamp) }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div class="font-medium">{{ activity.user }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ activity.role }}</div>
+                <div class="text-xs text-gray-500">{{ activity.role }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <span class="px-2 py-1 text-xs rounded-full font-medium" :class="getModuleBadgeClass(activity.module)">
                     {{ activity.module }}
                   </span>
-                  <div class="ml-2 text-sm text-gray-900 dark:text-white">{{ activity.action }}</div>
+                  <div class="ml-2 text-sm text-gray-900">{{ activity.action }}</div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div class="font-medium">{{ activity.sku_code }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ activity.sku_name }}</div>
+                <div class="text-xs text-gray-500">{{ activity.sku_name }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ activity.lot_no || '-' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ activity.lot_no || '-' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div v-if="activity.qty_before !== activity.qty_after">
-                  <span class="text-red-600 dark:text-red-400">{{ activity.qty_before }}</span>
+                  <span class="text-red-600">{{ activity.qty_before }}</span>
                   <span class="mx-1">→</span>
-                  <span class="text-green-600 dark:text-green-400">{{ activity.qty_after }}</span>
+                  <span class="text-green-600">{{ activity.qty_after }}</span>
                 </div>
                 <div v-else>{{ activity.qty_after || '-' }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div v-if="activity.bin_from !== activity.bin_to && activity.bin_from && activity.bin_to">
-                  <span class="text-red-600 dark:text-red-400">{{ activity.bin_from }}</span>
+                  <span class="text-red-600">{{ activity.bin_from }}</span>
                   <span class="mx-1">→</span>
-                  <span class="text-green-600 dark:text-green-400">{{ activity.bin_to }}</span>
+                  <span class="text-green-600">{{ activity.bin_to }}</span>
                 </div>
                 <div v-else>{{ activity.bin_to || activity.bin_from || '-' }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ activity.reference_no || '-' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ activity.reference_no || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button @click="showDetailModal(activity)" class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-xs">
+                <button @click="showDetailModal(activity)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
                   Detail
                 </button>
               </td>
@@ -212,11 +212,11 @@
       </div>
 
       <!-- Pagination -->
-      <div class="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
+      <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
         <div class="flex items-center justify-between">
-          <div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+          <div class="flex items-center text-sm text-gray-700">
             <span>Show</span>
-            <select v-model="perPage" @change="updatePagination" class="mx-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700">
+            <select v-model="perPage" @change="updatePagination" class="mx-2 px-2 py-1 border border-gray-300 rounded text-sm bg-white">
               <option value="10">10</option>
               <option value="25">25</option>
               <option value="50">50</option>
@@ -225,13 +225,13 @@
             <span>entries</span>
           </div>
           <div class="flex items-center space-x-2">
-            <button @click="previousPage" :disabled="currentPage === 1" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+            <button @click="previousPage" :disabled="currentPage === 1" class="px-3 py-1 border border-gray-300 rounded text-sm bg-white text-gray-700 disabled:opacity-50">
               Previous
             </button>
-            <span class="text-sm text-gray-700 dark:text-gray-300">
+            <span class="text-sm text-gray-700">
               {{ currentPage }} of {{ totalPages }}
             </span>
-            <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+            <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 border border-gray-300 rounded text-sm bg-white text-gray-700 disabled:opacity-50">
               Next
             </button>
           </div>
@@ -240,12 +240,12 @@
     </div>
 
     <!-- Detail Modal -->
-    <div v-if="showDetailModalFlag" class="fixed inset-0 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+    <div v-if="showDetailModalFlag" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+      <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div class="p-6">
           <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Detail Activity Log</h3>
-            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+            <h3 class="text-lg font-semibold text-gray-900">Detail Activity Log</h3>
+            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -257,95 +257,95 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Timestamp</label>
-                  <p class="text-gray-900 dark:text-white">{{ formatDateTime(selectedActivity.timestamp) }}</p>
+                  <label class="text-sm font-medium text-gray-700">Timestamp</label>
+                  <p class="text-gray-900">{{ formatDateTime(selectedActivity.timestamp) }}</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">User & Role</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.user }} ({{ selectedActivity.role }})</p>
+                  <label class="text-sm font-medium text-gray-700">User & Role</label>
+                  <p class="text-gray-900">{{ selectedActivity.user }} ({{ selectedActivity.role }})</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Module</label>
+                  <label class="text-sm font-medium text-gray-700">Module</label>
                   <span class="px-2 py-1 text-xs rounded-full font-medium" :class="getModuleBadgeClass(selectedActivity.module)">
                     {{ selectedActivity.module }}
                   </span>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Activity</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.action }}</p>
+                  <label class="text-sm font-medium text-gray-700">Activity</label>
+                  <p class="text-gray-900">{{ selectedActivity.action }}</p>
                 </div>
               </div>
               
               <div class="space-y-4">
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Device</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.device }}</p>
+                  <label class="text-sm font-medium text-gray-700">Device</label>
+                  <p class="text-gray-900">{{ selectedActivity.device }}</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">IP Address</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.ip_address }}</p>
+                  <label class="text-sm font-medium text-gray-700">IP Address</label>
+                  <p class="text-gray-900">{{ selectedActivity.ip_address }}</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Reference Document</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.reference_no || 'N/A' }}</p>
+                  <label class="text-sm font-medium text-gray-700">Reference Document</label>
+                  <p class="text-gray-900">{{ selectedActivity.reference_no || 'N/A' }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Material Info -->
-            <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-              <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Material Information</h4>
+            <div class="border-t border-gray-200 pt-6">
+              <h4 class="text-md font-medium text-gray-900 mb-4">Material Information</h4>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">SKU</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.sku_code }} - {{ selectedActivity.sku_name }}</p>
+                  <label class="text-sm font-medium text-gray-700">SKU</label>
+                  <p class="text-gray-900">{{ selectedActivity.sku_code }} - {{ selectedActivity.sku_name }}</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Lot/Batch</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.lot_no || 'N/A' }}</p>
+                  <label class="text-sm font-medium text-gray-700">Lot/Batch</label>
+                  <p class="text-gray-900">{{ selectedActivity.lot_no || 'N/A' }}</p>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Exp Date</label>
-                  <p class="text-gray-900 dark:text-white">{{ selectedActivity.exp_date || 'N/A' }}</p>
+                  <label class="text-sm font-medium text-gray-700">Exp Date</label>
+                  <p class="text-gray-900">{{ selectedActivity.exp_date || 'N/A' }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Changes -->
-            <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-              <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Changes</h4>
+            <div class="border-t border-gray-200 pt-6">
+              <h4 class="text-md font-medium text-gray-900 mb-4">Changes</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
+                  <label class="text-sm font-medium text-gray-700">Quantity</label>
                   <div class="flex items-center space-x-2">
-                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">{{ selectedActivity.qty_before }}</span>
+                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded">{{ selectedActivity.qty_before }}</span>
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                     </svg>
-                    <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">{{ selectedActivity.qty_after }}</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded">{{ selectedActivity.qty_after }}</span>
                   </div>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+                  <label class="text-sm font-medium text-gray-700">Location</label>
                   <div class="flex items-center space-x-2">
-                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">{{ selectedActivity.bin_from || 'N/A' }}</span>
+                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded">{{ selectedActivity.bin_from || 'N/A' }}</span>
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                     </svg>
-                    <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">{{ selectedActivity.bin_to || 'N/A' }}</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded">{{ selectedActivity.bin_to || 'N/A' }}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Remarks -->
-            <div v-if="selectedActivity.remarks" class="border-t border-gray-200 dark:border-gray-600 pt-6">
-              <h4 class="text-md font-medium text-gray-900 dark:text-white mb-2">Remarks</h4>
-              <p class="text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-3 rounded">{{ selectedActivity.remarks }}</p>
+            <div v-if="selectedActivity.remarks" class="border-t border-gray-200 pt-6">
+              <h4 class="text-md font-medium text-gray-900 mb-2">Remarks</h4>
+              <p class="text-gray-600 bg-gray-50 p-3 rounded">{{ selectedActivity.remarks }}</p>
             </div>
           </div>
 
-          <div class="flex justify-end mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+          <div class="flex justify-end mt-6 pt-6 border-t border-gray-200">
             <button @click="closeDetailModal" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
               Close
             </button>

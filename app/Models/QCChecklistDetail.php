@@ -9,6 +9,8 @@ class QCChecklistDetail extends Model
 {
     use HasFactory;
 
+    protected $table = 'qc_checklist_details';
+
     protected $fillable = [
         'qc_checklist_id',
         'jumlah_box_utuh',
