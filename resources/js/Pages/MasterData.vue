@@ -202,51 +202,66 @@
           </div>
 
           <!-- Bin Location Tab -->
-          <div v-show="activeTab === 'bin'">
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="bin in filteredBinData" :key="bin.id" class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-mono text-gray-900">{{ bin.code }}</div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          {{ bin.zone }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ bin.capacity }}</div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="getBinTypeClass(bin.type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                          {{ bin.type }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="getStatusClass(bin.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                          {{ bin.status }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button @click="editItem(bin)" class="text-blue-600 hover:text-blue-900">Edit</button>
-                        <button @click="deleteItem(bin.id)" class="text-red-600 hover:text-red-900">Hapus</button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+          <div v-if="activeTab === 'bin'" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bin Code *</label>
+                <input 
+                  v-model="formData.code"
+                  type="text" 
+                  placeholder="A1-001"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Zone *</label>
+                <select 
+                  v-model="formData.zone" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Zone</option>
+                  <option v-for="zone in zoneList" :key="zone.id" :value="zone.id">
+                    {{ zone.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                <input 
+                  v-model="formData.capacity"
+                  type="number" 
+                  placeholder="1000"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                <select 
+                  v-model="formData.type" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Type</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Quarantine">Quarantine</option>
+                  <option value="Reject">Reject</option>
+                  <option value="Staging">Staging</option>
+                  <option value="Production">Production</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select 
+                v-model="formData.status" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 
