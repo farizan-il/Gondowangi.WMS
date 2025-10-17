@@ -351,7 +351,7 @@
                       <strong>{{ qcForm.hasilQC === 'PASS' ? 'Akan digenerate:' : 'Akan digenerate:' }}</strong>
                       <ul class="mt-2 list-disc list-inside">
                         <li v-if="qcForm.hasilQC === 'PASS'">Good Receipt Slip</li>
-                        <li v-if="qcForm.hasilQC === 'PASS'">Label Karantina QR (Status: KARANTINA)</li>
+                        <li v-if="qcForm.hasilQC === 'PASS'">Label Karantina QR (Status: RELEASED)</li>
                         <li v-if="qcForm.hasilQC === 'REJECT'">Return Slip</li>
                         <li v-if="qcForm.hasilQC === 'REJECT'">Label QR (Status: REJECT)</li>
                       </ul>
@@ -379,7 +379,7 @@
       <div v-if="showQRScanner"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
         style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white rounded-lg max-w-2xl w-full mx-4">
+        <div class="bg-white rounded-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="p-6">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Scan QR Code</h3>

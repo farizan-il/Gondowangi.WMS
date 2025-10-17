@@ -1,29 +1,15 @@
 <template>
   <AppLayout title="Riwayat Aktivitas">
-    <div :class="isDarkMode ? 'dark' : ''" class="min-h-screen transition-colors duration-300">
-      <div class="min-h-screen  p-2 sm:p-4 md:p-6">
+    <div class="min-h-screen transition-colors duration-300">
+      <div class="min-h-screen p-2 sm:p-4 md:p-6">
         <!-- Header -->
         <div class="mb-4 sm:mb-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 class="text-2xl sm:text-1xl font-bold text-gray-900 ">Return (Supplier / Production)</h1>
-              <p class="text-sm sm:text-base text-gray-600 text-gray-400 mt-1">Kelola return barang ke supplier dan dari
-                produksi</p>
+              <h1 class="text-2xl sm:text-1xl font-bold text-gray-900">Return (Supplier / Production)</h1>
+              <p class="text-sm sm:text-base text-gray-600 mt-1">Kelola return barang ke supplier dan dari produksi</p>
             </div>
             <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <!-- Dark Mode Toggle -->
-              <!-- <button @click="toggleDarkMode"
-                class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                <svg v-if="isDarkMode" class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-                    clip-rule="evenodd" />
-                </svg>
-                <svg v-else class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              </button> -->
-
               <button @click="showAddModal = true"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors w-full sm:w-auto justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,33 +25,32 @@
 
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
-          <!-- [Previous statistics cards code remains the same] -->
+          <!-- Statistics cards content -->
         </div>
 
         <!-- Filter dan Search -->
-        <div
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700">
+        <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200">
           <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div class="w-full sm:flex-1">
               <input v-model="searchQuery" type="text" placeholder="Cari Return Number, Supplier, Item..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
               <select v-model="typeFilter"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm">
+                class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="">Semua Jenis</option>
                 <option value="Supplier">Return Supplier</option>
                 <option value="Production">Return Production</option>
               </select>
               <select v-model="statusFilter"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm">
+                class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="">Semua Status</option>
                 <option value="Draft">Draft</option>
                 <option value="Submitted">Submitted</option>
                 <option value="Completed">Completed</option>
               </select>
               <select v-model="reasonFilter"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm col-span-2 sm:col-span-1">
+                class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm col-span-2 sm:col-span-1">
                 <option value="">Semua Reason</option>
                 <option value="QC Reject">QC Reject</option>
                 <option value="Expired">Expired</option>
@@ -78,404 +63,404 @@
         </div>
 
         <!-- Tabel Returns -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-900">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Return Number</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier / Dept</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode Item</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Material</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lot/Batch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reason</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="returnItem in filteredReturns" :key="returnItem.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ returnItem.returnNumber }}</div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400">{{ returnItem.type }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900 dark:text-white">{{ formatDate(returnItem.date) }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900 dark:text-white">{{ returnItem.supplier }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-mono text-gray-900 dark:text-white">{{ returnItem.itemCode }}</div>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="text-sm text-gray-900 dark:text-white">{{ returnItem.itemName }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-mono text-gray-900 dark:text-white">{{ returnItem.lotBatch }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900 dark:text-white">{{ returnItem.qty }} {{ returnItem.uom }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span :class="getReasonClass(returnItem.reason)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                    {{ returnItem.reason }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span :class="getStatusClass(returnItem.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                    {{ returnItem.status }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button 
-                    @click="viewDetail(returnItem)"
-                    class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1 rounded transition-colors"
-                  >
-                    Detail
-                  </button>
-                  <button 
-                    @click="printSlip(returnItem)"
-                    class="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 px-2 py-1 rounded transition-colors"
-                  >
-                    Cetak Slip
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Modal Add Return -->
-      <div v-if="showAddModal" class="fixed inset-0 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200 dark:border-gray-700">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Buat Return Baru</h3>
-            <button 
-              @click="closeAddModal"
-              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Form Return -->
-          <div class="space-y-6">
-            <!-- Jenis Return -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Jenis Return</label>
-              <div class="flex gap-6">
-                <label class="flex items-center">
-                  <input 
-                    v-model="newReturn.type" 
-                    type="radio" 
-                    value="Supplier"
-                    class="text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
-                  >
-                  <span class="ml-2 text-gray-900 dark:text-white">Return ke Supplier</span>
-                </label>
-                <label class="flex items-center">
-                  <input 
-                    v-model="newReturn.type" 
-                    type="radio" 
-                    value="Production"
-                    class="text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
-                  >
-                  <span class="ml-2 text-gray-900 dark:text-white">Return dari Produksi</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Header Info -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Return</label>
-                <input 
-                  v-model="newReturn.date"
-                  type="date" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
-                </label>
-                <select 
-                  v-model="newReturn.supplier" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Pilih {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Departemen' }}</option>
-                  <template v-if="newReturn.type === 'Supplier'">
-                    <option value="PT. Supplier A">PT. Supplier A</option>
-                    <option value="PT. Supplier B">PT. Supplier B</option>
-                    <option value="PT. Supplier C">PT. Supplier C</option>
-                  </template>
-                  <template v-else>
-                    <option value="Production Line 1">Production Line 1</option>
-                    <option value="Production Line 2">Production Line 2</option>
-                    <option value="Assembly Department">Assembly Department</option>
-                  </template>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No Shipment / Reservasi</label>
-                <select 
-                  v-model="newReturn.shipmentNo" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Pilih (Opsional)</option>
-                  <option value="SHP240919001">SHP240919001</option>
-                  <option value="RES240919002">RES240919002</option>
-                  <option value="PO240919003">PO240919003</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Items Table -->
-            <div>
-              <div class="flex justify-between items-center mb-4">
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white">Daftar Item Return</h4>
-                <button 
-                  @click="addItem"
-                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                >
-                  + Tambah Item
-                </button>
-              </div>
-              
-              <div class="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-900">
-                    <tr>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Kode Item</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nama Material</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Lot/Batch</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qty Return</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">UoM</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Reason</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                    <tr v-for="(item, index) in newReturn.items" :key="index">
-                      <td class="px-4 py-3">
-                        <input 
-                          v-model="item.itemCode"
-                          type="text" 
-                          placeholder="ITM001"
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                      </td>
-                      <td class="px-4 py-3">
-                        <input 
-                          v-model="item.itemName"
-                          type="text" 
-                          placeholder="Nama material"
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                      </td>
-                      <td class="px-4 py-3">
-                        <input 
-                          v-model="item.lotBatch"
-                          type="text" 
-                          placeholder="LOT001"
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                      </td>
-                      <td class="px-4 py-3">
-                        <input 
-                          v-model="item.qty"
-                          type="number" 
-                          placeholder="0"
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                      </td>
-                      <td class="px-4 py-3">
-                        <select 
-                          v-model="item.uom" 
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="PCS">PCS</option>
-                          <option value="BOX">BOX</option>
-                          <option value="KG">KG</option>
-                          <option value="LITER">LITER</option>
-                        </select>
-                      </td>
-                      <td class="px-4 py-3">
-                        <select 
-                          v-model="item.reason" 
-                          class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="">Pilih Reason</option>
-                          <option value="QC Reject">QC Reject</option>
-                          <option value="Expired">Expired</option>
-                          <option value="Damage">Damage</option>
-                          <option value="Excess Production">Excess Production</option>
-                          <option value="Wrong Delivery">Wrong Delivery</option>
-                        </select>
-                      </td>
-                      <td class="px-4 py-3">
-                        <button 
-                          @click="removeItem(index)"
-                          class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                    <tr v-if="newReturn.items.length === 0">
-                      <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                        Belum ada item. Klik "Tambah Item" untuk menambahkan.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button 
-                @click="closeAddModal"
-                class="px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Batal
-              </button>
-              <button 
-                @click="saveReturn"
-                :disabled="!canSaveReturn"
-                :class="canSaveReturn 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'"
-                class="px-4 py-2 rounded-lg transition-colors"
-              >
-                Simpan Return
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Detail Return -->
-      <div v-if="showDetailModal && selectedReturn" class="fixed inset-0 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200 dark:border-gray-700">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Detail Return</h3>
-            <button 
-              @click="closeDetailModal"
-              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Return Header Info -->
-          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Return Number</label>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ selectedReturn.returnNumber }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Jenis Return</label>
-                <p class="text-lg text-gray-900 dark:text-white">{{ selectedReturn.type }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Tanggal</label>
-                <p class="text-lg text-gray-900 dark:text-white">{{ formatDate(selectedReturn.date) }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Status</label>
-                <span :class="getStatusClass(selectedReturn.status)" class="px-2 py-1 text-sm font-semibold rounded-full">
-                  {{ selectedReturn.status }}
-                </span>
-              </div>
-            </div>
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {{ selectedReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
-                </label>
-                <p class="text-lg text-gray-900 dark:text-white">{{ selectedReturn.supplier }}</p>
-              </div>
-              <div v-if="selectedReturn.shipmentNo">
-                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">No Shipment/Reservasi</label>
-                <p class="text-lg font-mono text-gray-900 dark:text-white">{{ selectedReturn.shipmentNo }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Items Detail -->
-          <div class="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-900">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">No</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Kode Item</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nama Material</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Lot/Batch</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qty</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">UoM</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Reason</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Return Number</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier / Dept</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot/Batch</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                <tr>
-                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">1</td>
-                  <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{{ selectedReturn.itemCode }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ selectedReturn.itemName }}</td>
-                  <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{{ selectedReturn.lotBatch }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ selectedReturn.qty }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ selectedReturn.uom }}</td>
-                  <td class="px-4 py-3">
-                    <span :class="getReasonClass(selectedReturn.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
-                      {{ selectedReturn.reason }}
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="returnItem in filteredReturns" :key="returnItem.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ returnItem.returnNumber }}</div>
+                    <div class="text-sm text-gray-500">{{ returnItem.type }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ formatDate(returnItem.date) }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ returnItem.supplier }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-mono text-gray-900">{{ returnItem.itemCode }}</div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">{{ returnItem.itemName }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-mono text-gray-900">{{ returnItem.lotBatch }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ returnItem.qty }} {{ returnItem.uom }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span :class="getReasonClass(returnItem.reason)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                      {{ returnItem.reason }}
                     </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span :class="getStatusClass(returnItem.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                      {{ returnItem.status }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button 
+                      @click="viewDetail(returnItem)"
+                      class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                    >
+                      Detail
+                    </button>
+                    <button 
+                      @click="printSlip(returnItem)"
+                      class="text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded transition-colors"
+                    >
+                      Cetak Slip
+                    </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
 
-          <!-- Actions -->
-          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button 
-              @click="closeDetailModal"
-              class="px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Tutup
-            </button>
-            <button 
-              @click="printSlip(selectedReturn)"
-              class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Cetak Slip Return
-            </button>
+        <!-- Modal Add Return -->
+        <div v-if="showAddModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+          <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-semibold text-gray-900">Buat Return Baru</h3>
+              <button 
+                @click="closeAddModal"
+                class="text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Form Return -->
+            <div class="space-y-6">
+              <!-- Jenis Return -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Return</label>
+                <div class="flex gap-6">
+                  <label class="flex items-center">
+                    <input 
+                      v-model="newReturn.type" 
+                      type="radio" 
+                      value="Supplier"
+                      class="text-blue-600 focus:ring-blue-500"
+                    >
+                    <span class="ml-2 text-gray-900">Return ke Supplier</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input 
+                      v-model="newReturn.type" 
+                      type="radio" 
+                      value="Production"
+                      class="text-blue-600 focus:ring-blue-500"
+                    >
+                    <span class="ml-2 text-gray-900">Return dari Produksi</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Header Info -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Return</label>
+                  <input 
+                    v-model="newReturn.date"
+                    type="date" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
+                  </label>
+                  <select 
+                    v-model="newReturn.supplier" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Pilih {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Departemen' }}</option>
+                    <template v-if="newReturn.type === 'Supplier'">
+                      <option value="PT. Supplier A">PT. Supplier A</option>
+                      <option value="PT. Supplier B">PT. Supplier B</option>
+                      <option value="PT. Supplier C">PT. Supplier C</option>
+                    </template>
+                    <template v-else>
+                      <option value="Production Line 1">Production Line 1</option>
+                      <option value="Production Line 2">Production Line 2</option>
+                      <option value="Assembly Department">Assembly Department</option>
+                    </template>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">No Shipment / Reservasi</label>
+                  <select 
+                    v-model="newReturn.shipmentNo" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Pilih (Opsional)</option>
+                    <option value="SHP240919001">SHP240919001</option>
+                    <option value="RES240919002">RES240919002</option>
+                    <option value="PO240919003">PO240919003</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Items Table -->
+              <div>
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="text-lg font-medium text-gray-900">Daftar Item Return</h4>
+                  <button 
+                    @click="addItem"
+                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  >
+                    + Tambah Item
+                  </button>
+                </div>
+                
+                <div class="overflow-x-auto border border-gray-300 rounded-lg">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot/Batch</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Return</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                      <tr v-for="(item, index) in newReturn.items" :key="index">
+                        <td class="px-4 py-3">
+                          <input 
+                            v-model="item.itemCode"
+                            type="text" 
+                            placeholder="ITM001"
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                        </td>
+                        <td class="px-4 py-3">
+                          <input 
+                            v-model="item.itemName"
+                            type="text" 
+                            placeholder="Nama material"
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                        </td>
+                        <td class="px-4 py-3">
+                          <input 
+                            v-model="item.lotBatch"
+                            type="text" 
+                            placeholder="LOT001"
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                        </td>
+                        <td class="px-4 py-3">
+                          <input 
+                            v-model="item.qty"
+                            type="number" 
+                            placeholder="0"
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                        </td>
+                        <td class="px-4 py-3">
+                          <select 
+                            v-model="item.uom" 
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="PCS">PCS</option>
+                            <option value="BOX">BOX</option>
+                            <option value="KG">KG</option>
+                            <option value="LITER">LITER</option>
+                          </select>
+                        </td>
+                        <td class="px-4 py-3">
+                          <select 
+                            v-model="item.reason" 
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">Pilih Reason</option>
+                            <option value="QC Reject">QC Reject</option>
+                            <option value="Expired">Expired</option>
+                            <option value="Damage">Damage</option>
+                            <option value="Excess Production">Excess Production</option>
+                            <option value="Wrong Delivery">Wrong Delivery</option>
+                          </select>
+                        </td>
+                        <td class="px-4 py-3">
+                          <button 
+                            @click="removeItem(index)"
+                            class="text-red-600 hover:text-red-900 text-sm"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                      <tr v-if="newReturn.items.length === 0">
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                          Belum ada item. Klik "Tambah Item" untuk menambahkan.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button 
+                  @click="closeAddModal"
+                  class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  @click="saveReturn"
+                  :disabled="!canSaveReturn"
+                  :class="canSaveReturn 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+                  class="px-4 py-2 rounded-lg transition-colors"
+                >
+                  Simpan Return
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Success/Error Messages -->
-      <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-400'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 1000;">
-        <div class="flex items-center gap-2">
-          <svg v-if="message.type === 'success'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-          </svg>
-          <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-          </svg>
-          {{ message.text }}
+        <!-- Modal Detail Return -->
+        <div v-if="showDetailModal && selectedReturn" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+          <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-semibold text-gray-900">Detail Return</h3>
+              <button 
+                @click="closeDetailModal"
+                class="text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Return Header Info -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-600">Return Number</label>
+                  <p class="text-lg font-semibold text-gray-900">{{ selectedReturn.returnNumber }}</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-600">Jenis Return</label>
+                  <p class="text-lg text-gray-900">{{ selectedReturn.type }}</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-600">Tanggal</label>
+                  <p class="text-lg text-gray-900">{{ formatDate(selectedReturn.date) }}</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-600">Status</label>
+                  <span :class="getStatusClass(selectedReturn.status)" class="px-2 py-1 text-sm font-semibold rounded-full">
+                    {{ selectedReturn.status }}
+                  </span>
+                </div>
+              </div>
+              <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-600">
+                    {{ selectedReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
+                  </label>
+                  <p class="text-lg text-gray-900">{{ selectedReturn.supplier }}</p>
+                </div>
+                <div v-if="selectedReturn.shipmentNo">
+                  <label class="block text-sm font-medium text-gray-600">No Shipment/Reservasi</label>
+                  <p class="text-lg font-mono text-gray-900">{{ selectedReturn.shipmentNo }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Items Detail -->
+            <div class="overflow-x-auto border border-gray-300 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot/Batch</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">1</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ selectedReturn.itemCode }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.itemName }}</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ selectedReturn.lotBatch }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.qty }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.uom }}</td>
+                    <td class="px-4 py-3">
+                      <span :class="getReasonClass(selectedReturn.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
+                        {{ selectedReturn.reason }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <button 
+                @click="closeDetailModal"
+                class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Tutup
+              </button>
+              <button 
+                @click="printSlip(selectedReturn)"
+                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Cetak Slip Return
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Success/Error Messages -->
+        <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 1000;">
+          <div class="flex items-center gap-2">
+            <svg v-if="message.type === 'success'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+            {{ message.text }}
+          </div>
+        </div>
 
       </div>
     </div>

@@ -39,7 +39,7 @@ class ReturnActivityLog extends Model
 
     public function return(): BelongsTo
     {
-        return $this->belongsTo(Returns::class, 'return_id');
+        return $this->belongsTo(ReturnModel::class, 'return_id');
     }
 
     public function user(): BelongsTo

@@ -1,42 +1,28 @@
 <template>
     <AppLayout pageTitle="Master Data" pageDescription="Kelola data master sistem WMS">
         <div class="min-h-screen transition-colors duration-300">
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div class="min-h-screen bg-gray-50 p-6">
       <!-- Header -->
       <div class="mb-6">
         <div class="flex justify-between items-center">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Master Data</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">Kelola data master untuk seluruh sistem WMS</p>
-          </div>
-          <div class="flex items-center gap-4">
-            <!-- Dark Mode Toggle -->
-            <button 
-              @click="toggleDarkMode"
-              class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <svg v-if="isDarkMode" class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
-              </svg>
-              <svg v-else class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            </button>
+            <h1 class="text-3xl font-bold text-gray-900">Master Data</h1>
+            <p class="text-gray-600 mt-1">Kelola data master untuk seluruh sistem WMS</p>
           </div>
         </div>
       </div>
 
       <!-- Tab Navigation -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-        <div class="border-b border-gray-200 dark:border-gray-700">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div class="border-b border-gray-200">
           <nav class="-mb-px flex space-x-8 px-6">
             <button
               v-for="tab in tabs"
               :key="tab.id"
               @click="activeTab = tab.id"
               :class="activeTab === tab.id
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'"
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
               class="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
             >
               {{ tab.label }}
@@ -93,10 +79,10 @@
                 v-model="searchQuery"
                 type="text" 
                 :placeholder="`Cari ${getCurrentTabLabel()}...`"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
             </div>
-            <select v-model="statusFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+            <select v-model="statusFilter" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500">
               <option value="">Semua Status</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
@@ -105,50 +91,50 @@
 
           <!-- SKU Tab -->
           <div v-show="activeTab === 'sku'">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
               <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-900">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode Item</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Material</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">UoM</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">QC Required</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Expiry</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier Default</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Required</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Default</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr v-for="item in filteredSkuData" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="item in filteredSkuData" :key="item.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-mono text-gray-900 dark:text-white">{{ item.code }}</div>
+                        <div class="text-sm font-mono text-gray-900">{{ item.code }}</div>
                       </td>
                       <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ item.name }}</div>
+                        <div class="text-sm text-gray-900">{{ item.name }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ item.uom }}</div>
+                        <div class="text-sm text-gray-900">{{ item.uom }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                           {{ item.category }}
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="item.qcRequired ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'">
+                        <span :class="item.qcRequired ? 'text-green-600' : 'text-gray-400'">
                           {{ item.qcRequired ? '✓' : '✗' }}
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="item.expiry ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'">
+                        <span :class="item.expiry ? 'text-green-600' : 'text-gray-400'">
                           {{ item.expiry ? '✓' : '✗' }}
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ item.supplierDefault }}</div>
+                        <div class="text-sm text-gray-900">{{ item.supplierDefault }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getStatusClass(item.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -156,8 +142,8 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button @click="editItem(item)" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Edit</button>
-                        <button @click="deleteItem(item.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Hapus</button>
+                        <button @click="editItem(item)" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        <button @click="deleteItem(item.id)" class="text-red-600 hover:text-red-900">Hapus</button>
                       </td>
                     </tr>
                   </tbody>
@@ -168,36 +154,36 @@
 
           <!-- Supplier Tab -->
           <div v-show="activeTab === 'supplier'">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
               <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-900">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier Code</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier Name</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Address</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact Person</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Phone</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Code</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Person</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr v-for="supplier in filteredSupplierData" :key="supplier.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="supplier in filteredSupplierData" :key="supplier.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-mono text-gray-900 dark:text-white">{{ supplier.code }}</div>
+                        <div class="text-sm font-mono text-gray-900">{{ supplier.code }}</div>
                       </td>
                       <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ supplier.name }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ supplier.name }}</div>
                       </td>
                       <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ supplier.address }}</div>
+                        <div class="text-sm text-gray-900">{{ supplier.address }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ supplier.contactPerson }}</div>
+                        <div class="text-sm text-gray-900">{{ supplier.contactPerson }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ supplier.phone }}</div>
+                        <div class="text-sm text-gray-900">{{ supplier.phone }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getStatusClass(supplier.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -205,8 +191,8 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button @click="editItem(supplier)" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Edit</button>
-                        <button @click="deleteItem(supplier.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Hapus</button>
+                        <button @click="editItem(supplier)" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        <button @click="deleteItem(supplier.id)" class="text-red-600 hover:text-red-900">Hapus</button>
                       </td>
                     </tr>
                   </tbody>
@@ -217,31 +203,31 @@
 
           <!-- Bin Location Tab -->
           <div v-show="activeTab === 'bin'">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
               <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-900">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bin Code</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Zone</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Capacity</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr v-for="bin in filteredBinData" :key="bin.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="bin in filteredBinData" :key="bin.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-mono text-gray-900 dark:text-white">{{ bin.code }}</div>
+                        <div class="text-sm font-mono text-gray-900">{{ bin.code }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           {{ bin.zone }}
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ bin.capacity }}</div>
+                        <div class="text-sm text-gray-900">{{ bin.capacity }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getBinTypeClass(bin.type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -254,8 +240,8 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button @click="editItem(bin)" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Edit</button>
-                        <button @click="deleteItem(bin.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Hapus</button>
+                        <button @click="editItem(bin)" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        <button @click="deleteItem(bin.id)" class="text-red-600 hover:text-red-900">Hapus</button>
                       </td>
                     </tr>
                   </tbody>
@@ -266,26 +252,26 @@
 
           <!-- User & Role Tab -->
           <div v-show="activeTab === 'user'">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
               <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-900">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">jabatan</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Full Name</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">jabatan</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr v-for="user in filteredUserData" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="user in filteredUserData" :key="user.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ user.jabatan }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ user.jabatan }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ user.fullName }}</div>
+                        <div class="text-sm text-gray-900">{{ user.fullName }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getRoleClass(user.role)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -293,7 +279,7 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900 dark:text-white">{{ user.department }}</div>
+                        <div class="text-sm text-gray-900">{{ user.department }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getStatusClass(user.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -301,8 +287,8 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button @click="editItem(user)" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Edit</button>
-                        <button @click="deleteItem(user.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Hapus</button>
+                        <button @click="editItem(user)" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        <button @click="deleteItem(user.id)" class="text-red-600 hover:text-red-900">Hapus</button>
                       </td>
                     </tr>
                   </tbody>
@@ -314,15 +300,15 @@
       </div>
 
       <!-- Modal Add/Edit -->
-      <div v-if="showAddModal || showEditModal" class="fixed inset-0 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto border border-gray-200 dark:border-gray-700">
+      <div v-if="showAddModal || showEditModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto border border-gray-200">
           <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h3 class="text-xl font-semibold text-gray-900">
               {{ showEditModal ? 'Edit' : 'Tambah' }} {{ getCurrentTabLabel() }}
             </h3>
             <button 
               @click="closeModal"
-              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
+              class="text-gray-400 hover:text-gray-600"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -334,19 +320,19 @@
           <div v-if="activeTab === 'sku'" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kode Item *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kode Item *</label>
                 <input 
                   v-model="formData.code"
                   type="text" 
                   placeholder="ITM001"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UoM *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">UoM *</label>
                 <select 
                   v-model="formData.uom" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih UoM</option>
                   <option value="PCS">PCS</option>
@@ -358,21 +344,21 @@
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Material *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Material *</label>
               <input 
                 v-model="formData.name"
                 type="text" 
                 placeholder="Nama material lengkap"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori *</label>
                 <select 
                   v-model="formData.category" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Kategori</option>
                   <option value="Raw Material">Raw Material</option>
@@ -382,10 +368,10 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ABC Class</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">ABC Class</label>
                 <select 
                   v-model="formData.abcClass" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih ABC Class</option>
                   <option value="A">A</option>
@@ -397,10 +383,10 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier Default</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Default</label>
                 <select 
                   v-model="formData.supplierDefault" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Supplier</option>
                   <option value="PT. Supplier A">PT. Supplier A</option>
@@ -409,10 +395,10 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select 
                   v-model="formData.status" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -425,17 +411,17 @@
                 <input 
                   v-model="formData.qcRequired" 
                   type="checkbox"
-                  class="text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400 rounded"
+                  class="text-blue-600 focus:ring-blue-500 rounded"
                 >
-                <span class="ml-2 text-gray-900 dark:text-white">QC Required</span>
+                <span class="ml-2 text-gray-900">QC Required</span>
               </label>
               <label class="flex items-center">
                 <input 
                   v-model="formData.expiry" 
                   type="checkbox"
-                  class="text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400 rounded"
+                  class="text-blue-600 focus:ring-blue-500 rounded"
                 >
-                <span class="ml-2 text-gray-900 dark:text-white">Expiry Date Required</span>
+                <span class="ml-2 text-gray-900">Expiry Date Required</span>
               </label>
             </div>
           </div>
@@ -444,19 +430,19 @@
           <div v-if="activeTab === 'supplier'" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier Code *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Code *</label>
                 <input 
                   v-model="formData.code"
                   type="text" 
                   placeholder="SUP001"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select 
                   v-model="formData.status" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -465,42 +451,42 @@
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier Name *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Name *</label>
               <input 
                 v-model="formData.name"
                 type="text" 
                 placeholder="PT. Nama Supplier"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
               <textarea 
                 v-model="formData.address"
                 placeholder="Alamat lengkap supplier"
                 rows="3"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               ></textarea>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Person</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
                 <input 
                   v-model="formData.contactPerson"
                   type="text" 
                   placeholder="Nama PIC"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input 
                   v-model="formData.phone"
                   type="text" 
                   placeholder="0812-3456-7890"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
             </div>
@@ -510,19 +496,19 @@
           <div v-if="activeTab === 'bin'" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bin Code *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bin Code *</label>
                 <input 
                   v-model="formData.code"
                   type="text" 
                   placeholder="A1-001"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zone *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Zone *</label>
                 <select 
                   v-model="formData.zone" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Zone</option>
                   <option value="A">Zone A</option>
@@ -536,19 +522,19 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Capacity</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
                 <input 
                   v-model="formData.capacity"
                   type="number" 
                   placeholder="1000"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
                 <select 
                   v-model="formData.type" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Type</option>
                   <option value="Normal">Normal</option>
@@ -561,10 +547,10 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select 
                 v-model="formData.status" 
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
@@ -576,12 +562,12 @@
           <div v-if="activeTab === 'user'" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Jabatan *
                 </label>
                 <select
                   v-model="formData.jabatan"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="" disabled>Pilih jabatan</option>
                   <option value="Manager">Manager</option>
@@ -591,32 +577,32 @@
                 </select>
               </div>              
               <div v-if="!showEditModal">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
                 <input 
                   v-model="formData.password"
                   type="password" 
                   placeholder="********"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
               <input 
                 v-model="formData.fullName"
                 type="text" 
                 placeholder="John Doe"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
                 <select 
                   v-model="formData.role" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Role</option>
                   <option value="Admin">Admin</option>
@@ -628,10 +614,10 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                 <select 
                   v-model="formData.department" 
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Department</option>
                   <option value="Gudang">Gudang</option>
@@ -644,10 +630,10 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select 
                 v-model="formData.status" 
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
@@ -656,10 +642,10 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
             <button 
               @click="closeModal"
-              class="px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Batal
             </button>
@@ -674,7 +660,7 @@
       </div>
 
       <!-- Success/Error Messages -->
-      <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-400'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 1000;">
+      <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 1000;">
         <div class="flex items-center gap-2">
           <svg v-if="message.type === 'success'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -687,8 +673,6 @@
       </div>
     </div>
   </div>
-        
-        <!-- dst untuk tab lainnya -->
     </AppLayout>
 </template>
 

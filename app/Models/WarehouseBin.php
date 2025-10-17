@@ -18,6 +18,7 @@ class WarehouseBin extends Model
         'capacity',
         'current_items',
         'status',
+        'qr_code_path',
     ];
 
     protected $casts = [

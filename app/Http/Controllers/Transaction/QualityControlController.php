@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\GoodReceipt;
 use App\Models\IncomingGood;
 use App\Models\IncomingGoodsItem;
+use App\Models\InventoryStock;
 use App\Models\QCChecklist;
 use App\Models\QCChecklistDetail;
 use App\Models\QCPhoto;
+use App\Models\ReturnSlip;
+use App\Models\StockMovement;
+use App\Models\WarehouseBin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -194,23 +199,13 @@ class QualityControlController extends Controller
                 'catatan_qc' => 'nullable|string',
                 'hasil_qc' => 'required|in:PASS,REJECT',
                 'photos' => 'nullable|array',
-                'photos.*' => 'image|max:5120', // 5MB max
-            ], [
-                'incoming_item_id.required' => 'Item ID tidak ditemukan',
-                'incoming_item_id.exists' => 'Item tidak valid',
-                'kategori.required' => 'Kategori harus diisi',
-                'jumlah_box_utuh.required' => 'Jumlah box utuh harus diisi',
-                'qty_box_utuh.required' => 'Qty box utuh harus diisi',
-                'hasil_qc.required' => 'Hasil QC harus dipilih (PASS/REJECT)',
-                'hasil_qc.in' => 'Hasil QC harus PASS atau REJECT',
-                'photos.*.image' => 'File harus berupa gambar',
-                'photos.*.max' => 'Ukuran foto maksimal 5MB',
+                'photos.*' => 'image|max:5120',
             ]);
 
             DB::beginTransaction();
 
             // Get incoming item
-            $incomingItem = IncomingGoodsItem::with('incomingGood')->findOrFail($validated['incoming_item_id']);
+            $incomingItem = IncomingGoodsItem::with(['incomingGood', 'material'])->findOrFail($validated['incoming_item_id']);
 
             // Cek apakah item sudah di-QC
             if ($incomingItem->status_qc !== 'To QC') {
@@ -245,7 +240,7 @@ class QualityControlController extends Controller
             $totalIncoming = ($validated['qty_box_utuh'] ?? 0) + ($validated['qty_box_tidak_utuh'] ?? 0);
 
             // Create QC Detail
-            QCChecklistDetail::create([
+            $qcDetail = QCChecklistDetail::create([
                 'qc_checklist_id' => $qcChecklist->id,
                 'jumlah_box_utuh' => $validated['jumlah_box_utuh'],
                 'qty_box_utuh' => $validated['qty_box_utuh'],
@@ -282,11 +277,126 @@ class QualityControlController extends Controller
                 }
             }
 
+            // ========================================
+            // PROSES BERDASARKAN HASIL QC
+            // ========================================
+            
+            if ($validated['hasil_qc'] === 'PASS') {
+                // 1. CREATE GOOD RECEIPT
+                $grNumber = $this->generateGRNumber();
+                
+                $goodReceipt = GoodReceipt::create([
+                    'gr_number' => $grNumber,
+                    'qc_checklist_id' => $qcChecklist->id,
+                    'incoming_item_id' => $incomingItem->id,
+                    'material_id' => $incomingItem->material_id,
+                    'batch_lot' => $incomingItem->batch_lot,
+                    'qty_received' => $totalIncoming,
+                    'uom' => $incomingItem->satuan,
+                    'status_material' => 'RELEASED', // Otomatis RELEASED jika PASS
+                    'warehouse_location' => 'QTN-A-01', // Default quarantine bin, nanti dipindah via Putaway
+                    'tanggal_gr' => now(),
+                    'created_by' => Auth::id(),
+                ]);
+
+                // 2. CREATE/UPDATE INVENTORY STOCK
+                // Cari bin karantina default
+                $quarantineBin = WarehouseBin::where('bin_code', 'LIKE', 'QTN-%')
+                    ->where('status', 'available')
+                    ->first();
+
+                if (!$quarantineBin) {
+                    throw new \Exception('Bin Karantina tidak ditemukan! Pastikan sudah dibuat di master warehouse bins.');
+                }
+
+                // Cek apakah sudah ada stock dengan batch/lot yang sama
+                $inventoryStock = InventoryStock::where([
+                    'material_id' => $incomingItem->material_id,
+                    'warehouse_id' => $quarantineBin->warehouse_id,
+                    'bin_id' => $quarantineBin->id,
+                    'batch_lot' => $incomingItem->batch_lot,
+                    'status' => 'RELEASED'
+                ])->first();
+
+                if ($inventoryStock) {
+                    // Update existing stock
+                    $inventoryStock->update([
+                        'qty_on_hand' => $inventoryStock->qty_on_hand + $totalIncoming,
+                        'qty_available' => ($inventoryStock->qty_on_hand + $totalIncoming) - $inventoryStock->qty_reserved,
+                        'last_movement_date' => now(),
+                    ]);
+                } else {
+                    // Create new stock
+                    $inventoryStock = InventoryStock::create([
+                        'material_id' => $incomingItem->material_id,
+                        'warehouse_id' => $quarantineBin->warehouse_id,
+                        'bin_id' => $quarantineBin->id,
+                        'batch_lot' => $incomingItem->batch_lot,
+                        'exp_date' => $incomingItem->exp_date,
+                        'qty_on_hand' => $totalIncoming,
+                        'qty_reserved' => 0,
+                        'qty_available' => $totalIncoming,
+                        'uom' => $incomingItem->satuan,
+                        'status' => 'RELEASED',
+                        'gr_id' => $goodReceipt->id,
+                        'last_movement_date' => now(),
+                    ]);
+                }
+
+                // 3. UPDATE BIN OCCUPANCY
+                $quarantineBin->increment('current_items');
+
+                // 4. CREATE STOCK MOVEMENT
+                $movementNumber = $this->generateMovementNumber();
+                
+                StockMovement::create([
+                    'movement_number' => $movementNumber,
+                    'movement_type' => 'QC_RELEASE',
+                    'material_id' => $incomingItem->material_id,
+                    'batch_lot' => $incomingItem->batch_lot,
+                    'from_warehouse_id' => null,
+                    'from_bin_id' => null,
+                    'to_warehouse_id' => $quarantineBin->warehouse_id,
+                    'to_bin_id' => $quarantineBin->id,
+                    'qty' => $totalIncoming,
+                    'uom' => $incomingItem->satuan,
+                    'reference_type' => 'good_receipt',
+                    'reference_id' => $goodReceipt->id,
+                    'movement_date' => now(),
+                    'executed_by' => Auth::id(),
+                    'notes' => "QC PASS - Material masuk ke quarantine bin {$quarantineBin->bin_code}",
+                ]);
+
+                $successMessage = "QC PASS berhasil! GR Number: {$grNumber}. Material siap untuk di-putaway.";
+
+            } else {
+                // HASIL QC = REJECT
+                // 1. CREATE RETURN SLIP
+                $returnNumber = $this->generateReturnNumber();
+                
+                ReturnSlip::create([
+                    'return_number' => $returnNumber,
+                    'qc_checklist_id' => $qcChecklist->id,
+                    'incoming_item_id' => $incomingItem->id,
+                    'material_id' => $incomingItem->material_id,
+                    'supplier_id' => $incomingItem->incomingGood->supplier_id,
+                    'batch_lot' => $incomingItem->batch_lot,
+                    'qty_return' => $totalIncoming,
+                    'uom' => $incomingItem->satuan,
+                    'alasan_reject' => $validated['catatan_qc'] ?? 'Material tidak memenuhi standar QC',
+                    'status' => 'Pending Return',
+                    'tanggal_return' => now(),
+                    'created_by' => Auth::id(),
+                ]);
+
+                $successMessage = "QC REJECT! Return Slip: {$returnNumber}. Material akan dikembalikan ke supplier.";
+            }
+
             DB::commit();
 
             Log::info("QC berhasil disimpan: {$checklistNumber} dengan status {$validated['hasil_qc']}");
 
-            return redirect()->back()->with('success', "QC berhasil disimpan! Nomor: {$checklistNumber} | Status: {$validated['hasil_qc']}");
+            return redirect()->back()->with('success', $successMessage);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
@@ -307,5 +417,30 @@ class QualityControlController extends Controller
             
             return redirect()->back()->with('error', 'Gagal menyimpan QC: ' . $e->getMessage());
         }
+    }
+
+    // Helper methods untuk generate nomor
+    private function generateGRNumber()
+    {
+        $date = date('Ymd');
+        $lastGR = GoodReceipt::whereDate('created_at', today())->latest()->first();
+        $sequence = $lastGR ? (intval(substr($lastGR->gr_number, -4)) + 1) : 1;
+        return "GR/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function generateReturnNumber()
+    {
+        $date = date('Ymd');
+        $lastReturn = ReturnSlip::whereDate('created_at', today())->latest()->first();
+        $sequence = $lastReturn ? (intval(substr($lastReturn->return_number, -4)) + 1) : 1;
+        return "RTN/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function generateMovementNumber()
+    {
+        $date = date('Ymd');
+        $lastMovement = StockMovement::whereDate('created_at', today())->latest()->first();
+        $sequence = $lastMovement ? (intval(substr($lastMovement->movement_number, -4)) + 1) : 1;
+        return "MOV/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }
