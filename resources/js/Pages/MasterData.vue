@@ -695,6 +695,15 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 
+const props = defineProps({
+    initialSkuData: Array,
+    initialSupplierData: Array,
+    initialBinData: Array,
+    initialUserData: Array,
+    supplierList: Array,
+    zoneList: Array,
+});
+
 // Types
 interface SkuItem {
   id: string
@@ -1049,6 +1058,10 @@ const loadData = () => {
 }
 
 onMounted(() => {
+  skuData.value = props.initialSkuData;
+  supplierData.value = props.initialSupplierData;
+  binData.value = props.initialBinData;
+  userData.value = props.initialUserData;
   loadData();
 });
 </script>
