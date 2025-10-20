@@ -202,66 +202,67 @@
           </div>
 
           <!-- Bin Location Tab -->
-          <div v-if="activeTab === 'bin'" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bin Code *</label>
-                <input 
-                  v-model="formData.code"
-                  type="text" 
-                  placeholder="A1-001"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
+          <div v-show="activeTab === 'bin'">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="bin in filteredBinData" :key="bin.id" class="hover:bg-gray-50">
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-mono text-gray-900">{{ bin.code }}</div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          {{ bin.zone }}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ bin.capacity }}</div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span :class="getBinTypeClass(bin.type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                          {{ bin.type }}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span :class="getStatusClass(bin.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                          {{ bin.status }}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <button 
+                          v-if="bin.qrCode || bin.id"
+                          @click="previewQRCode(bin.id)" 
+                          class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                          title="Preview QR Code"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Preview QR
+                        </button>
+                        <span v-else class="text-gray-400 text-xs">No QR</span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button @click="editItem(bin)" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        <button @click="deleteItem(bin.id)" class="text-red-600 hover:text-red-900">Hapus</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Zone *</label>
-                <select 
-                  v-model="formData.zone" 
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Pilih Zone</option>
-                  <option v-for="zone in zoneList" :key="zone.id" :value="zone.id">
-                    {{ zone.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
-                <input 
-                  v-model="formData.capacity"
-                  type="number" 
-                  placeholder="1000"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                <select 
-                  v-model="formData.type" 
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Pilih Type</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Quarantine">Quarantine</option>
-                  <option value="Reject">Reject</option>
-                  <option value="Staging">Staging</option>
-                  <option value="Production">Production</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select 
-                v-model="formData.status" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
             </div>
           </div>
 
@@ -286,7 +287,7 @@
                         <div class="text-sm font-medium text-gray-900">{{ user.jabatan }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ user.fullName }}</div>
+                        <div class="text-sm text-gray-900">{{ user.name }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getRoleClass(user.role)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -314,8 +315,82 @@
         </div>
       </div>
 
+      <!-- QR Code Preview Modal -->
+      <div v-if="showQRModal && qrCodeData" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-6 w-full max-w-lg border border-gray-200 shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">QR Code - {{ qrCodeData.bin_code }}</h3>
+            <button 
+              @click="closeQRModal"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- QR Code Image -->
+          <div class="flex justify-center mb-6 bg-gray-50 p-6 rounded-lg">
+            <img :src="qrCodeData.image" alt="QR Code" class="w-64 h-64 border-2 border-gray-200 rounded-lg shadow-sm">
+          </div>
+
+          <!-- Bin Information -->
+          <div class="bg-blue-50 rounded-lg p-4 mb-6 space-y-2">
+            <div class="flex justify-between">
+              <span class="text-sm font-medium text-gray-600">Bin Code:</span>
+              <span class="text-sm font-bold text-gray-900">{{ qrCodeData.bin_code }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm font-medium text-gray-600">Bin Name:</span>
+              <span class="text-sm text-gray-900">{{ qrCodeData.bin_name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm font-medium text-gray-600">Zone:</span>
+              <span class="text-sm text-gray-900">{{ qrCodeData.zone_name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm font-medium text-gray-600">Type:</span>
+              <span class="text-sm text-gray-900">{{ qrCodeData.bin_type }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm font-medium text-gray-600">Capacity:</span>
+              <span class="text-sm text-gray-900">{{ qrCodeData.capacity }}</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
+            <button 
+              @click="downloadQRCodeDirect"
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download
+            </button>
+            <button 
+              @click="printQRCode"
+              class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print
+            </button>
+            <button 
+              @click="closeQRModal"
+              class="px-4 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal Add/Edit -->
-      <div v-if="showAddModal || showEditModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+      <div v-if="showAddModal || showEditModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[999]" style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto border border-gray-200">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-semibold text-gray-900">
@@ -526,11 +601,11 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Zone</option>
-                  <option value="A">Zone A</option>
-                  <option value="B">Zone B</option>
-                  <option value="C">Zone C</option>
-                  <option value="Cold">Cold Storage</option>
-                  <option value="Reject">Reject</option>
+                  <option value="1">Zone A</option>
+                  <option value="2">Zone B</option>
+                  <option value="3">Zone C</option>
+                  <option value="4">Cold Storage</option>
+                  <option value="5">Reject</option>
                 </select>
               </div>
             </div>
@@ -675,7 +750,7 @@
       </div>
 
       <!-- Success/Error Messages -->
-      <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 1000;">
+      <div v-if="message" :class="message.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'" class="fixed top-4 right-4 border rounded-lg p-4 shadow-lg" style="z-index: 99999;">
         <div class="flex items-center gap-2">
           <svg v-if="message.type === 'success'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -742,17 +817,20 @@ const isDarkMode = ref(false)
 const activeTab = ref('sku')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const showQRModal = ref(false)
+const qrCodeData = ref<{
+  image: string
+  bin_code: string
+  bin_name: string
+  zone_name: string
+  bin_type: string
+  capacity: number
+} | null>(null)
 
 // Modal states
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const editingItem = ref<any>(null)
-
-// Data arrays
-const skuData = ref<SkuItem[]>([])
-const supplierData = ref<Supplier[]>([])
-const binData = ref<BinLocation[]>([])
-const userData = ref<User[]>([])
 
 // Form data
 const formData = ref<any>({})
@@ -824,28 +902,45 @@ const getStatusClass = (status: string) => {
     : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
 }
 
-const getBinTypeClass = (type: string) => {
-  const colors: Record<string, string> = {
-    'Normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-    'Quarantine': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-    'Reject': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-    'Staging': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-    'Production': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+ const getBinTypeClass = (type: string) => {
+    const colors: Record<string, string> = {
+      'Normal': 'bg-blue-100 text-blue-800',
+      'Quarantine': 'bg-yellow-100 text-yellow-800',
+      'Reject': 'bg-red-100 text-red-800',
+      'Staging': 'bg-purple-100 text-purple-800',
+      'Production': 'bg-green-100 text-green-800'
+    }
+    return colors[type] || 'bg-gray-100 text-gray-800'
   }
-  return colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+
+  const getRoleClass = (role: string) => {
+    const colors: Record<string, string> = {
+      'Admin': 'bg-purple-100 text-purple-800',
+      'QC': 'bg-blue-100 text-blue-800',
+      'Receiving': 'bg-green-100 text-green-800',
+      'Warehouse': 'bg-yellow-100 text-yellow-800',
+      'Production': 'bg-orange-100 text-orange-800',
+      'Supervisor': 'bg-red-100 text-red-800'
+    }
+    return colors[role] || 'bg-gray-100 text-gray-800'
+  }
+
+interface Props {
+  initialSkuData?: any[]
+  initialSupplierData?: any[]
+  initialBinData?: any[]
+  initialUserData?: any[]
+  supplierList?: any[]
+  zoneList?: any[]  // PENTING: Data zone dari backend
 }
 
-const getRoleClass = (role: string) => {
-  const colors: Record<string, string> = {
-    'Admin': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-    'QC': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-    'Receiving': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-    'Warehouse': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-    'Production': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-    'Supervisor': 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
-  }
-  return colors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-}
+const props = defineProps<Props>()
+
+const skuData = ref(props.initialSkuData || [])
+const supplierData = ref(props.initialSupplierData || [])
+const binData = ref(props.initialBinData || [])
+const userData = ref(props.initialUserData || [])
+const zoneList = ref(props.zoneList || [])
 
 const resetForm = () => {
   const defaultValues: Record<string, any> = {
@@ -870,7 +965,7 @@ const resetForm = () => {
     },
     bin: {
       code: '',
-      zone: '',
+      zone: '', // Ini akan berisi ID zone
       capacity: 0,
       type: '',
       status: 'Active'
@@ -897,16 +992,39 @@ const closeModal = () => {
 
 const editItem = (item: any) => {
   editingItem.value = item
-  formData.value = { ...item }
+  
+  if (activeTab.value === 'bin') {
+    // Untuk bin, kita perlu mendapatkan zone_id dari nama zone
+    const zone = zoneList.value.find((z: any) => z.name === item.zone)
+    formData.value = {
+      ...item,
+      zone: zone?.id || '' // Set zone ID, bukan nama
+    }
+  } else {
+    formData.value = { ...item }
+  }
+  
   showEditModal.value = true
 }
 
 const saveData = async () => {
   try {
     // Validasi form data
-    if (!formData.value.code || !formData.value.name) {
-      showMessage('error', 'Kode dan nama wajib diisi')
+    if (!formData.value.code) {
+      showMessage('error', 'Kode wajib diisi')
       return
+    }
+
+    // Validasi khusus untuk bin
+    if (activeTab.value === 'bin') {
+      if (!formData.value.zone) {
+        showMessage('error', 'Zone wajib dipilih')
+        return
+      }
+      if (!formData.value.type) {
+        showMessage('error', 'Type wajib dipilih')
+        return
+      }
     }
 
     const endpoint = showEditModal.value 
@@ -931,11 +1049,8 @@ const saveData = async () => {
       body: JSON.stringify(formData.value)
     })
 
-    console.log('Response status:', response.status)
-    console.log('Response headers:', response.headers)
-
     const result = await response.json()
-    console.log('Response body:', result)
+    console.log('Response:', result)
 
     if (!response.ok) {
       showMessage('error', result.message || 'Terjadi kesalahan')
@@ -944,13 +1059,156 @@ const saveData = async () => {
 
     showMessage('success', result.message || 'Data berhasil disimpan')
     closeModal()
-    // Reload page setelah 1 detik
-    setTimeout(() => window.location.reload(), 1000)
+    
+    // Reload page setelah 1.5 detik
+    setTimeout(() => window.location.reload(), 1500)
 
   } catch (error) {
     console.error('Save error:', error)
     showMessage('error', 'Error: ' + (error as Error).message)
   }
+}
+
+const previewQRCode = async (binId: string) => {
+  try {
+    const response = await fetch(`/master-data/bin/${binId}/qr-code/preview`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      showMessage('error', result.message || 'Gagal memuat QR Code')
+      return
+    }
+
+    qrCodeData.value = result.data
+    showQRModal.value = true
+
+  } catch (error) {
+    console.error('Preview error:', error)
+    showMessage('error', 'Error saat memuat QR Code')
+  }
+}
+
+const downloadQRCodeDirect = async () => {
+  if (!qrCodeData.value) return
+
+  try {
+    // Ambil bin_code dari URL atau data
+    const binCode = qrCodeData.value.bin_code
+    
+    // Cari bin ID dari binData
+    const bin = binData.value.find(b => b.code === binCode)
+    if (!bin) {
+      showMessage('error', 'Bin tidak ditemukan')
+      return
+    }
+
+    const response = await fetch(`/master-data/bin/${bin.id}/qr-code/download`)
+
+    if (!response.ok) {
+      showMessage('error', 'Gagal mengunduh QR Code')
+      return
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `QR_${binCode}.png`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+
+    showMessage('success', 'QR Code berhasil diunduh')
+  } catch (error) {
+    console.error('Download error:', error)
+    showMessage('error', 'Error saat mengunduh QR Code')
+  }
+}
+
+const printQRCode = () => {
+  if (!qrCodeData.value) return
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    showMessage('error', 'Gagal membuka window print. Mohon izinkan popup.')
+    return
+  }
+
+  // Escape closing script tag untuk menghindari konflik dengan Vue parser
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Print QR Code - ${qrCodeData.value.bin_code}</title>
+      <style>
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+        }
+        .print-container {
+          text-align: center;
+          max-width: 400px;
+        }
+        .qr-image {
+          width: 300px;
+          height: 300px;
+          margin: 20px auto;
+        }
+        .info {
+          margin: 10px 0;
+          font-size: 14px;
+        }
+        .bin-code {
+          font-size: 24px;
+          font-weight: bold;
+          margin: 20px 0;
+        }
+        @media print {
+          body {
+            padding: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="print-container">
+        <h2>Warehouse Bin QR Code</h2>
+        <div class="bin-code">${qrCodeData.value.bin_code}</div>
+        <img src="${qrCodeData.value.image}" alt="QR Code" class="qr-image">
+        <div class="info"><strong>Bin Name:</strong> ${qrCodeData.value.bin_name}</div>
+        <div class="info"><strong>Zone:</strong> ${qrCodeData.value.zone_name}</div>
+        <div class="info"><strong>Type:</strong> ${qrCodeData.value.bin_type}</div>
+        <div class="info"><strong>Capacity:</strong> ${qrCodeData.value.capacity}</div>
+        <div class="info"><small>Generated: ${new Date().toLocaleString()}</small></div>
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      <\/script>
+    </body>
+    </html>
+  `
+  
+  printWindow.document.write(htmlContent)
+  printWindow.document.close()
+}
+
+const closeQRModal = () => {
+  showQRModal.value = false
+  qrCodeData.value = null
 }
 
 const deleteItem = async (id: string) => {

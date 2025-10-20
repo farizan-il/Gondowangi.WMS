@@ -10,8 +10,10 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 
 class MasterDataController extends Controller
 {
@@ -278,27 +280,50 @@ class MasterDataController extends Controller
         ]);
 
         try {
+            // Get zone untuk mendapatkan warehouse_id
+            $zone = WarehouseZone::findOrFail($validated['zone']);
+            
             $bin = WarehouseBin::create([
                 'bin_code' => $validated['code'],
                 'bin_name' => $validated['code'],
                 'zone_id' => $validated['zone'],
-                'warehouse_id' => 1, // Sesuaikan dengan logic Anda
+                'warehouse_id' => $zone->warehouse_id ?? 1,
                 'bin_type' => $validated['type'],
-                'capacity' => $validated['capacity'],
+                'capacity' => $validated['capacity'] ?? 0,
+                'current_items' => 0,
                 'status' => strtolower($validated['status'] === 'Active' ? 'available' : 'inactive')
             ]);
 
             // Generate QR Code
-            $this->generateQRCode($bin);
+            $qrGenerated = $this->generateQRCode($bin);
+            
+            if (!$qrGenerated) {
+                Log::warning('QR Code generation failed for bin: ' . $bin->id);
+            }
+
+            // Refresh bin untuk mendapatkan data terbaru
+            $bin->refresh();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bin berhasil ditambahkan dengan QR Code',
-                'data' => $bin
+                'message' => $qrGenerated 
+                    ? 'Bin berhasil ditambahkan dengan QR Code' 
+                    : 'Bin berhasil ditambahkan tapi QR Code gagal digenerate',
+                'data' => [
+                    'id' => $bin->id,
+                    'code' => $bin->bin_code,
+                    'zone' => $bin->zone->zone_name ?? 'N/A',
+                    'capacity' => $bin->capacity,
+                    'type' => $bin->bin_type,
+                    'qrCode' => $bin->qr_code_path ? asset('storage/' . $bin->qr_code_path) : null,
+                    'status' => ucfirst($bin->status)
+                ]
             ], 201);
 
         } catch (\Exception $e) {
-            \Log::error('Error storing Bin: ' . $e->getMessage());
+            Log::error('Error storing Bin: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
@@ -320,13 +345,15 @@ class MasterDataController extends Controller
 
         try {
             $oldCode = $bin->bin_code;
+            $zone = WarehouseZone::findOrFail($validated['zone']);
             
             $bin->update([
                 'bin_code' => $validated['code'],
                 'bin_name' => $validated['code'],
                 'zone_id' => $validated['zone'],
+                'warehouse_id' => $zone->warehouse_id ?? $bin->warehouse_id,
                 'bin_type' => $validated['type'],
-                'capacity' => $validated['capacity'],
+                'capacity' => $validated['capacity'] ?? 0,
                 'status' => strtolower($validated['status'] === 'Active' ? 'available' : 'inactive')
             ]);
 
@@ -341,14 +368,24 @@ class MasterDataController extends Controller
                 $this->generateQRCode($bin);
             }
 
+            $bin->refresh();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bin berhasil diupdate',
-                'data' => $bin
+                'data' => [
+                    'id' => $bin->id,
+                    'code' => $bin->bin_code,
+                    'zone' => $bin->zone->zone_name ?? 'N/A',
+                    'capacity' => $bin->capacity,
+                    'type' => $bin->bin_type,
+                    'qrCode' => $bin->qr_code_path ? asset('storage/' . $bin->qr_code_path) : null,
+                    'status' => ucfirst($bin->status)
+                ]
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error updating Bin: ' . $e->getMessage());
+            Log::error('Error updating Bin: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
@@ -374,7 +411,7 @@ class MasterDataController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error deleting Bin: ' . $e->getMessage());
+            Log::error('Error deleting Bin: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
@@ -382,17 +419,112 @@ class MasterDataController extends Controller
         }
     }
 
-    // Generate QR Code for Bin
+    public function previewBinQRCode($id)
+    {
+        try {
+            $bin = WarehouseBin::with('zone')->findOrFail($id);
+            
+            // Generate QR Code jika belum ada
+            if (!$bin->qr_code_path || !Storage::disk('public')->exists($bin->qr_code_path)) {
+                $qrGenerated = $this->generateQRCode($bin);
+                if (!$qrGenerated) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal generate QR Code'
+                    ], 500);
+                }
+                $bin->refresh();
+            }
+
+            $filePath = storage_path('app/public/' . $bin->qr_code_path);
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QR Code file tidak ditemukan'
+                ], 404);
+            }
+
+            // Return base64 encoded image untuk preview
+            $imageData = base64_encode(file_get_contents($filePath));
+            $imageSrc = 'data:image/png;base64,' . $imageData;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'image' => $imageSrc,
+                    'bin_code' => $bin->bin_code,
+                    'bin_name' => $bin->bin_name,
+                    'zone_name' => $bin->zone ? $bin->zone->zone_name : 'N/A',
+                    'bin_type' => $bin->bin_type,
+                    'capacity' => $bin->capacity,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error previewing QR Code: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Download QR Code
+    public function downloadBinQRCode($id)
+    {
+        try {
+            $bin = WarehouseBin::findOrFail($id);
+            
+            if (!$bin->qr_code_path || !Storage::disk('public')->exists($bin->qr_code_path)) {
+                $this->generateQRCode($bin);
+                $bin->refresh();
+            }
+
+            $filePath = storage_path('app/public/' . $bin->qr_code_path);
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QR Code file tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->download($filePath, 'QR_' . $bin->bin_code . '.png');
+
+        } catch (\Exception $e) {
+            Log::error('Error downloading QR Code: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     private function generateQRCode($bin)
     {
         try {
-            // Create directory if not exists
+            Log::info('=== START QR Code Generation (Endroid v4) ===');
+            Log::info('Bin ID: ' . $bin->id);
+            Log::info('Bin Code: ' . $bin->bin_code);
+            
             $directory = 'qrcodes/bins';
-            if (!Storage::disk('public')->exists($directory)) {
-                Storage::disk('public')->makeDirectory($directory);
+            $fullPath = storage_path('app/public/' . $directory);
+            
+            Log::info('Full Path: ' . $fullPath);
+            
+            if (!file_exists($fullPath)) {
+                $created = mkdir($fullPath, 0755, true);
+                Log::info('Directory created: ' . ($created ? 'YES' : 'NO'));
+            } else {
+                Log::info('Directory already exists');
             }
 
-            // Generate QR Code content (JSON format for better data structure)
+            // QR Data
             $qrData = json_encode([
                 'type' => 'warehouse_bin',
                 'bin_id' => $bin->id,
@@ -400,25 +532,64 @@ class MasterDataController extends Controller
                 'zone_id' => $bin->zone_id,
                 'timestamp' => now()->toIso8601String()
             ]);
+            
+            Log::info('QR Data: ' . $qrData);
 
-            // Generate QR Code image
-            $qrCode = QrCode::format('png')
-                ->size(300)
-                ->margin(1)
-                ->errorCorrection('H')
-                ->generate($qrData);
+            // Generate QR Code (Endroid v4 syntax)
+            $qrCode = new QrCode($qrData);
+            $qrCode->setSize(300);
+            $qrCode->setMargin(10);
 
-            // Save QR Code to storage
-            $filename = 'bin_' . $bin->bin_code . '_' . time() . '.png';
-            $path = $directory . '/' . $filename;
-            Storage::disk('public')->put($path, $qrCode);
+            $writer = new PngWriter();
+            $result = $writer->write($qrCode);
 
-            // Update bin with QR code path
-            $bin->update(['qr_code_path' => $path]);
+            Log::info('QR Code generated successfully');
 
+            // Filename
+            $cleanCode = preg_replace('/[^A-Za-z0-9\-]/', '_', $bin->bin_code);
+            $filename = 'bin_' . $cleanCode . '_' . time() . '.png';
+            $relativePath = $directory . '/' . $filename;
+            $absolutePath = $fullPath . '/' . $filename;
+
+            Log::info('Saving to: ' . $absolutePath);
+
+            // Save file
+            $bytesWritten = file_put_contents($absolutePath, $result->getString());
+            
+            Log::info('Bytes written: ' . $bytesWritten);
+
+            if ($bytesWritten === false) {
+                Log::error('Failed to write file');
+                return false;
+            }
+
+            // Verify file exists
+            if (!file_exists($absolutePath)) {
+                Log::error('File does not exist after save!');
+                return false;
+            }
+
+            Log::info('File exists: YES, size: ' . filesize($absolutePath) . ' bytes');
+
+            // Update database
+            $updated = $bin->update(['qr_code_path' => $relativePath]);
+            
+            Log::info('Database updated: ' . ($updated ? 'YES' : 'NO'));
+
+            if (!$updated) {
+                Log::error('Failed to update database');
+                return false;
+            }
+
+            Log::info('=== QR Code Generation SUCCESS ===');
             return true;
+            
         } catch (\Exception $e) {
-            \Log::error('Error generating QR Code: ' . $e->getMessage());
+            Log::error('=== QR Code Generation FAILED ===');
+            Log::error('Exception: ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile());
+            Log::error('Line: ' . $e->getLine());
+            Log::error('Trace: ' . $e->getTraceAsString());
             return false;
         }
     }
@@ -429,7 +600,7 @@ class MasterDataController extends Controller
         try {
             $bin = WarehouseBin::findOrFail($id);
             
-            if (!$bin->qr_code_path) {
+            if (!$bin->qr_code_path || !Storage::disk('public')->exists($bin->qr_code_path)) {
                 $this->generateQRCode($bin);
                 $bin->refresh();
             }
@@ -446,7 +617,7 @@ class MasterDataController extends Controller
             return response()->download($filePath, 'QR_' . $bin->bin_code . '.png');
 
         } catch (\Exception $e) {
-            \Log::error('Error downloading QR Code: ' . $e->getMessage());
+            Log::error('Error downloading QR Code: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()

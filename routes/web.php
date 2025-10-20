@@ -32,32 +32,33 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
 
-    // Master Data - requires central_data permissions
-    Route::get('/master-data', [MasterDataController::class, 'index'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data');
-    
-    // SKU Routes
-    Route::post('/master-data/sku', [MasterDataController::class, 'storeSku'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.sku.store');
-    Route::put('/master-data/sku/{id}', [MasterDataController::class, 'updateSku'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.sku.update');
-    Route::delete('/master-data/sku/{id}', [MasterDataController::class, 'deleteSku'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.sku.delete');
-    
-    // Supplier Routes
-    Route::post('/master-data/supplier', [MasterDataController::class, 'storeSupplier'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.supplier.store');
-    Route::put('/master-data/supplier/{id}', [MasterDataController::class, 'updateSupplier'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.supplier.update');
-    Route::delete('/master-data/supplier/{id}', [MasterDataController::class, 'deleteSupplier'])
-        ->middleware('permission:central_data.sku_management_view')
-        ->name('master-data.supplier.delete');
+    // Master Data Routes
+    Route::prefix('master-data')->middleware(['auth'])->group(function () {
+        
+        Route::get('/', [MasterDataController::class, 'index'])->name('master-data.index');
+        
+        // SKU Routes
+        Route::post('/sku', [MasterDataController::class, 'storeSku']);
+        Route::put('/sku/{id}', [MasterDataController::class, 'updateSku']);
+        Route::delete('/sku/{id}', [MasterDataController::class, 'deleteSku']);
+        
+        // Supplier Routes
+        Route::post('/supplier', [MasterDataController::class, 'storeSupplier']);
+        Route::put('/supplier/{id}', [MasterDataController::class, 'updateSupplier']);
+        Route::delete('/supplier/{id}', [MasterDataController::class, 'deleteSupplier']);
+        
+        // Bin Location Routes
+        Route::post('/bin', [MasterDataController::class, 'storeBin']);
+        Route::put('/bin/{id}', [MasterDataController::class, 'updateBin']);
+        Route::delete('/bin/{id}', [MasterDataController::class, 'deleteBin']);
+        Route::get('/bin/{id}/qr-code/preview', [MasterDataController::class, 'previewBinQRCode'])->name('bin.qr-code.preview');
+        Route::get('/bin/{id}/qr-code/download', [MasterDataController::class, 'downloadBinQRCode'])->name('bin.qr-code.download');
+        
+        // User Routes
+        Route::post('/user', [MasterDataController::class, 'storeUser']);
+        Route::put('/user/{id}', [MasterDataController::class, 'updateUser']);
+        Route::delete('/user/{id}', [MasterDataController::class, 'deleteUser']);
+    });
     
     // Bin Routes
     Route::post('/master-data/bin', [MasterDataController::class, 'storeBin'])
@@ -119,7 +120,7 @@ Route::middleware('auth')->group(function () {
         // Akhir Route Quality Control
 
         // AWAL PutAway & Transfer Order
-       Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
+        Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
             ->middleware('permission:putaway.view')
             ->name('putaway.transfer.index');
             
