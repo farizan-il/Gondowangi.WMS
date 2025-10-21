@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Traits\ActivityLogger;
 
 class PutawayTransferController extends Controller
 {
+    use ActivityLogger;
     public function index()
     {
         $transferOrders = TransferOrder::with([
@@ -203,6 +205,17 @@ class PutawayTransferController extends Controller
                 $stock->update([
                     'qty_reserved' => $stock->qty_reserved + $material['qty'],
                     'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $material['qty'])
+                ]);
+
+                // Log the activity
+                $this->logActivity($transferOrder, 'Create Putaway TO', [
+                    'description' => "Created Putaway TO for {$material['qty']} {$stock->uom} of {$stock->material->nama_material} from {$sourceBin->bin_code} to {$destBin->bin_code}.",
+                    'material_id' => $stock->material_id,
+                    'batch_lot' => $stock->batch_lot,
+                    'qty_after' => $material['qty'],
+                    'bin_from' => $sourceBin->bin_code,
+                    'bin_to' => $destBin->bin_code,
+                    'reference_document' => $toNumber,
                 ]);
             }
 
