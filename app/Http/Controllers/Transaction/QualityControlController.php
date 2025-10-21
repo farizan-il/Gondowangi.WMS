@@ -19,9 +19,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Traits\ActivityLogger;
 
 class QualityControlController extends Controller
 {
+    use ActivityLogger;
     public function index()
     {
         // Get items that need QC (status_qc = 'To QC')
@@ -280,6 +282,15 @@ class QualityControlController extends Controller
             // ========================================
             // PROSES BERDASARKAN HASIL QC
             // ========================================
+
+            // Log the QC activity
+            $this->logActivity($qcChecklist, $validated['hasil_qc'], [
+                'description' => "QC Check for {$incomingItem->material->nama_material} resulted in {$validated['hasil_qc']}.",
+                'material_id' => $incomingItem->material_id,
+                'batch_lot' => $incomingItem->batch_lot,
+                'qty_after' => $totalIncoming,
+                'reference_document' => $qcChecklist->no_form_checklist,
+            ]);
             
             if ($validated['hasil_qc'] === 'PASS') {
                 // 1. CREATE GOOD RECEIPT
