@@ -12,9 +12,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Traits\ActivityLogger;
 
 class GoodsReceiptController extends Controller
 {
+    use ActivityLogger;
     public function index()
     {
         $incomingGoods = IncomingGood::with([
@@ -178,6 +180,16 @@ class GoodsReceiptController extends Controller
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
                     'status_qc' => 'To QC',
                     'qr_code' => $qrCode,
+                ]);
+
+                // Log activity for each item
+                $this->logActivity($incoming, 'Create', [
+                    'description' => "Material {$material->nama_material} diterima.",
+                    'material_id' => $material->id,
+                    'batch_lot' => $itemData['batchLot'],
+                    'exp_date' => $itemData['expDate'] ?? null,
+                    'qty_after' => $itemData['qtyUnit'],
+                    'reference_document' => $incoming->no_surat_jalan,
                 ]);
             }
 

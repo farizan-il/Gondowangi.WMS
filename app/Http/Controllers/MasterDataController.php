@@ -12,9 +12,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\ActivityLogger;
 
 class MasterDataController extends Controller
 {
+    use ActivityLogger;
     public function index()
     {
         return Inertia::render('MasterData', [
@@ -95,6 +97,11 @@ class MasterDataController extends Controller
                 'status' => strtolower($validated['status'])
             ]);
 
+            $this->logActivity($material, 'Create', [
+                'description' => "Created new SKU: {$material->nama_material}",
+                'new_value' => json_encode($material),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'SKU berhasil ditambahkan',
@@ -126,6 +133,8 @@ class MasterDataController extends Controller
 
         try {
             $material = Material::findOrFail($id);
+            $oldValue = $material->replicate();
+
             $material->update([
                 'kode_item' => $validated['code'],
                 'nama_material' => $validated['name'],
@@ -136,6 +145,12 @@ class MasterDataController extends Controller
                 'default_supplier_id' => $validated['supplierDefault'],
                 'abc_class' => $validated['abcClass'],
                 'status' => strtolower($validated['status'])
+            ]);
+
+            $this->logActivity($material, 'Update', [
+                'description' => "Updated SKU: {$material->nama_material}",
+                'old_value' => json_encode($oldValue),
+                'new_value' => json_encode($material),
             ]);
 
             return response()->json([
@@ -156,7 +171,14 @@ class MasterDataController extends Controller
     public function deleteSku($id)
     {
         try {
-            Material::findOrFail($id)->delete();
+            $material = Material::findOrFail($id);
+            $oldValue = $material->replicate();
+            $material->delete();
+
+            $this->logActivity($oldValue, 'Delete', [
+                'description' => "Deleted SKU: {$oldValue->nama_material}",
+                'old_value' => json_encode($oldValue),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -194,6 +216,11 @@ class MasterDataController extends Controller
                 'status' => strtolower($validated['status'])
             ]);
 
+            $this->logActivity($supplier, 'Create', [
+                'description' => "Created new Supplier: {$supplier->nama_supplier}",
+                'new_value' => json_encode($supplier),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Supplier berhasil ditambahkan',
@@ -212,6 +239,7 @@ class MasterDataController extends Controller
     public function updateSupplier(Request $request, $id)
     {
         $supplier = Supplier::findOrFail($id);
+        $oldValue = $supplier->replicate();
 
         $validated = $request->validate([
             'code' => 'required|unique:suppliers,kode_supplier,' . $id,
@@ -232,6 +260,12 @@ class MasterDataController extends Controller
                 'status' => strtolower($validated['status'])
             ]);
 
+            $this->logActivity($supplier, 'Update', [
+                'description' => "Updated Supplier: {$supplier->nama_supplier}",
+                'old_value' => json_encode($oldValue),
+                'new_value' => json_encode($supplier),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Supplier berhasil diupdate',
@@ -250,7 +284,14 @@ class MasterDataController extends Controller
     public function deleteSupplier($id)
     {
         try {
-            Supplier::findOrFail($id)->delete();
+            $supplier = Supplier::findOrFail($id);
+            $oldValue = $supplier->replicate();
+            $supplier->delete();
+
+            $this->logActivity($oldValue, 'Delete', [
+                'description' => "Deleted Supplier: {$oldValue->nama_supplier}",
+                'old_value' => json_encode($oldValue),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -291,6 +332,11 @@ class MasterDataController extends Controller
             // Generate QR Code
             $this->generateQRCode($bin);
 
+            $this->logActivity($bin, 'Create', [
+                'description' => "Created new Bin: {$bin->bin_code}",
+                'new_value' => json_encode($bin),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bin berhasil ditambahkan dengan QR Code',
@@ -309,6 +355,7 @@ class MasterDataController extends Controller
     public function updateBin(Request $request, $id)
     {
         $bin = WarehouseBin::findOrFail($id);
+        $oldValue = $bin->replicate();
 
         $validated = $request->validate([
             'code' => 'required|unique:warehouse_bins,bin_code,' . $id,
@@ -341,6 +388,12 @@ class MasterDataController extends Controller
                 $this->generateQRCode($bin);
             }
 
+            $this->logActivity($bin, 'Update', [
+                'description' => "Updated Bin: {$bin->bin_code}",
+                'old_value' => json_encode($oldValue),
+                'new_value' => json_encode($bin),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bin berhasil diupdate',
@@ -360,6 +413,7 @@ class MasterDataController extends Controller
     {
         try {
             $bin = WarehouseBin::findOrFail($id);
+            $oldValue = $bin->replicate();
             
             // Delete QR code file
             if ($bin->qr_code_path && Storage::disk('public')->exists($bin->qr_code_path)) {
@@ -367,6 +421,11 @@ class MasterDataController extends Controller
             }
             
             $bin->delete();
+
+            $this->logActivity($oldValue, 'Delete', [
+                'description' => "Deleted Bin: {$oldValue->bin_code}",
+                'old_value' => json_encode($oldValue),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -478,6 +537,11 @@ class MasterDataController extends Controller
                 'role_id' => $this->getRoleId($validated['role'])
             ]);
 
+            $this->logActivity($user, 'Create', [
+                'description' => "Created new User: {$user->nama_lengkap}",
+                'new_value' => json_encode($user),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'User berhasil ditambahkan',
@@ -496,6 +560,7 @@ class MasterDataController extends Controller
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $oldValue = $user->replicate();
 
         $validated = $request->validate([
             'jabatan' => 'required|string',
@@ -512,6 +577,12 @@ class MasterDataController extends Controller
                 'departement' => $validated['department'],
                 'status' => strtolower($validated['status']),
                 'role_id' => $this->getRoleId($validated['role'])
+            ]);
+
+            $this->logActivity($user, 'Update', [
+                'description' => "Updated User: {$user->nama_lengkap}",
+                'old_value' => json_encode($oldValue),
+                'new_value' => json_encode($user),
             ]);
 
             return response()->json([
@@ -532,7 +603,14 @@ class MasterDataController extends Controller
     public function deleteUser($id)
     {
         try {
-            User::findOrFail($id)->delete();
+            $user = User::findOrFail($id);
+            $oldValue = $user->replicate();
+            $user->delete();
+
+            $this->logActivity($oldValue, 'Delete', [
+                'description' => "Deleted User: {$oldValue->nama_lengkap}",
+                'old_value' => json_encode($oldValue),
+            ]);
 
             return response()->json([
                 'success' => true,
