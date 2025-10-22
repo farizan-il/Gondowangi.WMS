@@ -178,7 +178,6 @@ class GoodsReceiptController extends Controller
                     'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? false,
                     'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
-                    'status_qc' => 'To QC',
                     'qr_code' => $qrCode,
                 ]);
 
@@ -211,5 +210,25 @@ class GoodsReceiptController extends Controller
             $qty,
             $expDate
         ]);
+    }
+
+    public function getPoDetails($id)
+    {
+        $purchaseOrder = PurchaseOrder::with('supplier', 'items.material')->findOrFail($id);
+
+        $details = [
+            'supplier_id' => $purchaseOrder->supplier_id,
+            'supplier_name' => $purchaseOrder->supplier->nama_supplier,
+            'items' => $purchaseOrder->items->map(function ($item) {
+                return [
+                    'kodeItem' => $item->material_id,
+                    'namaMaterial' => $item->material->nama_material,
+                    'qtyUnit' => $item->quantity,
+                    // Add other fields that you need to autofill
+                ];
+            })
+        ];
+
+        return response()->json($details);
     }
 }
