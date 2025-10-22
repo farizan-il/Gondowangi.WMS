@@ -6,7 +6,6 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\Transaction\GoodsReceiptController;
-use App\Http\Controllers\Transaction\QualityControlController;
 use App\Http\Controllers\Transaction\PutawayTransferController;
 use App\Http\Controllers\Transaction\ReservationController;
 use App\Http\Controllers\Transaction\PickingListController;
@@ -103,21 +102,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/goods-receipt', [GoodsReceiptController::class, 'store'])
             ->middleware('permission:incoming.create')
             ->name('goods-receipt.store');
+        Route::get('/goods-receipt/po/{id}', [GoodsReceiptController::class, 'getPoDetails'])
+            ->middleware('permission:incoming.view')
+            ->name('goods-receipt.po-details');
         // Akhir Route Goods Receipt
-
-        // Awal Route Quality Control
-        Route::get('/quality-control', [QualityControlController::class, 'index'])
-            ->middleware('permission:qc.view')
-            ->name('quality-control');
-
-        Route::post('/quality-control/scan', [QualityControlController::class, 'scanQR'])
-            ->middleware('permission:qc.view')
-            ->name('quality-control.scan');
-
-        Route::post('/quality-control', [QualityControlController::class, 'store'])
-            ->middleware('permission:qc.input_qc_result')
-            ->name('quality-control.store');
-        // Akhir Route Quality Control
 
         // AWAL PutAway & Transfer Order
         Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
@@ -155,6 +143,11 @@ Route::middleware('auth')->group(function () {
             Route::post('/complete/{id}', [PutawayTransferController::class, 'completeTO'])
                 // ->middleware('permission:putaway.execute')
                 ->name('complete');
+
+            // Scan Putaway
+            Route::post('/scan', [PutawayTransferController::class, 'scanPutaway'])
+                // ->middleware('permission:putaway.execute')
+                ->name('scan');
         });
             
         // API endpoints untuk PutAway

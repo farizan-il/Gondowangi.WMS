@@ -379,4 +379,90 @@ class PutawayTransferController extends Controller
 
         return "TO-{$year}-{$month}-{$newNumber}";
     }
+
+    public function scanPutaway(Request $request)
+    {
+        $validated = $request->validate([
+            'quarantine_qr' => 'required|string',
+            'material_qr' => 'required|string',
+            'destination_qr' => 'required|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Validate QR Codes
+            $sourceBin = WarehouseBin::where('bin_code', $validated['quarantine_qr'])->where('bin_code', 'LIKE', 'QTN-%')->firstOrFail();
+
+            list($incomingNumber, $itemCode, $batchLot, $qty, $expDate) = explode('|', $validated['material_qr']);
+
+            $material = Material::where('kode_item', $itemCode)->firstOrFail();
+            $destinationBin = WarehouseBin::where('bin_code', $validated['destination_qr'])->where('status', 'available')->firstOrFail();
+
+            // 2. Find Inventory Stock
+            $stock = InventoryStock::where('material_id', $material->id)
+                ->where('bin_id', $sourceBin->id)
+                ->where('batch_lot', $batchLot)
+                ->where('status', 'RELEASED')
+                ->firstOrFail();
+
+            // 3. Create Transfer Order
+            $toNumber = $this->generateTONumber();
+            $transferOrder = TransferOrder::create([
+                'to_number' => $toNumber,
+                'transaction_type' => 'Putaway - Scan',
+                'warehouse_id' => $stock->warehouse_id,
+                'creation_date' => now(),
+                'status' => 'Completed',
+                'created_by' => Auth::id(),
+                'executed_by' => Auth::id(),
+                'completion_date' => now(),
+                'notes' => 'Generated from scan-based putaway'
+            ]);
+
+            $transferOrder->items()->create([
+                'material_id' => $material->id,
+                'batch_lot' => $batchLot,
+                'source_bin_id' => $sourceBin->id,
+                'destination_bin_id' => $destinationBin->id,
+                'qty_planned' => $qty,
+                'qty_actual' => $qty,
+                'uom' => $stock->uom,
+                'status' => 'completed',
+                'box_scanned' => true,
+                'source_bin_scanned' => true,
+                'dest_bin_scanned' => true
+            ]);
+
+            // 4. Update Inventory
+            $stock->update([
+                'qty_on_hand' => $stock->qty_on_hand - $qty,
+                'qty_available' => $stock->qty_available - $qty,
+            ]);
+
+            $destStock = InventoryStock::firstOrCreate(
+                ['material_id' => $material->id, 'bin_id' => $destinationBin->id, 'batch_lot' => $batchLot, 'warehouse_id' => $stock->warehouse_id],
+                ['qty_on_hand' => 0, 'qty_available' => 0, 'uom' => $stock->uom, 'status' => 'RELEASED', 'exp_date' => $stock->exp_date]
+            );
+            $destStock->increment('qty_on_hand', $qty);
+            $destStock->increment('qty_available', $qty);
+
+            // 5. Log Activity
+            $this->logActivity($transferOrder, 'Complete Putaway TO', [
+                'description' => "Completed Putaway TO for {$qty} {$stock->uom} of {$material->nama_material}",
+                'material_id' => $material->id,
+                'batch_lot' => $batchLot,
+                'qty_after' => $qty,
+                'bin_from' => $sourceBin->bin_code,
+                'bin_to' => $destinationBin->bin_code,
+                'reference_document' => $toNumber,
+            ]);
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => "Transfer Order {$toNumber} successfully completed."]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to complete putaway: ' . $e->getMessage()], 500);
+        }
+    }
 }

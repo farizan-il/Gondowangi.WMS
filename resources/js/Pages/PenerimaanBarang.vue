@@ -557,9 +557,10 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import QRCode from 'qrcode'
+import axios from 'axios'
 
 
 // Props dari backend
@@ -1938,6 +1939,37 @@ const printAllQR = () => {
     }, 500)
   }
 }
+
+// Watcher for noPo change
+watch(() => newShipment.value.noPo, async (newVal) => {
+  if (newVal) {
+    try {
+      const response = await axios.get(`/transaction/goods-receipt/po/${newVal}`)
+      const poDetails = response.data
+
+      newShipment.value.supplier = poDetails.supplier_id
+      newShipment.value.items = poDetails.items.map(item => ({
+        ...item,
+        batchLot: '',
+        expDate: '',
+        qtyWadah: '',
+        pabrikPembuat: '',
+        kondisiBaik: false,
+        kondisiTidakBaik: false,
+        coaAda: false,
+        coaTidakAda: false,
+        labelMfgAda: false,
+        labelMfgTidakAda: false,
+        labelCoaSesuai: false,
+        labelCoaTidakSesuai: false,
+        statusQC: 'Karantina'
+      }))
+    } catch (error) {
+      console.error('Failed to fetch PO details:', error)
+      alert('Gagal mengambil detail PO.')
+    }
+  }
+})
 
 // Lifecycle
 onMounted(() => {
