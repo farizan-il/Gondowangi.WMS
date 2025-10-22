@@ -123,6 +123,39 @@ Route::middleware('auth')->group(function () {
         Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
             ->middleware('permission:putaway.view')
             ->name('putaway.transfer.index');
+
+        Route::prefix('putaway-transfer')->name('putaway.transfer.')->group(function () {
+            
+            // Main index page
+            Route::get('/', [PutawayTransferController::class, 'index'])
+                ->middleware('permission:putaway.view')
+                ->name('index');
+            
+            // Get QC Released Materials for auto putaway
+            Route::get('/qc-released', [PutawayTransferController::class, 'getQcReleasedMaterials'])
+                ->middleware('permission:putaway.view')
+                ->name('qc.released');
+            
+            // Get available bins
+            Route::get('/available-bins', [PutawayTransferController::class, 'getAvailableBins'])
+                ->middleware('permission:putaway.view')
+                ->name('available.bins');
+            
+            // Get bin details
+            Route::get('/bin-details', [PutawayTransferController::class, 'getBinDetails'])
+                ->middleware('permission:putaway.view')
+                ->name('bin.details');
+            
+            // Generate auto putaway
+            Route::post('/generate', [PutawayTransferController::class, 'generateAutoPutaway'])
+                ->middleware('permission:putaway.create')
+                ->name('generate');
+            
+            // Complete Transfer Order
+            Route::post('/complete/{id}', [PutawayTransferController::class, 'completeTO'])
+                // ->middleware('permission:putaway.execute')
+                ->name('complete');
+        });
             
         // API endpoints untuk PutAway
         Route::get('/putaway-transfer/qc-released', [PutawayTransferController::class, 'getQcReleasedMaterials'])
@@ -142,6 +175,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/bin-to-bin', [BintobinController::class, 'index'])
             ->middleware('permission:bin-to-bin.view')
             ->name('bin-to-bin');
+
+        // Endpoint untuk memproses transfer
+        Route::post('/bin-to-bin/transfer', [BintobinController::class, 'store'])
+            ->name('bintobin.store');
 
         // Reservation
         Route::get('/reservation', [ReservationController::class, 'index'])

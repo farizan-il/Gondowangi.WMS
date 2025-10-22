@@ -149,66 +149,75 @@
     <div class="bg-white rounded-lg shadow overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role/User</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material/SKU</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot/Batch</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi/Bin</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referensi Dokumen</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="activity in paginatedActivities" :key="activity.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div>{{ formatDateTime(activity.timestamp) }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div class="font-medium">{{ activity.user }}</div>
-                <div class="text-xs text-gray-500">{{ activity.role }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <span class="px-2 py-1 text-xs rounded-full font-medium" :class="getModuleBadgeClass(activity.module)">
-                    {{ activity.module }}
-                  </span>
-                  <div class="ml-2 text-sm text-gray-900">{{ activity.action }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div class="font-medium">{{ activity.sku_code }}</div>
-                <div class="text-xs text-gray-500">{{ activity.sku_name }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ activity.lot_no || '-' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div v-if="activity.qty_before !== activity.qty_after">
-                  <span class="text-red-600">{{ activity.qty_before }}</span>
-                  <span class="mx-1">→</span>
-                  <span class="text-green-600">{{ activity.qty_after }}</span>
-                </div>
-                <div v-else>{{ activity.qty_after || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div v-if="activity.bin_from !== activity.bin_to && activity.bin_from && activity.bin_to">
-                  <span class="text-red-600">{{ activity.bin_from }}</span>
-                  <span class="mx-1">→</span>
-                  <span class="text-green-600">{{ activity.bin_to }}</span>
-                </div>
-                <div v-else>{{ activity.bin_to || activity.bin_from || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ activity.reference_no || '-' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button @click="showDetailModal(activity)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
-                  Detail
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role/User</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entity/Material</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot/Batch</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi/Bin</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referensi Dokumen</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <tr v-for="activity in paginatedActivities" :key="activity.id" class="hover:bg-gray-50">
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div>{{ formatDateTime(activity.timestamp) }}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div class="font-medium">{{ activity.user }}</div>
+          <div class="text-xs text-gray-500">{{ activity.role }}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="flex flex-col gap-1">
+            <span class="px-2 py-1 text-xs rounded-full font-medium inline-block" :class="getModuleBadgeClass(activity.module)">
+              {{ activity.module }}
+            </span>
+            <div class="text-sm text-gray-900 font-semibold">{{ activity.action }}</div>
+          </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div class="font-medium">{{ activity.sku_code }}</div>
+          <div class="text-xs text-gray-500 max-w-xs truncate" :title="activity.sku_name">
+            {{ activity.sku_name }}
+          </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {{ activity.lot_no && activity.lot_no !== '-' ? activity.lot_no : '-' }}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div v-if="activity.qty_before != activity.qty_after && activity.qty_before > 0">
+            <span class="text-red-600">{{ activity.qty_before }}</span>
+            <span class="mx-1">→</span>
+            <span class="text-green-600">{{ activity.qty_after }}</span>
+          </div>
+          <div v-else-if="activity.qty_after > 0">{{ activity.qty_after }}</div>
+          <div v-else>-</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div v-if="activity.bin_from && activity.bin_to && activity.bin_from !== '-' && activity.bin_to !== '-' && activity.bin_from !== activity.bin_to">
+            <span class="text-red-600">{{ activity.bin_from }}</span>
+            <span class="mx-1">→</span>
+            <span class="text-green-600">{{ activity.bin_to }}</span>
+          </div>
+          <div v-else-if="activity.bin_to && activity.bin_to !== '-'">{{ activity.bin_to }}</div>
+          <div v-else-if="activity.bin_from && activity.bin_from !== '-'">{{ activity.bin_from }}</div>
+          <div v-else>-</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {{ activity.reference_no && activity.reference_no !== '-' ? activity.reference_no : '-' }}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button @click="showDetailModal(activity)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
+            Detail
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
       </div>
 
       <!-- Pagination -->
@@ -240,116 +249,137 @@
     </div>
 
     <!-- Detail Modal -->
-    <div v-if="showDetailModalFlag" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-      <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-semibold text-gray-900">Detail Activity Log</h3>
-            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+    <div v-if="isDetailModalOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-3/4 max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Detail Aktivitas</h3>
+          <button @click="isDetailModalOpen = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="selectedActivity" class="space-y-4">
+          <!-- Basic Info -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Timestamp</label>
+              <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(selectedActivity.timestamp) }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">User</label>
+              <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.user }} ({{ selectedActivity.role }})</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Module</label>
+              <p class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full font-medium" :class="getModuleBadgeClass(selectedActivity.module)">
+                  {{ selectedActivity.module }}
+                </span>
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Action</label>
+              <p class="mt-1 text-sm text-gray-900 font-semibold">{{ selectedActivity.action }}</p>
+            </div>
           </div>
 
-          <div v-if="selectedActivity" class="space-y-6">
-            <!-- Basic Info -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Timestamp</label>
-                  <p class="text-gray-900">{{ formatDateTime(selectedActivity.timestamp) }}</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">User & Role</label>
-                  <p class="text-gray-900">{{ selectedActivity.user }} ({{ selectedActivity.role }})</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Module</label>
-                  <span class="px-2 py-1 text-xs rounded-full font-medium" :class="getModuleBadgeClass(selectedActivity.module)">
-                    {{ selectedActivity.module }}
+          <!-- Entity Info -->
+          <div class="border-t pt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Entity Information</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-500">Code</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.sku_code }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500">Name</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.sku_name }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Warehouse Info (hanya tampil jika ada data) -->
+          <div v-if="selectedActivity.lot_no !== '-' || selectedActivity.qty_after > 0 || selectedActivity.bin_to !== '-'" class="border-t pt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Warehouse Details</h4>
+            <div class="grid grid-cols-3 gap-4">
+              <div v-if="selectedActivity.lot_no !== '-'">
+                <label class="block text-xs font-medium text-gray-500">Lot/Batch</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.lot_no }}</p>
+              </div>
+              <div v-if="selectedActivity.qty_after > 0">
+                <label class="block text-xs font-medium text-gray-500">Quantity</label>
+                <p class="mt-1 text-sm text-gray-900">
+                  <span v-if="selectedActivity.qty_before != selectedActivity.qty_after">
+                    <span class="text-red-600">{{ selectedActivity.qty_before }}</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-green-600">{{ selectedActivity.qty_after }}</span>
                   </span>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Activity</label>
-                  <p class="text-gray-900">{{ selectedActivity.action }}</p>
-                </div>
+                  <span v-else>{{ selectedActivity.qty_after }}</span>
+                </p>
               </div>
-              
-              <div class="space-y-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Device</label>
-                  <p class="text-gray-900">{{ selectedActivity.device }}</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">IP Address</label>
-                  <p class="text-gray-900">{{ selectedActivity.ip_address }}</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Reference Document</label>
-                  <p class="text-gray-900">{{ selectedActivity.reference_no || 'N/A' }}</p>
-                </div>
+              <div v-if="selectedActivity.bin_to !== '-' || selectedActivity.bin_from !== '-'">
+                <label class="block text-xs font-medium text-gray-500">Bin Location</label>
+                <p class="mt-1 text-sm text-gray-900">
+                  <span v-if="selectedActivity.bin_from && selectedActivity.bin_to && selectedActivity.bin_from !== '-' && selectedActivity.bin_to !== '-'">
+                    <span class="text-red-600">{{ selectedActivity.bin_from }}</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-green-600">{{ selectedActivity.bin_to }}</span>
+                  </span>
+                  <span v-else>{{ selectedActivity.bin_to || selectedActivity.bin_from }}</span>
+                </p>
               </div>
-            </div>
-
-            <!-- Material Info -->
-            <div class="border-t border-gray-200 pt-6">
-              <h4 class="text-md font-medium text-gray-900 mb-4">Material Information</h4>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-700">SKU</label>
-                  <p class="text-gray-900">{{ selectedActivity.sku_code }} - {{ selectedActivity.sku_name }}</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Lot/Batch</label>
-                  <p class="text-gray-900">{{ selectedActivity.lot_no || 'N/A' }}</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Exp Date</label>
-                  <p class="text-gray-900">{{ selectedActivity.exp_date || 'N/A' }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Changes -->
-            <div class="border-t border-gray-200 pt-6">
-              <h4 class="text-md font-medium text-gray-900 mb-4">Changes</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Quantity</label>
-                  <div class="flex items-center space-x-2">
-                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded">{{ selectedActivity.qty_before }}</span>
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                    </svg>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded">{{ selectedActivity.qty_after }}</span>
-                  </div>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-700">Location</label>
-                  <div class="flex items-center space-x-2">
-                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded">{{ selectedActivity.bin_from || 'N/A' }}</span>
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                    </svg>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded">{{ selectedActivity.bin_to || 'N/A' }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Remarks -->
-            <div v-if="selectedActivity.remarks" class="border-t border-gray-200 pt-6">
-              <h4 class="text-md font-medium text-gray-900 mb-2">Remarks</h4>
-              <p class="text-gray-600 bg-gray-50 p-3 rounded">{{ selectedActivity.remarks }}</p>
             </div>
           </div>
 
-          <div class="flex justify-end mt-6 pt-6 border-t border-gray-200">
-            <button @click="closeDetailModal" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              Close
-            </button>
+          <!-- Changes (untuk Master Data) -->
+          <div v-if="selectedActivity.old_value || selectedActivity.new_value" class="border-t pt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Changes</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div v-if="selectedActivity.old_value">
+                <label class="block text-xs font-medium text-gray-500">Old Value</label>
+                <pre class="mt-1 text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-auto max-h-40">{{ JSON.parse(selectedActivity.old_value || '{}') }}</pre>
+              </div>
+              <div v-if="selectedActivity.new_value">
+                <label class="block text-xs font-medium text-gray-500">New Value</label>
+                <pre class="mt-1 text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-auto max-h-40">{{ JSON.parse(selectedActivity.new_value || '{}') }}</pre>
+              </div>
+            </div>
           </div>
+
+          <!-- Additional Info -->
+          <div class="border-t pt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Additional Information</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div v-if="selectedActivity.reference_no && selectedActivity.reference_no !== '-'">
+                <label class="block text-xs font-medium text-gray-500">Reference Document</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.reference_no }}</p>
+              </div>
+              <div v-if="selectedActivity.exp_date">
+                <label class="block text-xs font-medium text-gray-500">Expiry Date</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.exp_date }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500">IP Address</label>
+                <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.ip_address }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500">Device</label>
+                <p class="mt-1 text-sm text-gray-900 truncate" :title="selectedActivity.device">{{ selectedActivity.device }}</p>
+              </div>
+            </div>
+            <div v-if="selectedActivity.remarks" class="mt-4">
+              <label class="block text-xs font-medium text-gray-500">Remarks</label>
+              <p class="mt-1 text-sm text-gray-900">{{ selectedActivity.remarks }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button @click="isDetailModalOpen = false" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -652,34 +682,74 @@ const exportToPDF = () => {
           Total Records: ${filteredActivities.value.length}
         </div>
         
-        <table>
-          <thead>
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
             <tr>
-              <th>Timestamp</th>
-              <th>User</th>
-              <th>Module</th>
-              <th>Activity</th>
-              <th>SKU</th>
-              <th>Lot/Batch</th>
-              <th>Qty</th>
-              <th>Location</th>
-              <th>Reference</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role/User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entity/Material</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot/Batch</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi/Bin</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referensi Dokumen</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
-          <tbody>
-            ${filteredActivities.value.map(activity => `
-              <tr>
-                <td>${formatDateTime(activity.timestamp)}</td>
-                <td>${activity.user}<br><small>${activity.role}</small></td>
-                <td><span class="module-badge">${activity.module}</span></td>
-                <td>${activity.action}</td>
-                <td>${activity.sku_code}<br><small>${activity.sku_name}</small></td>
-                <td>${activity.lot_no || '-'}</td>
-                <td>${activity.qty_before !== activity.qty_after ? `${activity.qty_before} → ${activity.qty_after}` : (activity.qty_after || '-')}</td>
-                <td>${activity.bin_from !== activity.bin_to && activity.bin_from && activity.bin_to ? `${activity.bin_from} → ${activity.bin_to}` : (activity.bin_to || activity.bin_from || '-')}</td>
-                <td>${activity.reference_no || '-'}</td>
-              </tr>
-            `).join('')}
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="activity in paginatedActivities" :key="activity.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div>{{ formatDateTime(activity.timestamp) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="font-medium">{{ activity.user }}</div>
+                <div class="text-xs text-gray-500">{{ activity.role }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex flex-col gap-1">
+                  <span class="px-2 py-1 text-xs rounded-full font-medium inline-block" :class="getModuleBadgeClass(activity.module)">
+                    {{ activity.module }}
+                  </span>
+                  <div class="text-sm text-gray-900 font-semibold">{{ activity.action }}</div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="font-medium">{{ activity.sku_code }}</div>
+                <div class="text-xs text-gray-500 max-w-xs truncate" :title="activity.sku_name">
+                  {{ activity.sku_name }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ activity.lot_no && activity.lot_no !== '-' ? activity.lot_no : '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div v-if="activity.qty_before != activity.qty_after && activity.qty_before > 0">
+                  <span class="text-red-600">{{ activity.qty_before }}</span>
+                  <span class="mx-1">→</span>
+                  <span class="text-green-600">{{ activity.qty_after }}</span>
+                </div>
+                <div v-else-if="activity.qty_after > 0">{{ activity.qty_after }}</div>
+                <div v-else>-</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div v-if="activity.bin_from && activity.bin_to && activity.bin_from !== '-' && activity.bin_to !== '-' && activity.bin_from !== activity.bin_to">
+                  <span class="text-red-600">{{ activity.bin_from }}</span>
+                  <span class="mx-1">→</span>
+                  <span class="text-green-600">{{ activity.bin_to }}</span>
+                </div>
+                <div v-else-if="activity.bin_to && activity.bin_to !== '-'">{{ activity.bin_to }}</div>
+                <div v-else-if="activity.bin_from && activity.bin_from !== '-'">{{ activity.bin_from }}</div>
+                <div v-else>-</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ activity.reference_no && activity.reference_no !== '-' ? activity.reference_no : '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button @click="showDetailModal(activity)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
+                  Detail
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </body>

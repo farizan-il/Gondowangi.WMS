@@ -943,8 +943,6 @@ interface Props {
   zoneList?: any[]  // PENTING: Data zone dari backend
 }
 
-const props = defineProps<Props>()
-
 const skuData = ref(props.initialSkuData || [])
 const supplierData = ref(props.initialSupplierData || [])
 const binData = ref(props.initialBinData || [])

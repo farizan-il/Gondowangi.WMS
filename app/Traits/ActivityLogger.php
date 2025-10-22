@@ -75,10 +75,15 @@ trait ActivityLogger
             'App\Models\ReturnModel' => ReturnActivityLog::class,
             'App\Models\Warehouse' => WarehouseActivityLog::class,
             // Add other mappings here
+            'App\Models\Material' => ActivityLog::class,
+            'App\Models\Supplier' => ActivityLog::class,
+            'App\Models\WarehouseBin' => ActivityLog::class,
+            'App\Models\User' => ActivityLog::class,
         ];
 
         return $map[$modelClass] ?? ActivityLog::class;
     }
+    
 
     /**
      * Get device information from the request.

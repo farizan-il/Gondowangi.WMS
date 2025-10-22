@@ -565,57 +565,94 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch, watchEffect } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useForm, router, usePage } from '@inertiajs/vue3'
+import jsQR from "jsqr"; // <-- 1. IMPORT jsQR
+
+// 1. Terima data dari Inertia (Laravel Controller)
+const props = defineProps({
+    title: String,
+    initialBins: Array,
+    initialTransferHistory: Array,
+    scannedMaterial: Object,
+    destinationBin: Object,
+    errors: Object,
+});
+
+const page = usePage();
 
 // Sidebar State
 const sidebarOpen = ref(false)
-
-// Toggle Sidebar
-const toggleSidebar = () => {
-  sidebarOpen.value = !sidebarOpen.value
-}
-
-const closeSidebar = () => {
-  sidebarOpen.value = false
-}
+const toggleSidebar = () => sidebarOpen.value = !sidebarOpen.value
+const closeSidebar = () => sidebarOpen.value = false
 
 // State Management
 const barcodeInput = ref('')
 const barcodeInputRef = ref(null)
-const currentStep = ref('scan_material') // scan_material, scan_destination, complete
-const scannedMaterial = ref(null)
-const destinationBin = ref(null)
+const currentStep = ref('scan_material')
 const alertMessage = ref('')
 const alertType = ref('success')
-const transferHistory = ref([
-  {
-    materialCode: 'MAT001',
-    materialName: 'Sodium Lauryl Sulfate',
-    quantity: 500,
-    unit: 'kg',
-    fromBin: 'A1',
-    toBin: 'B2',
-    timestamp: '09:15, 10/10'
-  },
-  {
-    materialCode: 'MAT002',
-    materialName: 'Glycerin USP',
-    quantity: 250,
-    unit: 'L',
-    fromBin: 'A2',
-    toBin: 'C1',
-    timestamp: '10:30, 10/10'
-  }
-])
-const isScanning = ref(false)
-const lastScannedCode = ref('')
-const lastScanTime = ref('')
+const isScanning = ref(false) // Untuk loading manual scan
 const showCamera = ref(false)
 const videoElement = ref(null)
-const canvasElement = ref(null)
+const canvasElement = ref(null) // Pastikan Anda punya <canvas ref="canvasElement" class="hidden"></canvas> di template
 const cameraStream = ref(null)
-const scanInterval = ref(null)
+const animationFrameId = ref(null) // <-- Ganti scanInterval
+const isCameraScanning = ref(false) // <-- Untuk animasi "Scanning..." di overlay
+
+const transferHistory = ref(props.initialTransferHistory)
+const bins = ref(props.initialBins)
+const localScannedMaterial = ref(props.scannedMaterial)
+const localDestinationBin = ref(props.destinationBin)
+
+const form = useForm({
+    from_bin_id: null,
+    to_bin_id: null,
+    stock_id: null,
+    quantity: null,
+})
+
+// Watcher untuk update state lokal JIKA props berubah
+watch(() => props.scannedMaterial, (newValue) => {
+    localScannedMaterial.value = newValue
+})
+watch(() => props.destinationBin, (newValue) => {
+    localDestinationBin.value = newValue
+})
+watch(() => props.initialTransferHistory, (newValue) => {
+    transferHistory.value = newValue
+})
+watch(() => props.initialBins, (newValue) => {
+    bins.value = newValue
+})
+
+// Watcher untuk menampilkan flash messages dari Laravel
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        showAlert(flash.success, 'success');
+    } else if (flash?.error) {
+        showAlert(flash.error, 'error');
+    }
+}, { deep: true });
+
+// WatchEffect untuk meng-update 'currentStep' dan 'form' secara reaktif
+watchEffect(() => {
+    if (localScannedMaterial.value && localDestinationBin.value) {
+        currentStep.value = 'complete'
+        form.stock_id = localScannedMaterial.value.stock_id
+        form.from_bin_id = localScannedMaterial.value.current_bin_id
+        form.quantity = localScannedMaterial.value.quantity
+        form.to_bin_id = localDestinationBin.value.id
+    } else if (localScannedMaterial.value) {
+        currentStep.value = 'scan_destination'
+        if (!alertMessage.value && !page.props.flash?.error) {
+             showAlert(`✅ Material ${localScannedMaterial.value.name} (Batch: ${localScannedMaterial.value.batchNo}) berhasil di-scan! Silakan scan bin tujuan.`, 'success')
+        }
+    } else {
+        currentStep.value = 'scan_material'
+    }
+})
 
 // Current Date
 const currentDate = computed(() => {
@@ -628,247 +665,98 @@ const currentDate = computed(() => {
     })
 })
 
-// Dummy Data - Material Personal Care
-const materials = [
-    {
-        code: 'MAT001',
-        name: 'Sodium Lauryl Sulfate',
-        category: 'Surfactant',
-        quantity: 500,
-        unit: 'kg',
-        currentBin: 'A1',
-        batchNo: 'SLS-2024-001',
-        expiryDate: '15/12/2025'
-    },
-    {
-        code: 'MAT002',
-        name: 'Glycerin USP',
-        category: 'Humectant',
-        quantity: 250,
-        unit: 'L',
-        currentBin: 'A2',
-        batchNo: 'GLY-2024-045',
-        expiryDate: '20/01/2026'
-    },
-    {
-        code: 'MAT003',
-        name: 'Titanium Dioxide',
-        category: 'Pigment',
-        quantity: 100,
-        unit: 'kg',
-        currentBin: 'B1',
-        batchNo: 'TIO2-2024-012',
-        expiryDate: '30/11/2025'
-    },
-    {
-        code: 'MAT004',
-        name: 'Fragrance Oil - Lavender',
-        category: 'Fragrance',
-        quantity: 50,
-        unit: 'L',
-        currentBin: 'C1',
-        batchNo: 'FRG-LAV-089',
-        expiryDate: '10/09/2025'
-    },
-    {
-        code: 'MAT005',
-        name: 'Cocamidopropyl Betaine',
-        category: 'Surfactant',
-        quantity: 300,
-        unit: 'kg',
-        currentBin: 'A3',
-        batchNo: 'CAPB-2024-023',
-        expiryDate: '25/10/2025'
-    }
-]
+// --- METHODS ---
 
-const bins = ref([
-    { code: 'A1', location: 'Zona A - Rak 1', capacity: 65 },
-    { code: 'A2', location: 'Zona A - Rak 2', capacity: 45 },
-    { code: 'A3', location: 'Zona A - Rak 3', capacity: 82 },
-    { code: 'B1', location: 'Zona B - Rak 1', capacity: 30 },
-    { code: 'B2', location: 'Zona B - Rak 2', capacity: 55 },
-    { code: 'B3', location: 'Zona B - Rak 3', capacity: 93 },
-    { code: 'C1', location: 'Zona C - Rak 1', capacity: 40 },
-    { code: 'C2', location: 'Zona C - Rak 2', capacity: 72 },
-    { code: 'C3', location: 'Zona C - Rak 3', capacity: 25 }
-])
-
-// Methods
-const simulateScanning = async (code) => {
-    isScanning.value = true
-    lastScannedCode.value = ''
-
-    // Simulate scanning delay (1.5 seconds)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    isScanning.value = false
-    lastScannedCode.value = code
-    lastScanTime.value = new Date().toLocaleTimeString('id-ID')
-
-    // Keep the scanned result visible for 2 seconds before clearing
-    setTimeout(() => {
-        if (!alertMessage.value || alertType.value === 'error') {
-            lastScannedCode.value = ''
+// 2. PERBAIKI 'handleScan' (Hapus 'route()')
+const handleScan = () => {
+    if (isScanning.value || !barcodeInput.value.trim()) {
+        if (!barcodeInput.value.trim()) {
+            showAlert('Silakan scan atau masukkan kode barcode', 'error');
         }
-    }, 3000)
-}
-
-const handleScan = async () => {
-    if (!barcodeInput.value.trim()) {
-        showAlert('Silakan scan atau masukkan kode barcode', 'error')
-        return
+        return;
     }
 
-    const code = barcodeInput.value.trim().toUpperCase()
+    const code = barcodeInput.value.trim().toUpperCase();
+    isScanning.value = true;
+    alertMessage.value = '';
 
-    // Simulate scanning animation
-    await simulateScanning(code)
+    let data = {};
+    // Gunakan URL string, BUKAN route()
+    let url = '/transaction/bin-to-bin';
 
     if (currentStep.value === 'scan_material') {
-        scanMaterial(code)
+        data = { material_batch: code };
     } else if (currentStep.value === 'scan_destination') {
-        scanDestination(code)
+        data = {
+            material_batch: localScannedMaterial.value.batchNo,
+            bin_code: code
+        };
     }
+
+    router.get(url, data, {
+        preserveState: true,
+        preserveScroll: true,
+        onFinish: () => {
+            isScanning.value = false;
+            barcodeInput.value = '';
+            focusInput();
+        },
+        onError: (errors) => {
+            showAlert('❌ Gagal memproses: ' + (Object.values(errors)[0] || 'Error server'), 'error');
+        }
+    });
 }
 
-// Method untuk handle manual scan (yang hilang)
-const handleManualScan = async () => {
-    if (!barcodeInput.value.trim()) {
-        showAlert('Silakan masukkan kode barcode', 'error')
-        return
-    }
-
-    await handleScan()
+const handleManualScan = () => {
+    handleScan()
 }
 
-const onBarcodeInput = () => {
-    // Auto-scan when barcode reaches typical length (6 characters)
-    if (barcodeInput.value.length >= 6) {
-        // Small delay to simulate real scanner behavior
-        setTimeout(() => {
-            if (barcodeInput.value.length >= 6) {
-                handleScan()
-            }
-        }, 300)
-    }
-}
-
-const scanMaterial = (code) => {
-    const material = materials.find(m => m.code === code)
-
-    if (material) {
-        scannedMaterial.value = { ...material }
-        currentStep.value = 'scan_destination'
-        showAlert(`✅ Material ${material.name} berhasil di-scan! Silakan scan bin tujuan.`, 'success')
-        barcodeInput.value = ''
-        focusInput()
-    } else {
-        showAlert('❌ Material tidak ditemukan! Periksa kembali kode barcode.', 'error')
-        lastScannedCode.value = ''
-    }
-}
-
-const scanDestination = (binCode) => {
-    const bin = bins.value.find(b => b.code === binCode)
-
-    if (!bin) {
-        showAlert('❌ Bin tidak ditemukan! Periksa kembali kode bin.', 'error')
-        lastScannedCode.value = ''
-        return
-    }
-
-    if (binCode === scannedMaterial.value.currentBin) {
-        showAlert('❌ Bin tujuan sama dengan bin asal! Pilih bin yang berbeda.', 'error')
-        lastScannedCode.value = ''
-        return
-    }
-
-    destinationBin.value = binCode
-    currentStep.value = 'complete'
-    showAlert(`✅ Bin tujuan ${binCode} berhasil di-scan! Klik tombol konfirmasi untuk menyelesaikan transfer.`, 'success')
-    barcodeInput.value = ''
-}
-
+// 3. PERBAIKI 'completeTransfer' (Hapus 'route()')
 const completeTransfer = () => {
-    // Add to history
-    transferHistory.value.push({
-        materialCode: scannedMaterial.value.code,
-        materialName: scannedMaterial.value.name,
-        quantity: scannedMaterial.value.quantity,
-        unit: scannedMaterial.value.unit,
-        fromBin: scannedMaterial.value.currentBin,
-        toBin: destinationBin.value,
-        timestamp: new Date().toLocaleString('id-ID', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit'
-        })
+    if (form.processing) return;
+
+    // Gunakan URL string, BUKAN route()
+    form.post('/transaction/bin-to-bin/transfer', {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Reset otomatis karena props akan kosong
+        },
+        onError: (errors) => {
+            const errorMsg = Object.values(errors).join(' \n')
+            showAlert(`❌ Gagal Konfirmasi: ${errorMsg}`, 'error')
+        }
     })
-
-    // Update material location in dummy data
-    const materialIndex = materials.findIndex(m => m.code === scannedMaterial.value.code)
-    if (materialIndex !== -1) {
-        materials[materialIndex].currentBin = destinationBin.value
-    }
-
-    showAlert('🎉 Transfer berhasil diselesaikan! Material telah dipindahkan.', 'success')
-
-    setTimeout(() => {
-        resetTransfer()
-    }, 2500)
 }
 
+// 4. PERBAIKI 'resetTransfer' (Hapus 'route()')
 const resetTransfer = () => {
-    scannedMaterial.value = null
-    destinationBin.value = null
-    currentStep.value = 'scan_material'
-    barcodeInput.value = ''
-    alertMessage.value = ''
-    lastScannedCode.value = ''
-    focusInput()
+    // Gunakan URL string, BUKAN route()
+    router.get('/bin-to-bin', {}, { // <-- PERBAIKAN ERROR
+        preserveState: false,
+    });
 }
 
 const showAlert = (message, type) => {
     alertMessage.value = message
     alertType.value = type
     setTimeout(() => {
-        alertMessage.value = ''
+        if (alertMessage.value === message) {
+            alertMessage.value = ''
+        }
     }, 6000)
-}
-
-const getStepText = () => {
-    if (currentStep.value === 'scan_material') return 'Langkah 1/2'
-    if (currentStep.value === 'scan_destination') return 'Langkah 2/2'
-    return 'Siap Transfer'
-}
-
-const getStepIndicatorClass = () => {
-    if (currentStep.value === 'scan_material') return 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-    if (currentStep.value === 'scan_destination') return 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
-    return 'bg-green-100 text-green-800 border-2 border-green-300'
-}
-
-const getScannerStatusText = () => {
-    if (currentStep.value === 'scan_material') return 'Siap scan material'
-    if (currentStep.value === 'scan_destination') return 'Siap scan bin tujuan'
-    return 'Siap konfirmasi transfer'
-}
-
-const getTotalMaterialsMoved = () => {
-    return transferHistory.value.reduce((sum, transfer) => sum + transfer.quantity, 0)
 }
 
 const focusInput = () => {
     nextTick(() => {
-        if (barcodeInputRef.value) {
+        if (barcodeInputRef.value && !showCamera.value) {
             barcodeInputRef.value.focus()
         }
     })
 }
 
-// Camera Functions
+
+// --- 5. PERBAIKI LOGIKA KAMERA ---
+
 const toggleCamera = async () => {
     if (showCamera.value) {
         stopCamera()
@@ -881,7 +769,7 @@ const startCamera = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
-                facingMode: 'environment', // Prefer back camera on mobile
+                facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
@@ -895,15 +783,19 @@ const startCamera = async () => {
         if (videoElement.value) {
             videoElement.value.srcObject = stream
             videoElement.value.play()
-
-            // Start scanning for barcodes
-            startBarcodeDetection()
-
+            
+            // Mulai loop deteksi
+            tick(); // Panggil fungsi tick
+            
             showAlert('📷 Kamera aktif! Arahkan barcode ke kamera.', 'success')
         }
     } catch (error) {
         console.error('Camera error:', error)
-        showAlert('❌ Tidak dapat mengakses kamera. Pastikan izin kamera diaktifkan.', 'error')
+        if (error.name === "NotAllowedError") {
+             showAlert('❌ Izin kamera ditolak. Harap izinkan akses kamera di browser Anda.', 'error')
+        } else {
+             showAlert('❌ Tidak dapat mengakses kamera. Pastikan Anda menggunakan HTTPS.', 'error')
+        }
     }
 }
 
@@ -913,40 +805,65 @@ const stopCamera = () => {
         cameraStream.value = null
     }
 
-    if (scanInterval.value) {
-        clearInterval(scanInterval.value)
-        scanInterval.value = null
+    // Hentikan loop deteksi
+    if (animationFrameId.value) {
+        cancelAnimationFrame(animationFrameId.value)
+        animationFrameId.value = null
     }
 
     showCamera.value = false
+    isCameraScanning.value = false
 
     if (videoElement.value) {
         videoElement.value.srcObject = null
     }
+    focusInput(); // Fokus kembali ke input manual setelah kamera ditutup
 }
 
-const startBarcodeDetection = () => {
-    // Simulate barcode detection - In production, use a library like QuaggaJS or ZXing
-    scanInterval.value = setInterval(() => {
-        if (!videoElement.value || !canvasElement.value || !showCamera.value) {
-            return
+// Fungsi 'tick' untuk loop deteksi QR
+const tick = () => {
+    if (!showCamera.value || !videoElement.value || !canvasElement.value) {
+        return;
+    }
+
+    isCameraScanning.value = false;
+
+    // Pastikan video sudah siap
+    if (videoElement.value.readyState === videoElement.value.HAVE_ENOUGH_DATA) {
+        const canvas = canvasElement.value;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true }); // Optimasi
+
+        canvas.height = videoElement.value.videoHeight;
+        canvas.width = videoElement.value.videoWidth;
+        
+        // Gambar frame video ke canvas
+        ctx.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height);
+        
+        // Ambil data gambar dari canvas
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Coba deteksi QR code menggunakan jsQR
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+        });
+
+        isCameraScanning.value = true; // Tampilkan animasi scanning line
+
+        if (code) {
+            // JIKA BERHASIL TERDETEKSI
+            isCameraScanning.value = false;
+            stopCamera(); // Matikan kamera
+            barcodeInput.value = code.data; // Masukkan hasil scan ke input
+            handleScan(); // Panggil handleScan untuk diproses
+            return; // Hentikan loop
         }
+    }
 
-        // This is a simulation. In production, you would:
-        // 1. Capture frame from video
-        // 2. Process with barcode detection library
-        // 3. Extract barcode value
-
-        // For demo purposes, we'll detect based on certain conditions
-        // You can test by clicking the camera view area
-    }, 500)
+    // Lanjutkan ke frame berikutnya
+    animationFrameId.value = requestAnimationFrame(tick);
 }
 
-const simulateCameraScan = (code) => {
-    barcodeInput.value = code
-    stopCamera()
-    handleScan()
-}
+// HAPUS 'startBarcodeDetection' dan 'simulateCameraScan' (diganti 'tick')
 
 // Computed
 const alertClass = computed(() => {
@@ -960,39 +877,15 @@ onMounted(() => {
     focusInput()
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && sidebarOpen.value) {
-        closeSidebar()
+            closeSidebar()
         }
     })
-    // Simulate some existing transfers for demo
-    transferHistory.value = [
-        {
-            materialCode: 'MAT001',
-            materialName: 'Sodium Lauryl Sulfate',
-            quantity: 500,
-            unit: 'kg',
-            fromBin: 'A1',
-            toBin: 'B2',
-            timestamp: '09:15, 10/10'
-        },
-        {
-            materialCode: 'MAT002',
-            materialName: 'Glycerin USP',
-            quantity: 250,
-            unit: 'L',
-            fromBin: 'A2',
-            toBin: 'C1',
-            timestamp: '10:30, 10/10'
-        },
-        {
-            materialCode: 'MAT004',
-            materialName: 'Fragrance Oil - Lavender',
-            quantity: 50,
-            unit: 'L',
-            fromBin: 'C1',
-            toBin: 'B3',
-            timestamp: '11:45, 10/10'
-        }
-    ]
+
+    if (page.props.flash?.success) {
+        showAlert(page.props.flash.success, 'success');
+    } else if (page.props.flash?.error) {
+        showAlert(page.props.flash.error, 'error');
+    }
 })
 
 // Cleanup camera on unmount
@@ -1000,7 +893,6 @@ const cleanup = () => {
     stopCamera()
 }
 
-// Make sure to cleanup when component unmounts
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', cleanup)
 }
