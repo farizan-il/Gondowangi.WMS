@@ -8,6 +8,8 @@ use App\Models\IncomingGoodsItem;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Material;
+use App\Models\InventoryStock;
+use App\Models\WarehouseBin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -179,6 +181,21 @@ class GoodsReceiptController extends Controller
                     'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
                     'qr_code' => $qrCode,
+                ]);
+
+                // Create inventory stock record in quarantine
+                $quarantineBin = WarehouseBin::where('bin_code', 'LIKE', 'QTN-%')->first();
+                InventoryStock::create([
+                    'material_id' => $material->id,
+                    'warehouse_id' => $quarantineBin->warehouse_id,
+                    'bin_id' => $quarantineBin->id,
+                    'gr_id' => $incoming->id,
+                    'batch_lot' => $itemData['batchLot'],
+                    'exp_date' => $itemData['expDate'] ?? null,
+                    'qty_on_hand' => $itemData['qtyUnit'],
+                    'qty_available' => $itemData['qtyUnit'],
+                    'uom' => $material->satuan,
+                    'status' => 'RELEASED',
                 ]);
 
                 // Log activity for each item

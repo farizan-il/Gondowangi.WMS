@@ -648,8 +648,7 @@ const addNewItem = () => {
     labelMfgAda: false,
     labelMfgTidakAda: false,
     labelCoaSesuai: false,
-    labelCoaTidakSesuai: false,
-    statusQC: 'Karantina'
+    labelCoaTidakSesuai: false
   })
 }
 
@@ -1961,8 +1960,7 @@ watch(() => newShipment.value.noPo, async (newVal) => {
         labelMfgAda: false,
         labelMfgTidakAda: false,
         labelCoaSesuai: false,
-        labelCoaTidakSesuai: false,
-        statusQC: 'Karantina'
+        labelCoaTidakSesuai: false
       }))
     } catch (error) {
       console.error('Failed to fetch PO details:', error)
