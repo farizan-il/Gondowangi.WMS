@@ -93,20 +93,41 @@ const scan = ref({
 })
 
 const processScan = async () => {
+  // Frontend validation
+  if (!scan.value.quarantine_qr || !scan.value.material_qr || !scan.value.destination_qr) {
+    alert('Harap isi semua kolom pemindaian sebelum melanjutkan.');
+    return;
+  }
+
   try {
-    const response = await axios.post('/transaction/putaway-transfer/scan', scan.value)
+    const response = await axios.post('/transaction/putaway-transfer/scan', scan.value);
     if (response.data.success) {
-      alert(response.data.message)
-      scan.value = { quarantine_qr: '', material_qr: '', destination_qr: '' }
-      router.reload({ only: ['transferOrders'] })
+      alert(response.data.message);
+      scan.value = { quarantine_qr: '', material_qr: '', destination_qr: '' };
+      router.reload({ only: ['transferOrders'] });
     } else {
-      alert(response.data.message)
+      alert(response.data.message || 'Terjadi kesalahan yang tidak diketahui.');
     }
   } catch (error) {
-    console.error('Error processing scan:', error)
-    alert('Failed to process scan.')
+    console.error('Error processing scan:', error);
+    if (error.response && error.response.status === 422) {
+      // Handle validation errors from Laravel
+      const errors = error.response.data.errors;
+      let errorMessage = 'Gagal memproses pemindaian:\n';
+      for (const key in errors) {
+        errorMessage += `- ${errors[key][0]}\n`;
+      }
+      alert(errorMessage);
+    } else if (error.response) {
+      // Handle other server errors
+      alert(`Gagal memproses pemindaian: ${error.response.data.message || 'Server error'}`);
+    }
+    else {
+      // Handle network errors or other issues
+      alert('Gagal memproses pemindaian. Periksa koneksi Anda.');
+    }
   }
-}
+};
 
 const formatDate = (date: Date | string) => {
   const dateObj = typeof date === 'string' ? new Date(date) : date
