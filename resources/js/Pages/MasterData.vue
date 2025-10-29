@@ -19,7 +19,7 @@
             <button
               v-for="tab in tabs"
               :key="tab.id"
-              @click="activeTab = tab.id"
+              @click="setActiveTab(tab.id)" 
               :class="activeTab === tab.id
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -27,7 +27,7 @@
             >
               {{ tab.label }}
             </button>
-          </nav>
+        </nav>
         </div>
 
         <!-- Tab Content -->
@@ -77,8 +77,9 @@
             <div class="flex-1 min-w-64">
               <input 
                 v-model="searchQuery"
+                @keyup.enter="applyFilter"
                 type="text" 
-                :placeholder="`Cari ${getCurrentTabLabel()}...`"
+                :placeholder="'Cari ' + getCurrentTabLabel() + '...'"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
             </div>
@@ -149,6 +150,9 @@
                   </tbody>
                 </table>
               </div>
+              <div class="p-4 border-t">
+                  <Pagination :links="activeSkuData.links" />
+              </div>
             </div>
           </div>
 
@@ -198,6 +202,9 @@
                   </tbody>
                 </table>
               </div>
+              <div class="p-4 border-t">
+                  <Pagination :links="activeSupplierData.links" />
+              </div>
             </div>
           </div>
 
@@ -263,6 +270,9 @@
                   </tbody>
                 </table>
               </div>
+              <div class="p-4 border-t">
+                  <Pagination :links="activeBinData.links" />
+              </div>
             </div>
           </div>
 
@@ -309,6 +319,9 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div class="p-4 border-t">
+                <Pagination :links="activeUserData.links" />
               </div>
             </div>
           </div>
@@ -767,17 +780,51 @@
 </template>
 
 <script setup lang="ts">
+import {router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, computed, onMounted } from 'vue'
+import { h, ref, computed, onMounted, watch } from 'vue'
 
-const props = defineProps({
-    initialSkuData: Array,
-    initialSupplierData: Array,
-    initialBinData: Array,
-    initialUserData: Array,
-    supplierList: Array,
-    zoneList: Array,
-});
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface PaginatedData<T> {
+    data: T[];
+    links: PaginationLink[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    path: string;
+}
+
+interface ItemBase {
+    id: string;
+    code: string;
+    status: string;
+    [key: string]: any;
+}
+interface SkuItem extends ItemBase {}
+interface Supplier extends ItemBase {}
+interface BinLocation extends ItemBase {}
+interface User extends ItemBase {}
+
+const props = defineProps<{
+    skuData: PaginatedData<any>;
+    supplierData: PaginatedData<any>;
+    binData: PaginatedData<any>;
+    userData: PaginatedData<any>;
+    supplierList?: any[];
+    zoneList?: any[];
+    activeTab: string;
+    search: string;
+    status: string;
+}>();
+
+const page = usePage();
 
 // Types
 interface SkuItem {
@@ -823,18 +870,11 @@ interface User {
 
 // Reactive data
 const isDarkMode = ref(false)
-const activeTab = ref('sku')
-const searchQuery = ref('')
-const statusFilter = ref('')
+const activeTab = ref(props.activeTab || 'sku')
+const searchQuery = ref(props.search || '')
+const statusFilter = ref(props.status || '')
 const showQRModal = ref(false)
-const qrCodeData = ref<{
-  image: string
-  bin_code: string
-  bin_name: string
-  zone_name: string
-  bin_type: string
-  capacity: number
-} | null>(null)
+const qrCodeData = ref<any>(null)
 
 // Modal states
 const showAddModal = ref(false)
@@ -854,45 +894,114 @@ const tabs = [
   { id: 'user', label: 'User & Role' }
 ]
 
-// Computed properties
+// const Pagination = {
+//   props: {
+//     links: {
+//       type: Array as () => PaginationLink[],
+//       required: true
+//     }
+//   },
+//   components: { Link },
+//   template: `
+//     <div v-if="links.length > 3">
+//       <div class="flex flex-wrap -mb-1">
+//         <template v-for="(link, key) in links" :key="key">
+//           <div 
+//             v-if="link.url === null" 
+//             class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded"
+//             v-html="link.label"
+//           ></div>
+//           <Link
+//             v-else
+//             class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-blue-500 focus:text-blue-500"
+//             :class="{ 'bg-blue-500 text-white': link.active }"
+//             :href="link.url"
+//             v-html="link.label"
+//           />
+//         </template>
+//       </div>
+//     </div>
+//   `
+// }
+
+const Pagination = (props: { links: PaginationLink[] }) => {
+    // Pengecekan awal, sama seperti v-if="links.length > 3"
+    if (!props.links || props.links.length <= 3) {
+        return h('div'); // Mengembalikan div kosong jika tidak ada data
+    }
+
+    const elements = props.links.map((link, key) => {
+        const classes = {
+            'mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-blue-500 focus:text-blue-500': true,
+            'bg-blue-500 text-white': link.active,
+            'text-gray-400': link.url === null // Styling untuk tombol non-aktif
+        };
+
+        if (link.url === null) {
+            // Jika URL null, buat <div> (non-clickable)
+            return h('div', { 
+                key, 
+                class: classes, 
+                innerHTML: link.label 
+            });
+        }
+        
+        // Jika URL ada, buat komponen Link Inertia
+        return h(Link, {
+            key,
+            class: classes,
+            href: link.url,
+            // Perlu menggunakan innerHTML karena label bisa berupa HTML (seperti &laquo;)
+            innerHTML: link.label, 
+            preserveState: true,
+            preserveScroll: true
+        });
+    });
+
+    return h('div', 
+        { class: 'flex flex-wrap -mb-1' }, 
+        elements
+    );
+};
+
 const filteredSkuData = computed(() => {
-  return skuData.value.filter(item => {
-    const matchesSearch = !searchQuery.value || 
-      item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-    return matchesSearch && matchesStatus
-  })
+    return activeSkuData.value.data.filter(item => {
+        const matchesSearch = !searchQuery.value || 
+            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+            item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
+        return matchesSearch && matchesStatus
+    })
 })
 
 const filteredSupplierData = computed(() => {
-  return supplierData.value.filter(item => {
-    const matchesSearch = !searchQuery.value || 
-      item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-    return matchesSearch && matchesStatus
-  })
+    return activeSupplierData.value.data.filter(item => {
+        const matchesSearch = !searchQuery.value || 
+            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+            item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
+        return matchesSearch && matchesStatus
+    })
 })
 
 const filteredBinData = computed(() => {
-  return binData.value.filter(item => {
-    const matchesSearch = !searchQuery.value || 
-      item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.zone.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-    return matchesSearch && matchesStatus
-  })
+    return activeBinData.value.data.filter(item => {
+        const matchesSearch = !searchQuery.value || 
+            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+            item.zone.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
+        return matchesSearch && matchesStatus
+    })
 })
 
 const filteredUserData = computed(() => {
-  return userData.value.filter(item => {
-    const matchesSearch = !searchQuery.value || 
-      item.jabatan.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.fullName.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-    return matchesSearch && matchesStatus
-  })
+    return activeUserData.value.data.filter(item => {
+        const matchesSearch = !searchQuery.value || 
+            item.jabatan.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+            item.fullName.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
+        return matchesSearch && matchesStatus
+    })
 })
 
 // Methods
@@ -943,51 +1052,51 @@ interface Props {
   zoneList?: any[]  // PENTING: Data zone dari backend
 }
 
-const skuData = ref(props.initialSkuData || [])
-const supplierData = ref(props.initialSupplierData || [])
-const binData = ref(props.initialBinData || [])
-const userData = ref(props.initialUserData || [])
+const activeSkuData = computed(() => props.skuData);
+const activeSupplierData = computed(() => props.supplierData);
+const activeBinData = computed(() => props.binData);
+const activeUserData = computed(() => props.userData);
 const zoneList = ref(props.zoneList || [])
 
 const resetForm = () => {
-  const defaultValues: Record<string, any> = {
-    sku: {
-      code: '',
-      name: '',
-      uom: '',
-      category: '',
-      qcRequired: false,
-      expiry: false,
-      supplierDefault: '',
-      abcClass: '',
-      status: 'Active'
-    },
-    supplier: {
-      code: '',
-      name: '',
-      address: '',
-      contactPerson: '',
-      phone: '',
-      status: 'Active'
-    },
-    bin: {
-      code: '',
-      zone: '', // Ini akan berisi ID zone
-      capacity: 0,
-      type: '',
-      status: 'Active'
-    },
-    user: {
-      jabatan: '',
-      password: '',
-      fullName: '',
-      role: '',
-      department: '',
-      status: 'Active'
+    const defaultValues: Record<string, any> = {
+        sku: {
+            code: '',
+            name: '',
+            uom: '',
+            category: '',
+            qcRequired: false,
+            expiry: false,
+            supplierDefault: '',
+            abcClass: '',
+            status: 'Active'
+        },
+        supplier: {
+            code: '',
+            name: '',
+            address: '',
+            contactPerson: '',
+            phone: '',
+            status: 'Active'
+        },
+        bin: {
+            code: '',
+            zone: '', // Ini akan berisi ID zone
+            capacity: 0,
+            type: '',
+            status: 'Active'
+        },
+        user: {
+            jabatan: '',
+            password: '',
+            fullName: '',
+            role: '',
+            department: '',
+            status: 'Active'
+        }
     }
-  }
-  
-  formData.value = { ...defaultValues[activeTab.value] }
+    
+    formData.value = { ...defaultValues[activeTab.value] }
 }
 
 const closeModal = () => {
@@ -1309,15 +1418,37 @@ const showMessage = (type: 'success' | 'error', text: string) => {
   }, 3000)
 }
 
+const setActiveTab = (tabId: string) => {
+    activeTab.value = tabId;
+    applyFilter();
+}
+
+const applyFilter = () => {
+    // Memicu request Inertia baru dengan parameter query yang sesuai
+    router.get(route('master-data.index'), {
+        search: searchQuery.value,
+        status: statusFilter.value,
+        activeTab: activeTab.value
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['skuData', 'supplierData', 'binData', 'userData'],
+        onSuccess: () => {
+             closeModal();
+        }
+    });
+}
+
+watch(activeTab, () => {
+    resetForm();
+});
+
 const loadData = () => {
   resetForm()
 }
 
 onMounted(() => {
-  skuData.value = props.initialSkuData;
-  supplierData.value = props.initialSupplierData;
-  binData.value = props.initialBinData;
-  userData.value = props.initialUserData;
-  loadData();
+    resetForm(); 
 });
+
 </script>

@@ -41,7 +41,7 @@ class QualityControlController extends Controller
             return [
                 'id' => $item->id,
                 'shipmentNumber' => $item->incomingGood->incoming_number,
-                'noPo' => $item->incomingGood->purchaseOrder->no_po ?? '',
+                'noPo' => $item->incomingGood->po_id ?? '',
                 'noSuratJalan' => $item->incomingGood->no_surat_jalan,
                 'supplier' => $item->incomingGood->supplier->nama_supplier ?? '',
                 'kodeItem' => $item->material->kode_item ?? '',
@@ -305,14 +305,13 @@ class QualityControlController extends Controller
                     'qty_received' => $totalIncoming,
                     'uom' => $incomingItem->satuan,
                     'status_material' => 'RELEASED', // Otomatis RELEASED jika PASS
-                    'warehouse_location' => 'QTN-A-01', // Default quarantine bin, nanti dipindah via Putaway
+                    'warehouse_location' => 'QRT', // Default quarantine bin, nanti dipindah via Putaway
                     'tanggal_gr' => now(),
                     'created_by' => Auth::id(),
                 ]);
 
                 // 2. CREATE/UPDATE INVENTORY STOCK
-                // Cari bin karantina default
-                $quarantineBin = WarehouseBin::where('bin_code', 'LIKE', 'QTN-%')
+                $quarantineBin = WarehouseBin::where('bin_code', 'LIKE', 'QRT-HALAL')
                     ->where('status', 'available')
                     ->first();
 

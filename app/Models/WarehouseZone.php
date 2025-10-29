@@ -10,7 +10,7 @@ class WarehouseZone extends Model
     use HasFactory;
 
     protected $fillable = [
-        'warehouse_id',
+        'warehouse_id', //deafultnya = 1
         'zone_code',
         'zone_name',
         'zone_type',

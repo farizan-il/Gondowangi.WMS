@@ -74,7 +74,7 @@ class PutawayTransferController extends Controller
         ->where('status', 'RELEASED')
         ->where('qty_available', '>', 0)
         ->whereHas('bin', function ($query) {
-            $query->where('bin_code', 'LIKE', 'QTN-%');
+            $query->where('bin_code', 'LIKE', 'QRT-%');
         })
         ->get()
         ->map(function ($stock) {
@@ -101,11 +101,6 @@ class PutawayTransferController extends Controller
         
         $bins = WarehouseBin::with(['zone', 'warehouse'])
             ->where('status', 'available')
-            ->whereRaw('current_items < capacity')
-            ->where(function ($query) {
-                $query->where('bin_code', 'LIKE', 'STD-%')
-                      ->orWhere('bin_code', 'LIKE', 'HAZ-%');
-            })
             ->get()
             ->map(function ($bin) {
                 return [
@@ -247,7 +242,7 @@ class PutawayTransferController extends Controller
             $transferOrder = TransferOrder::with(['items.material', 'items.sourceBin', 'items.destinationBin'])
                 ->findOrFail($id);
 
-            // Validasi semua item sudah di-scan
+            // Validasi semua item sudah di-scan (tetap dipertahankan)
             foreach ($request->items as $itemData) {
                 if (!$itemData['boxScanned'] || !$itemData['sourceBinScanned'] || !$itemData['destBinScanned']) {
                     throw new \Exception('Semua item harus di-scan sebelum menyelesaikan TO!');
@@ -257,9 +252,22 @@ class PutawayTransferController extends Controller
             // Update TO items dan proses inventory movement
             foreach ($request->items as $itemData) {
                 $item = TransferOrderItem::findOrFail($itemData['id']);
+                $actualQty = $itemData['actualQty'];
                 
+                // 1. Kurangi dari source bin
+                $sourceStock = InventoryStock::where('material_id', $item->material_id)
+                    ->where('bin_id', $item->source_bin_id)
+                    ->where('batch_lot', $item->batch_lot)
+                    ->firstOrFail();
+
+                // Validasi kuantitas mencukupi sebelum mengurangi
+                if ($sourceStock->qty_on_hand < $actualQty) {
+                    throw new \Exception("Stok di Bin asal ({$sourceStock->bin->bin_code}) tidak cukup untuk memindahkan {$actualQty} {$item->uom}.");
+                }
+                
+                // Update item TO (dilakukan di awal loop)
                 $item->update([
-                    'qty_actual' => $itemData['actualQty'],
+                    'qty_actual' => $actualQty,
                     'status' => 'completed',
                     'box_scanned' => $itemData['boxScanned'],
                     'source_bin_scanned' => $itemData['sourceBinScanned'],
@@ -268,72 +276,87 @@ class PutawayTransferController extends Controller
                     'scanned_at' => now()
                 ]);
 
-                // Proses inventory movement
-                // 1. Kurangi dari source bin
-                $sourceStock = InventoryStock::where('material_id', $item->material_id)
-                    ->where('bin_id', $item->source_bin_id)
-                    ->where('batch_lot', $item->batch_lot)
-                    ->firstOrFail();
+                // Hitung sisa stok sebelum pengurangan
+                $remainingQtyOnHandInSource = $sourceStock->qty_on_hand - $actualQty;
 
+                // Kurangi stok dan reserved di source
                 $sourceStock->update([
-                    'qty_on_hand' => $sourceStock->qty_on_hand - $itemData['actualQty'],
+                    'qty_on_hand' => $remainingQtyOnHandInSource,
                     'qty_reserved' => $sourceStock->qty_reserved - $item->qty_planned,
-                    'qty_available' => ($sourceStock->qty_on_hand - $itemData['actualQty']) - 
-                                      ($sourceStock->qty_reserved - $item->qty_planned),
+                    'qty_available' => $remainingQtyOnHandInSource - ($sourceStock->qty_reserved - $item->qty_planned),
                     'last_movement_date' => now()
                 ]);
 
-                // 2. Tambah ke destination bin
-                $destStock = InventoryStock::firstOrCreate(
-                    [
+                // --- PERBAIKAN LOGIKA DUPLIKASI (TAMBAH KE DESTINATION BIN) ---
+
+                // Cek apakah Batch/Lot yang sama sudah ada di Bin tujuan
+                $destStock = InventoryStock::where('material_id', $item->material_id)
+                    ->where('bin_id', $item->destination_bin_id)
+                    ->where('batch_lot', $item->batch_lot)
+                    ->first();
+                
+                $isNewStockEntry = false;
+
+                if ($destStock) {
+                    // Kasus 1: Stok sudah ada di Bin tujuan -> UPDATE / GABUNG
+                    $destStock->update([
+                        'qty_on_hand' => $destStock->qty_on_hand + $actualQty,
+                        'qty_available' => $destStock->qty_available + $actualQty,
+                        'last_movement_date' => now()
+                    ]);
+                } else {
+                    // Kasus 2: Stok Belum ada di Bin tujuan -> CREATE
+                    $destStock = InventoryStock::create([
                         'material_id' => $item->material_id,
                         'bin_id' => $item->destination_bin_id,
                         'batch_lot' => $item->batch_lot,
-                        'warehouse_id' => $transferOrder->warehouse_id
-                    ],
-                    [
-                        'qty_on_hand' => 0,
+                        'warehouse_id' => $transferOrder->warehouse_id,
+                        'qty_on_hand' => $actualQty,
                         'qty_reserved' => 0,
-                        'qty_available' => 0,
+                        'qty_available' => $actualQty,
                         'uom' => $item->uom,
                         'status' => 'RELEASED',
+                        // Asumsi exp_date dan gr_id diambil dari stok asal yang ada di quarantine
                         'exp_date' => $sourceStock->exp_date,
-                        'gr_id' => $sourceStock->gr_id
-                    ]
-                );
+                        'gr_id' => $sourceStock->gr_id, 
+                        'last_movement_date' => now()
+                    ]);
+                    $isNewStockEntry = true;
+                }
+                
+                // 3. Hapus stok asal jika kuantitasnya menjadi 0
+                if ($sourceStock->qty_on_hand <= 0) {
+                    $sourceStock->delete();
+                }
 
-                $destStock->update([
-                    'qty_on_hand' => $destStock->qty_on_hand + $itemData['actualQty'],
-                    'qty_available' => $destStock->qty_available + $itemData['actualQty'],
-                    'last_movement_date' => now()
-                ]);
-
-                // 3. Update bin occupancy
+                // 4. Update bin occupancy
                 $sourceBin = $item->sourceBin;
                 $destBin = $item->destinationBin;
 
-                // Jika source bin kosong setelah transfer, kurangi current_items
-                if ($sourceStock->qty_on_hand <= 0) {
-                    $sourceBin->update([
-                        'current_items' => max(0, $sourceBin->current_items - 1)
-                    ]);
+                // Logic ini harus disesuaikan untuk TO
+                // Jika stok asal dihapus, kurangi current_items di source bin
+                if ($remainingQtyOnHandInSource <= 0 && $sourceStock->wasRecentlyDeleted) {
+                     $sourceBin->update([
+                         'current_items' => max(0, $sourceBin->current_items - 1)
+                     ]);
                 }
 
-                // Jika ini item baru di dest bin, tambah current_items
-                if ($destStock->qty_on_hand == $itemData['actualQty']) {
-                    $destBin->update([
-                        'current_items' => $destBin->current_items + 1
-                    ]);
+                // Jika entri stok baru dibuat di dest bin, tambah current_items
+                if ($isNewStockEntry) {
+                     $destBin->update([
+                         'current_items' => $destBin->current_items + 1
+                     ]);
                 }
 
                 // Log activity
                 $this->logActivity($transferOrder, 'Complete TO Item', [
-                    'description' => "Completed transfer of {$itemData['actualQty']} {$item->uom} from {$sourceBin->bin_code} to {$destBin->bin_code}",
+                    'description' => "Completed transfer of {$actualQty} {$item->uom} from {$sourceBin->bin_code} to {$destBin->bin_code}",
                     'material_id' => $item->material_id,
                     'batch_lot' => $item->batch_lot,
-                    'qty_after' => $itemData['actualQty'],
+                    'qty_after' => $destStock->qty_on_hand,
                     'bin_from' => $sourceBin->bin_code,
                     'bin_to' => $destBin->bin_code,
+                    'reference_document' => $transferOrder->to_number,
                 ]);
             }
 

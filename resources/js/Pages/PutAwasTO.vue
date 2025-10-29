@@ -1062,40 +1062,46 @@ const processWizardStep = () => {
 
 
 const completeTO = async () => {
-  if (!selectedTO.value || !canCompleteTO.value) {
-    alert('Pastikan semua item sudah di-scan dan qty actual sudah diisi!')
-    return
-  }
-  
-  // Ganti confirm() dengan modal konfirmasi kustom
-  if (!confirm(`Apakah Anda yakin ingin menyelesaikan TO ${selectedTO.value.toNumber}?`)) {
-    return
-  }
+  if (!selectedTO.value || !canCompleteTO.value) {
+    alert('Pastikan semua item sudah di-scan dan qty actual sudah diisi!')
+    return
+  }
+  
+  if (!confirm(`Apakah Anda yakin ingin menyelesaikan TO ${selectedTO.value.toNumber}?`)) {
+    return
+  }
 
-  try {
-    // Implementasi Inertia.post
-    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, {
-      items: selectedTO.value.items.map(item => ({
-        id: item.id,
-        actualQty: item.actualQty,
-        status: item.status
-        // Kirim hanya data yang diperlukan
-      }))
-    }, {
-      onSuccess: () => {
-        alert('Transfer Order berhasil diselesaikan!')
-        closeDetailModal()
-      },
-      onError: (errors) => {
-        console.error('Error completing TO:', errors)
-        alert('Gagal menyelesaikan TO: ' + (errors.message || Object.values(errors)[0]))
-      }
-    })
-    
-  } catch (error: any) {
-    console.error('Error completing TO:', error)
-    alert('Gagal menyelesaikan TO: ' + error.message)
-  }
+  try {
+    // Implementasi Inertia.post
+    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, {
+      items: selectedTO.value.items.map(item => ({
+        id: item.id,
+        actualQty: item.actualQty,
+        status: item.status,
+
+        // [PERBAIKAN] Tambahkan 3 field ini
+        boxScanned: item.boxScanned,
+        sourceBinScanned: item.sourceBinScanned,
+        destBinScanned: item.destBinScanned
+        // Akhir Perbaikan
+      }))
+    }, {
+      onSuccess: () => {
+        alert('Transfer Order berhasil diselesaikan!')
+        closeDetailModal()
+      },
+      onError: (errors) => {
+        console.error('Error completing TO:', errors)
+        // [PENTING] Ganti alert ini agar menampilkan error validasi dengan benar
+        const errorMessages = Object.values(errors).join('\n');
+        alert('Gagal menyelesaikan TO:\n' + errorMessages);
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Error completing TO:', error)
+    alert('Gagal menyelesaikan TO: ' + error.message)
+  }
 }
 
 const printTO = (to: TransferOrder) => {

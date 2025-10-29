@@ -19,47 +19,71 @@ use App\Traits\ActivityLogger;
 class MasterDataController extends Controller
 {
     use ActivityLogger;
+
+    private const PER_PAGE = 20; 
+
     public function index()
     {
+        // 1. Ambil data dengan Paginasi
+        $skuPaginator = Material::with('defaultSupplier')->paginate(self::PER_PAGE);
+        $supplierPaginator = Supplier::paginate(self::PER_PAGE);
+        $binPaginator = WarehouseBin::with('zone')->paginate(self::PER_PAGE);
+        $userPaginator = User::with('role')->paginate(self::PER_PAGE);
+
+        // 2. Map data di setiap Paginator
+        $mapPaginator = function ($paginator, $callback) {
+            return $paginator->through($callback);
+        };
+        
+        $skuCallback = fn($item) => [
+            'id' => $item->id,
+            'code' => $item->kode_item,
+            'name' => $item->nama_material,
+            'uom' => $item->satuan,
+            'category' => $item->kategori,
+            'qcRequired' => (bool)$item->qc_required,
+            'expiry' => (bool)$item->expiry_required,
+            'supplierDefault' => $item->defaultSupplier ? $item->defaultSupplier->nama_supplier : '-',
+            'abcClass' => $item->abc_class,
+            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+        ];
+
+        $supplierCallback = fn($item) => [
+            'id' => $item->id,
+            'code' => $item->kode_supplier,
+            'name' => $item->nama_supplier,
+            'address' => $item->alamat,
+            'contactPerson' => $item->contact_person,
+            'phone' => $item->telepon,
+            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+        ];
+
+        $binCallback = fn($item) => [
+            'id' => $item->id,
+            'code' => $item->bin_code,
+            'zone' => $item->zone ? $item->zone->zone_name : 'N/A',
+            'capacity' => $item->capacity,
+            'type' => $item->bin_type,
+            'qrCode' => $item->qr_code_path ? asset('storage/' . $item->qr_code_path) : null,
+            'status' => ucfirst($item->status)
+        ];
+
+        $userCallback = fn($item) => [
+            'id' => $item->id,
+            'jabatan' => $item->jabatan,
+            'fullName' => $item->nama_lengkap,
+            'role' => $item->role->role_name ?? 'N/A',
+            'department' => $item->departement,
+            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+        ];
+
         return Inertia::render('MasterData', [
-            'initialSkuData' => Material::with('defaultSupplier')->get()->map(fn($item) => [
-                'id' => $item->id,
-                'code' => $item->kode_item,
-                'name' => $item->nama_material,
-                'uom' => $item->satuan,
-                'category' => $item->kategori,
-                'qcRequired' => (bool)$item->qc_required,
-                'expiry' => (bool)$item->expiry_required,
-                'supplierDefault' => $item->defaultSupplier ? $item->defaultSupplier->nama_supplier : '-',
-                'abcClass' => $item->abc_class,
-                'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-            ]),
-            'initialSupplierData' => Supplier::all()->map(fn($item) => [
-                'id' => $item->id,
-                'code' => $item->kode_supplier,
-                'name' => $item->nama_supplier,
-                'address' => $item->alamat,
-                'contactPerson' => $item->contact_person,
-                'phone' => $item->telepon,
-                'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-            ]),
-            'initialBinData' => WarehouseBin::with('zone')->get()->map(fn($item) => [
-                'id' => $item->id,
-                'code' => $item->bin_code,
-                'zone' => $item->zone ? $item->zone->zone_name : 'N/A',
-                'capacity' => $item->capacity,
-                'type' => $item->bin_type,
-                'qrCode' => $item->qr_code_path ? asset('storage/' . $item->qr_code_path) : null,
-                'status' => ucfirst($item->status)
-            ]),
-            'initialUserData' => User::with('role')->get()->map(fn($item) => [
-                'id' => $item->id,
-                'jabatan' => $item->jabatan,
-                'fullName' => $item->nama_lengkap,
-                'role' => $item->role->role_name ?? 'N/A',
-                'department' => $item->departement,
-                'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-            ]),
+            // Kirim data yang sudah dipaginasi (Paginator Object)
+            'skuData' => $mapPaginator($skuPaginator, $skuCallback),
+            'supplierData' => $mapPaginator($supplierPaginator, $supplierCallback),
+            'binData' => $mapPaginator($binPaginator, $binCallback),
+            'userData' => $mapPaginator($userPaginator, $userCallback),
+
             'supplierList' => Supplier::where('status', 'active')->get()->map(fn($s) => [
                 'id' => $s->id,
                 'name' => $s->nama_supplier

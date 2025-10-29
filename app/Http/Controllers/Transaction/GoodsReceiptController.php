@@ -107,7 +107,8 @@ class GoodsReceiptController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'noPo' => 'required|exists:purchase_orders,id',
+            'noPo' => 'required|string|max:255',
+            // 'noPo' => 'required|exists:purchase_orders,id',
             'noSuratJalan' => 'required|string|max:255',
             'supplier' => 'required|exists:suppliers,id',
             'noKendaraan' => 'required|string|max:50',
@@ -121,6 +122,14 @@ class GoodsReceiptController extends Controller
             'items.*.qtyWadah' => 'required|numeric|min:0',
             'items.*.qtyUnit' => 'required|numeric|min:0',
             'items.*.pabrikPembuat' => 'nullable|string|max:255',
+            'items.*.kondisiBaik' => 'nullable|boolean',
+            'items.*.kondisiTidakBaik' => 'nullable|boolean',
+            'items.*.coaAda' => 'nullable|boolean',
+            'items.*.coaTidakAda' => 'nullable|boolean',
+            'items.*.labelMfgAda' => 'nullable|boolean',
+            'items.*.labelMfgTidakAda' => 'nullable|boolean',
+            'items.*.labelCoaSesuai' => 'nullable|boolean',
+            'items.*.labelCoaTidakSesuai' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
@@ -158,10 +167,7 @@ class GoodsReceiptController extends Controller
                     $itemData['expDate'] ?? ''
                 );
 
-                // Determine status QC
-                // $statusQC = $material->qc_required ? 'To QC' : 'Direct Putaway';
-
-                IncomingGoodsItem::create([
+                $tester = IncomingGoodsItem::create([
                     'incoming_id' => $incoming->id,
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
@@ -169,6 +175,7 @@ class GoodsReceiptController extends Controller
                     'qty_wadah' => $itemData['qtyWadah'],
                     'qty_unit' => $itemData['qtyUnit'],
                     'satuan' => $material->satuan,
+                    
                     'kondisi_baik' => $itemData['kondisiBaik'] ?? false,
                     'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? false,
                     'coa_ada' => $itemData['coaAda'] ?? false,
@@ -177,10 +184,12 @@ class GoodsReceiptController extends Controller
                     'label_mfg_tidak_ada' => $itemData['labelMfgTidakAda'] ?? false,
                     'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? false,
                     'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
+                    
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
                     'status_qc' => 'To QC',
                     'qr_code' => $qrCode,
                 ]);
+                // dd($tester);
 
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [

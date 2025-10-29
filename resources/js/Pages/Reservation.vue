@@ -160,14 +160,14 @@
                         class="bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
                         Cetak
                       </button>
-                      <button v-if="request.status === 'Submitted'" @click="approveRequest(request)"
+                      <!-- <button v-if="request.status === 'Submitted'" @click="approveRequest(request)"
                         class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
                         Approve
                       </button>
                       <button v-if="request.status === 'Submitted'" @click="rejectRequest(request)"
                         class="bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
                         Reject
-                      </button>
+                      </button> -->
                     </div>
                   </td>
                 </tr>

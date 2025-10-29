@@ -385,7 +385,7 @@
                                             <p class="text-xs text-amber-700 mb-3 font-semibold uppercase">Ke Bin</p>
                                             <div v-if="destinationBin"
                                                 class="bg-white px-8 py-6 rounded-2xl shadow-lg border-3 border-green-400">
-                                                <p class="text-4xl font-black text-green-600">{{ destinationBin }}</p>
+                                                <p class="text-4xl font-black text-green-600">{{ destinationBin.code }}</p>
                                             </div>
                                             <div v-else
                                                 class="bg-gray-100 px-8 py-6 rounded-2xl shadow-lg border-3 border-gray-300">
@@ -576,7 +576,7 @@ const props = defineProps({
     initialBins: Array,
     initialTransferHistory: Array,
     scannedMaterial: Object,
-    destinationBin: Object,
+    destinationBin: String,
     errors: Object,
 });
 

@@ -11,7 +11,7 @@ class WarehouseBin extends Model
 
     protected $fillable = [
         'zone_id',
-        'warehouse_id',
+        'warehouse_id', //default = 1
         'bin_code',
         'bin_name',
         'bin_type',

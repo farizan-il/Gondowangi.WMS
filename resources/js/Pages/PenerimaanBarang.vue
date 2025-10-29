@@ -163,8 +163,8 @@
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.namaMaterial }}</td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.batchLot }}</td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.expDate }}</td>
-                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.qtyWadah }}</td>
-                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.qtyUnit }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyWadah) }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyUnit) }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">
                         <div class="flex gap-1">
                           <span v-if="item.kondisiBaik"
@@ -252,13 +252,12 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">No PO *</label>
-                <select v-model="newShipment.noPo"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                  <option value="">Pilih No PO</option>
-                  <option v-for="po in purchaseOrders" :key="po.id" :value="po.id">
-                    {{ po.no_po }}
-                  </option>
-                </select>
+                <input 
+                  v-model="newShipment.noPo"
+                  type="text"
+                  placeholder="Masukkan No PO"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                />
               </div>
 
               <div>
@@ -269,15 +268,31 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Supplier *
+                    Supplier *
                 </label>
-                <select v-model="newShipment.supplier"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                  <option value="">Pilih Supplier</option>
-                  <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-                    {{ supplier.nama_supplier }}
-                  </option>
-                </select>
+                <div class="relative">
+                    <input 
+                        v-model="supplierSearchQuery" 
+                        @input="filterSuppliers"
+                        type="text" 
+                        placeholder="Ketik untuk mencari Supplier..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                    />
+                    <div v-if="filteredSuppliers.length > 0 && supplierSearchQuery" 
+                        class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div 
+                            v-for="supplier in filteredSuppliers" 
+                            :key="supplier.id"
+                            @click="selectSupplier(supplier)"
+                            class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-gray-900"
+                        >
+                            {{ supplier.nama_supplier }}
+                        </div>
+                    </div>
+                </div>
+                <p v-if="newShipment.supplierName" class="text-xs text-gray-500 mt-1">
+                    **Dipilih:** {{ newShipment.supplierName }}
+                </p>
               </div>
 
               <div>
@@ -305,8 +320,8 @@
                   <option value="">Pilih Kategori</option>
                   <option value="Raw Material">Raw Material</option>
                   <option value="Packaging Material">Packaging Material</option>
-                  <option value="Spare Part">Spare Part</option>
-                  <option value="Office Supply">Office Supply</option>
+                  <!-- <option value="Spare Part">Spare Part</option>
+                  <option value="Office Supply">Office Supply</option> -->
                 </select>
               </div>
 
@@ -362,12 +377,31 @@
                   <tbody class="divide-y divide-gray-200 bg-white">
                     <tr v-for="(item, index) in newShipment.items" :key="index">
                       <td class="px-3 py-2 whitespace-nowrap">
-                        <select v-model="item.kodeItem" @change="updateNamaMaterial(index)" class="...">
-                          <option value="">Pilih SKU</option>
-                          <option v-for="material in materials" :key="material.id" :value="material.id">
-                            {{ material.code }}
-                          </option>
-                        </select>
+                          <div class="relative">
+                              <input 
+                                  v-model="item.skuSearch"
+                                  @input="filterMaterials(index)"
+                                  @focus="item.showSuggestions = true"
+                                  @blur="setTimeout(() => { item.showSuggestions = false }, 200)"
+                                  type="text"
+                                  placeholder="Cari Kode/Nama SKU"
+                                  class="w-32 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900"
+                              />
+                          </div>
+                          <div v-if="item.showSuggestions && item.filteredMaterials.length > 0"
+                              class="absolute z-20 w-80 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto" style="z-index: 99999;">
+                              <div 
+                                  v-for="material in item.filteredMaterials" 
+                                  :key="material.id"
+                                  @mousedown.prevent="selectMaterial(index, material)"
+                                  class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-xs text-gray-900"
+                              >
+                                  **[{{ material.code }}]** - {{ material.name }}
+                              </div>
+                          </div>
+                          <p v-if="item.kodeItem" class="text-xs text-gray-500 mt-1">
+                              **Dipilih:** {{ item.kodeItemDisplay }}
+                          </p>
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
                         <input v-model="item.namaMaterial" type="text" readonly
@@ -570,6 +604,10 @@ const props = defineProps({
   materials: Array
 })
 
+// Data reaktif untuk Autocomplete
+const supplierSearchQuery = ref('')
+const filteredSuppliers = ref([])
+
 // Data reaktif
 const showModal = ref(false)
 const showQRCodeModal = ref(false)
@@ -584,6 +622,7 @@ const newShipment = ref({
   namaDriver: '',
   tanggalTerima: '',
   kategori: '',
+  supplierName: '',
   items: []
 })
 
@@ -634,12 +673,17 @@ const resetForm = () => {
 const addNewItem = () => {
   newShipment.value.items.push({
     kodeItem: '',
+    kodeItemDisplay: '',
     namaMaterial: '',
     batchLot: '',
     expDate: '',
     qtyWadah: '',
     qtyUnit: '',
     pabrikPembuat: '',
+    skuSearch: '',
+    filteredMaterials: [],
+    showSuggestions: false,
+
     kondisiBaik: false,
     kondisiTidakBaik: false,
     coaAda: false,
@@ -674,6 +718,70 @@ const toggleCheckbox = (item, field) => {
 
   // Set the clicked one to true
   item[field] = true
+}
+
+const filterSuppliers = () => {
+    if (supplierSearchQuery.value.length < 2) {
+        filteredSuppliers.value = []
+        return
+    }
+
+    const query = supplierSearchQuery.value.toLowerCase()
+    
+    filteredSuppliers.value = props.suppliers
+        .filter(supplier => {
+            // 1. Pastikan objek supplier BUKAN null/undefined.
+            if (!supplier) return false; 
+
+            // 2. Akses properti dengan aman, gunakan fallback string kosong jika properti tidak ada
+            const name = supplier.nama_supplier || '';
+            const code = supplier.code || '';
+
+            return name.toLowerCase().includes(query) ||
+                   code.toLowerCase().includes(query);
+        })
+        .slice(0, 10)
+}
+
+// Fungsi untuk memilih Supplier
+const selectSupplier = (supplier) => {
+    newShipment.value.supplier = supplier.id // Simpan ID
+    newShipment.value.supplierName = supplier.nama_supplier // Simpan Nama untuk tampilan
+    supplierSearchQuery.value = supplier.nama_supplier
+    filteredSuppliers.value = []
+}
+
+// Fungsi untuk memfilter Material/SKU
+const filterMaterials = (index) => {
+    const item = newShipment.value.items[index]
+    const query = item.skuSearch.toLowerCase()
+    
+    if (query.length < 2) {
+        item.filteredMaterials = []
+        return
+    }
+
+    item.filteredMaterials = props.materials.filter(material =>
+        material.code.toLowerCase().includes(query) ||
+        material.name.toLowerCase().includes(query)
+    ).slice(0, 10) // Batasi maksimal 10 saran
+}
+
+// Fungsi untuk memilih Material/SKU
+const selectMaterial = (index, material) => {
+    const item = newShipment.value.items[index]
+    
+    // 1. Update form data
+    item.kodeItem = material.id 
+    item.kodeItemDisplay = material.code 
+    item.namaMaterial = material.name
+    item.pabrikPembuat = material.mfg
+    item.statusQC = material.qcRequired ? 'To QC' : 'Direct Putaway'
+
+    // 2. Clear state pencarian
+    item.skuSearch = material.code
+    item.filteredMaterials = []
+    item.showSuggestions = false
 }
 
 const updateNamaMaterial = (index) => {
@@ -726,6 +834,12 @@ const saveShipment = () => {
 
 const generateQR = (shipmentId, itemId, lot, qty, expDate) => {
   return `${shipmentId}|${itemId}|${lot}|${qty}|${expDate}`
+}
+
+const forceInteger = (item, field) => {
+    let val = item[field].toString().replace(/[^0-9]/g, '')
+    
+    item[field] = parseInt(val) || (val === '0' ? 0 : '')
 }
 
 const formatDate = (dateString) => {
@@ -799,7 +913,7 @@ const printChecklist = (shipment) => {
         <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">PCS</td>
         <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">N/A</td>
         <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">N/A</td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">${item.qtyUnit}</td>
+        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">${item.qtyUnit ? parseInt(item.qtyUnit) : ''}</td>
       </tr>
     `
   })
@@ -1132,7 +1246,7 @@ const printChecklist = (shipment) => {
             </tr>
             <tr>
               <td class="field-label">ED</td>
-              <td class="field-value">${shipment.items[0]?.expDate || ''}</td>
+              <td class="field-value">${shipment.items[0]?.expDate ? formatDateOnly(shipment.items[0].expDate) : ''}</td>
             </tr>
             <tr>
               <td class="field-label">CoA</td>
@@ -1143,7 +1257,7 @@ const printChecklist = (shipment) => {
             </tr>
             <tr>
               <td class="field-label">Jumlah Wadah</td>
-              <td class="field-value">${shipment.items[0]?.qtyWadah || ''}</td>
+              <td class="field-value">${shipment.items[0]?.qtyWadah ? parseInt(shipment.items[0].qtyWadah) : ''}</td>
             </tr>
             <tr>
               <td class="field-label">Tgl. Diterima</td>
