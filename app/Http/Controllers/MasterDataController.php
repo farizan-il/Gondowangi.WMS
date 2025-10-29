@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryStock;
 use App\Models\Material;
 use App\Models\Supplier;
 use App\Models\WarehouseBin;
@@ -65,7 +66,8 @@ class MasterDataController extends Controller
             'capacity' => $item->capacity,
             'type' => $item->bin_type,
             'qrCode' => $item->qr_code_path ? asset('storage/' . $item->qr_code_path) : null,
-            'status' => ucfirst($item->status)
+            'status' => ucfirst($item->status),
+            'current_items_count' => InventoryStock::where('bin_id', $item->id)->count(), // Tambahkan hitungan
         ];
 
         $userCallback = fn($item) => [
@@ -78,7 +80,6 @@ class MasterDataController extends Controller
         ];
 
         return Inertia::render('MasterData', [
-            // Kirim data yang sudah dipaginasi (Paginator Object)
             'skuData' => $mapPaginator($skuPaginator, $skuCallback),
             'supplierData' => $mapPaginator($supplierPaginator, $supplierCallback),
             'binData' => $mapPaginator($binPaginator, $binCallback),
@@ -92,6 +93,36 @@ class MasterDataController extends Controller
                 'id' => $z->id,
                 'name' => $z->zone_name
             ])
+        ]);
+    }
+
+    public function getBinStockDetails($binId)
+    {
+        // Ambil stok yang tersedia di Bin ini
+        $stocks = InventoryStock::with('material')
+            ->where('bin_id', $binId)
+            ->where('qty_on_hand', '>', 0)
+            ->get();
+
+        $bin = WarehouseBin::findOrFail($binId);
+
+        $materialDetails = $stocks->map(function ($stock) {
+            return [
+                'id' => $stock->id,
+                'material_code' => $stock->material->kode_item ?? 'N/A',
+                'material_name' => $stock->material->nama_material ?? 'N/A',
+                'batch_lot' => $stock->batch_lot,
+                'qty_on_hand' => (float)$stock->qty_on_hand,
+                'qty_available' => (float)$stock->qty_available,
+                'uom' => $stock->uom,
+                'exp_date' => $stock->exp_date ? $stock->exp_date->format('Y-m-d') : 'N/A',
+                'status' => ucfirst($stock->status),
+            ];
+        });
+
+        return response()->json([
+            'bin_code' => $bin->bin_code,
+            'details' => $materialDetails
         ]);
     }
 

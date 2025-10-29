@@ -462,6 +462,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import { Html5Qrcode } from 'html5-qrcode'
+import QRCode from 'qrcode';
 
 let qrScanner = null
 
@@ -528,6 +529,33 @@ const isQCFormValid = computed(() => {
     qcForm.value.jumlahBoxUtuh !== '' &&
     qcForm.value.qtyBoxUtuh !== ''
 })
+
+const generateQRDataURL = async (qrContent: string): Promise<string> => {
+    try {
+        const url = await QRCode.toDataURL(qrContent, {
+            width: 150, // Sesuaikan ukuran cetak
+            margin: 1,
+            errorCorrectionLevel: 'M',
+        });
+        return url;
+    } catch (err) {
+        console.error("Gagal generate QR Data URL:", err);
+        return ""; // Mengembalikan string kosong jika gagal
+    }
+};
+
+const formatDateOnlyPrint = (dateString: string | Date | null) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  // Format menjadi D/M/YYYY (cth: 1/2/2025)
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric'
+  }).replace(/\./g, '/'); // Ganti titik menjadi slash jika lokal menggunakan titik
+}
+
+const isProcessing = ref(false);
 
 // Methods
 const getQCStatusClass = (status) => {
@@ -1122,7 +1150,7 @@ const stopCamera = () => {
   console.log('✅ Camera stopped')
 }
 
-let isProcessing = ref(false)
+// let isProcessing = ref(false)
 
 const processQRCode = async (qrData) => {
   if (!qrData) {
@@ -1291,31 +1319,200 @@ const printReturnSlip = (item) => {
   setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
 }
 
-const printQRLabel = (item) => {
-  const printWindow = window.open('', '_blank')
-  const qrContent = `${item.shipmentNumber}|${item.kodeItem}|${item.statusQC}|${item.qtyReceived}|${new Date().toISOString().slice(0, 10)}`
+const printQRLabel = async (item) => {
+    const today = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    const qrContent = item.qrCode || `${item.shipmentNumber}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
+    
+    const qrDataURL = await generateQRDataURL(qrContent);
 
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>QR Label - ${item.kodeItem}</title>
-        <style>
-          .label { border: 2px solid #000; padding: 15px; width: 300px; text-align: center; ${item.statusQC === 'PASS' ? 'background-color: #e6ffe6;' : 'background-color: #ffe6e6;'} }
-          .qr-placeholder { width: 120px; height: 120px; border: 2px solid #000; margin: 10px auto; display: flex; align-items: center; justify-content: center; background-color: white; }
-        </style>
-      </head>
-      <body>
-        <div class="label">
-          <div class="qr-placeholder">QR CODE<br>${qrContent}</div>
-          <div><strong>${item.statusQC === 'PASS' ? 'KARANTINA' : 'REJECT'}</strong></div>
-        </div>
-      </body>
-    </html>
-  `)
+    if (!qrDataURL) {
+        alert("Gagal membuat QR Code untuk dicetak.");
+        return;
+    }
 
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
+    const wadahInfo = `1000 x 11 + 500 x 1`; 
+    const tanggalTerima = item.incomingGood?.tanggal_terima || item.tanggalTerima;
+
+    const printWindow = window.open('', '_blank');
+
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Label RELEASE - ${item.kodeItem}</title>
+            <style>
+                @page { size: 10cm 15cm; margin: 0; }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    font-size: 10pt;
+                }
+                
+                .label-container {
+                    width: 10cm;
+                    height: 15cm;
+                    border: 3px solid #000;
+                    display: flex;
+                    flex-direction: column;
+                    background: white;
+                    color: black;
+                }
+                
+                .logo-section {
+                    text-align: center;
+                    padding: 5px 0;
+                }
+                
+                .status-box {
+                    text-align: center;
+                    border-top: 2px solid #000;
+                    padding: 5px 0;
+                    font-size: 14pt;
+                    font-weight: bold;
+                    letter-spacing: 5px;
+                    background-color: #f0f0f0; /* Memberi sedikit latar belakang */
+                }
+                
+                .detail-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 10pt;
+                }
+                
+                .detail-table td {
+                    padding: 3px 6px;
+                    border: 1px solid #000;
+                    vertical-align: top;
+                    height: 20px;
+                }
+                
+                .detail-table .label-col {
+                    width: 25%;
+                    font-weight: normal;
+                }
+                
+                .detail-table .value-col {
+                    font-weight: bold;
+                    width: 75%;
+                }
+                
+                .detail-table .qr-cell {
+                    width: 120px; 
+                    text-align: center;
+                    padding: 5px;
+                }
+                
+                .qr-code-placeholder {
+                    width: 110px;
+                    height: 110px;
+                    display: block;
+                    margin: 0 auto;
+                    border: 1px solid #000;
+                }
+
+                .footer-row {
+                    border-top: 1px solid #000;
+                    padding: 3px 6px;
+                    font-size: 8pt;
+                    display: flex;
+                    justify-content: space-between;
+                }
+
+                .footer-row-2 {
+                    border-top: 1px solid #000;
+                    padding: 5px 6px;
+                    font-size: 9pt;
+                    text-align: right;
+                }
+                
+                .signature-section {
+                    border-top: 2px solid #000;
+                    padding: 5px 6px;
+                    font-size: 8pt;
+                    text-align: right;
+                    font-weight: bold;
+                }
+                
+                /* Class untuk kolom yang memanjang (full width) */
+                .full-col {
+                    border-right: none !important;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="label-container">
+                <div class="logo-section">
+                    <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" style="width: 150px; height: auto;" alt="Logo">
+                </div>
+                
+                <div class="status-box">R E L E A S E</div>
+
+                <table class="detail-table">
+                    <tr>
+                        <td class="label-col value-col" colspan="2" style="font-size: 12pt;">
+                            <span style="font-weight: normal;">[${item.kodeItem}]</span> ${item.namaMaterial}
+                        </td>
+                        <td class="qr-cell" rowspan="6">
+                             <img src="${qrDataURL}" class="qr-code-image" alt="QR Code Release">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Kode Barang</td>
+                        <td class="value-col">: ${item.kodeItem}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">No Lot</td>
+                        <td class="value-col">: ${item.batchLot}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Supplier</td>
+                        <td class="value-col">: ${item.supplier}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Jmlh Barang</td>
+                        <td class="value-col">: ${item.qtyReceived} ${item.uom}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col"></td>
+                        <td class="value-col" style="font-size: 9pt;">: ${wadahInfo} box</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Tgl Datang</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(tanggalTerima)}</td>
+                        <td class="value-col" style="text-align: right;">QL1001-01</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Exp. Date</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(item.expDate)}</td>
+                        <td class="value-col" style="text-align: right;">Rev. 02</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col full-col">Dibuat Oleh</td>
+                        <td class="value-col full-col" colspan="2">: ${usePage().props.auth?.user?.name || 'Logistik'}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="signature-section">
+                            Logistik
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <script>
+                // Jalankan print setelah DOM dimuat
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => window.close(), 100);
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close() }, 500);
 }
 
 onUnmounted(() => {

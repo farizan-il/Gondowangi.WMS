@@ -13,6 +13,7 @@
         <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
         <meta name="csrf-token" content="{{ csrf_token() }}">
         @inertiaHead
+        @routes
     </head>
     <body class="antialiased">
         @inertia

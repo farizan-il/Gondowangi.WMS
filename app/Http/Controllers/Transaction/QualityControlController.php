@@ -28,6 +28,7 @@ class QualityControlController extends Controller
     {
         // Get items that need QC (status_qc = 'To QC')
         $itemsToQC = IncomingGoodsItem::with([
+            'incomingGood',
             'incomingGood.purchaseOrder',
             'incomingGood.supplier',
             'material'
@@ -55,6 +56,7 @@ class QualityControlController extends Controller
                 'namaDriver' => $item->incomingGood->nama_driver,
                 'kategori' => $item->incomingGood->kategori,
                 'qrCode' => $item->qr_code,
+                'tanggalTerima' => $item->incomingGood->tanggal_terima ?? now()->toDateTimeString(),
             ];
         });
 

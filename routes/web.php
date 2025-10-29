@@ -33,6 +33,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
 
     // Master Data Routes
+    Route::get('/master-data/bin/{binId}/stocks', [MasterDataController::class, 'getBinStockDetails'])->name('bin.stocks.details');
+    
     Route::prefix('master-data')->middleware(['auth'])->group(function () {
         
         Route::get('/', [MasterDataController::class, 'index'])->name('master-data.index');

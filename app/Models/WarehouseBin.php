@@ -35,4 +35,9 @@ class WarehouseBin extends Model
     {
         return $this->belongsTo(Warehouse::class);
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(InventoryStock::class, 'bin_id');
+    }
 }

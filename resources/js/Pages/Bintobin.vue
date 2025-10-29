@@ -565,337 +565,337 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed, watch, watchEffect } from 'vue'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import { useForm, router, usePage } from '@inertiajs/vue3'
-import jsQR from "jsqr"; // <-- 1. IMPORT jsQR
+    import { ref, onMounted, nextTick, computed, watch, watchEffect } from 'vue'
+    import AppLayout from '@/Layouts/AppLayout.vue'
+    import { useForm, router, usePage } from '@inertiajs/vue3'
+    import jsQR from "jsqr";
 
-// 1. Terima data dari Inertia (Laravel Controller)
-const props = defineProps({
-    title: String,
-    initialBins: Array,
-    initialTransferHistory: Array,
-    scannedMaterial: Object,
-    destinationBin: String,
-    errors: Object,
-});
-
-const page = usePage();
-
-// Sidebar State
-const sidebarOpen = ref(false)
-const toggleSidebar = () => sidebarOpen.value = !sidebarOpen.value
-const closeSidebar = () => sidebarOpen.value = false
-
-// State Management
-const barcodeInput = ref('')
-const barcodeInputRef = ref(null)
-const currentStep = ref('scan_material')
-const alertMessage = ref('')
-const alertType = ref('success')
-const isScanning = ref(false) // Untuk loading manual scan
-const showCamera = ref(false)
-const videoElement = ref(null)
-const canvasElement = ref(null) // Pastikan Anda punya <canvas ref="canvasElement" class="hidden"></canvas> di template
-const cameraStream = ref(null)
-const animationFrameId = ref(null) // <-- Ganti scanInterval
-const isCameraScanning = ref(false) // <-- Untuk animasi "Scanning..." di overlay
-
-const transferHistory = ref(props.initialTransferHistory)
-const bins = ref(props.initialBins)
-const localScannedMaterial = ref(props.scannedMaterial)
-const localDestinationBin = ref(props.destinationBin)
-
-const form = useForm({
-    from_bin_id: null,
-    to_bin_id: null,
-    stock_id: null,
-    quantity: null,
-})
-
-// Watcher untuk update state lokal JIKA props berubah
-watch(() => props.scannedMaterial, (newValue) => {
-    localScannedMaterial.value = newValue
-})
-watch(() => props.destinationBin, (newValue) => {
-    localDestinationBin.value = newValue
-})
-watch(() => props.initialTransferHistory, (newValue) => {
-    transferHistory.value = newValue
-})
-watch(() => props.initialBins, (newValue) => {
-    bins.value = newValue
-})
-
-// Watcher untuk menampilkan flash messages dari Laravel
-watch(() => page.props.flash, (flash) => {
-    if (flash?.success) {
-        showAlert(flash.success, 'success');
-    } else if (flash?.error) {
-        showAlert(flash.error, 'error');
-    }
-}, { deep: true });
-
-// WatchEffect untuk meng-update 'currentStep' dan 'form' secara reaktif
-watchEffect(() => {
-    if (localScannedMaterial.value && localDestinationBin.value) {
-        currentStep.value = 'complete'
-        form.stock_id = localScannedMaterial.value.stock_id
-        form.from_bin_id = localScannedMaterial.value.current_bin_id
-        form.quantity = localScannedMaterial.value.quantity
-        form.to_bin_id = localDestinationBin.value.id
-    } else if (localScannedMaterial.value) {
-        currentStep.value = 'scan_destination'
-        if (!alertMessage.value && !page.props.flash?.error) {
-             showAlert(`✅ Material ${localScannedMaterial.value.name} (Batch: ${localScannedMaterial.value.batchNo}) berhasil di-scan! Silakan scan bin tujuan.`, 'success')
-        }
-    } else {
-        currentStep.value = 'scan_material'
-    }
-})
-
-// Current Date
-const currentDate = computed(() => {
-    const now = new Date()
-    return now.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    })
-})
-
-// --- METHODS ---
-
-// 2. PERBAIKI 'handleScan' (Hapus 'route()')
-const handleScan = () => {
-    if (isScanning.value || !barcodeInput.value.trim()) {
-        if (!barcodeInput.value.trim()) {
-            showAlert('Silakan scan atau masukkan kode barcode', 'error');
-        }
-        return;
-    }
-
-    const code = barcodeInput.value.trim().toUpperCase();
-    isScanning.value = true;
-    alertMessage.value = '';
-
-    let data = {};
-    // Gunakan URL string, BUKAN route()
-    let url = '/transaction/bin-to-bin';
-
-    if (currentStep.value === 'scan_material') {
-        data = { material_batch: code };
-    } else if (currentStep.value === 'scan_destination') {
-        data = {
-            material_batch: localScannedMaterial.value.batchNo,
-            bin_code: code
-        };
-    }
-
-    router.get(url, data, {
-        preserveState: true,
-        preserveScroll: true,
-        onFinish: () => {
-            isScanning.value = false;
-            barcodeInput.value = '';
-            focusInput();
-        },
-        onError: (errors) => {
-            showAlert('❌ Gagal memproses: ' + (Object.values(errors)[0] || 'Error server'), 'error');
-        }
+    // 1. Terima data dari Inertia (Laravel Controller)
+    const props = defineProps({
+        title: String,
+        initialBins: Array,
+        initialTransferHistory: Array,
+        scannedMaterial: Object,
+        destinationBin: String,
+        errors: Object,
     });
-}
 
-const handleManualScan = () => {
-    handleScan()
-}
+    const page = usePage();
 
-// 3. PERBAIKI 'completeTransfer' (Hapus 'route()')
-const completeTransfer = () => {
-    if (form.processing) return;
+    // Sidebar State
+    const sidebarOpen = ref(false)
+    const toggleSidebar = () => sidebarOpen.value = !sidebarOpen.value
+    const closeSidebar = () => sidebarOpen.value = false
 
-    // Gunakan URL string, BUKAN route()
-    form.post('/transaction/bin-to-bin/transfer', {
-        preserveScroll: true,
-        onSuccess: () => {
-            // Reset otomatis karena props akan kosong
-        },
-        onError: (errors) => {
-            const errorMsg = Object.values(errors).join(' \n')
-            showAlert(`❌ Gagal Konfirmasi: ${errorMsg}`, 'error')
+    // State Management
+    const barcodeInput = ref('')
+    const barcodeInputRef = ref(null)
+    const currentStep = ref('scan_material')
+    const alertMessage = ref('')
+    const alertType = ref('success')
+    const isScanning = ref(false) // Untuk loading manual scan
+    const showCamera = ref(false)
+    const videoElement = ref(null)
+    const canvasElement = ref(null) // Pastikan Anda punya <canvas ref="canvasElement" class="hidden"></canvas> di template
+    const cameraStream = ref(null)
+    const animationFrameId = ref(null) // <-- Ganti scanInterval
+    const isCameraScanning = ref(false) // <-- Untuk animasi "Scanning..." di overlay
+
+    const transferHistory = ref(props.initialTransferHistory)
+    const bins = ref(props.initialBins)
+    const localScannedMaterial = ref(props.scannedMaterial)
+    const localDestinationBin = ref(props.destinationBin)
+
+    const form = useForm({
+        from_bin_id: null,
+        to_bin_id: null,
+        stock_id: null,
+        quantity: null,
+    })
+
+    // Watcher untuk update state lokal JIKA props berubah
+    watch(() => props.scannedMaterial, (newValue) => {
+        localScannedMaterial.value = newValue
+    })
+    watch(() => props.destinationBin, (newValue) => {
+        localDestinationBin.value = newValue
+    })
+    watch(() => props.initialTransferHistory, (newValue) => {
+        transferHistory.value = newValue
+    })
+    watch(() => props.initialBins, (newValue) => {
+        bins.value = newValue
+    })
+
+    // Watcher untuk menampilkan flash messages dari Laravel
+    watch(() => page.props.flash, (flash) => {
+        if (flash?.success) {
+            showAlert(flash.success, 'success');
+        } else if (flash?.error) {
+            showAlert(flash.error, 'error');
+        }
+    }, { deep: true });
+
+    // WatchEffect untuk meng-update 'currentStep' dan 'form' secara reaktif
+    watchEffect(() => {
+        if (localScannedMaterial.value && localDestinationBin.value) {
+            currentStep.value = 'complete'
+            form.stock_id = localScannedMaterial.value.stock_id
+            form.from_bin_id = localScannedMaterial.value.current_bin_id
+            form.quantity = localScannedMaterial.value.quantity
+            form.to_bin_id = localDestinationBin.value.id
+        } else if (localScannedMaterial.value) {
+            currentStep.value = 'scan_destination'
+            if (!alertMessage.value && !page.props.flash?.error) {
+                showAlert(`✅ Material ${localScannedMaterial.value.name} (Batch: ${localScannedMaterial.value.batchNo}) berhasil di-scan! Silakan scan bin tujuan.`, 'success')
+            }
+        } else {
+            currentStep.value = 'scan_material'
         }
     })
-}
 
-// 4. PERBAIKI 'resetTransfer' (Hapus 'route()')
-const resetTransfer = () => {
-    // Gunakan URL string, BUKAN route()
-    router.get('/bin-to-bin', {}, { // <-- PERBAIKAN ERROR
-        preserveState: false,
-    });
-}
-
-const showAlert = (message, type) => {
-    alertMessage.value = message
-    alertType.value = type
-    setTimeout(() => {
-        if (alertMessage.value === message) {
-            alertMessage.value = ''
-        }
-    }, 6000)
-}
-
-const focusInput = () => {
-    nextTick(() => {
-        if (barcodeInputRef.value && !showCamera.value) {
-            barcodeInputRef.value.focus()
-        }
+    // Current Date
+    const currentDate = computed(() => {
+        const now = new Date()
+        return now.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
     })
-}
 
+    // --- METHODS ---
 
-// --- 5. PERBAIKI LOGIKA KAMERA ---
+    // 2. PERBAIKI 'handleScan' (Hapus 'route()')
+    const handleScan = () => {
+        if (isScanning.value || !barcodeInput.value.trim()) {
+            if (!barcodeInput.value.trim()) {
+                showAlert('Silakan scan atau masukkan kode barcode', 'error');
+            }
+            return;
+        }
 
-const toggleCamera = async () => {
-    if (showCamera.value) {
-        stopCamera()
-    } else {
-        await startCamera()
+        const code = barcodeInput.value.trim().toUpperCase();
+        isScanning.value = true;
+        alertMessage.value = '';
+
+        let data = {};
+        // Gunakan URL string, BUKAN route()
+        let url = '/transaction/bin-to-bin';
+
+        if (currentStep.value === 'scan_material') {
+            data = { material_batch: code };
+        } else if (currentStep.value === 'scan_destination') {
+            data = {
+                material_batch: localScannedMaterial.value.batchNo,
+                bin_code: code
+            };
+        }
+
+        router.get(url, data, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isScanning.value = false;
+                barcodeInput.value = '';
+                focusInput();
+            },
+            onError: (errors) => {
+                showAlert('❌ Gagal memproses: ' + (Object.values(errors)[0] || 'Error server'), 'error');
+            }
+        });
     }
-}
 
-const startCamera = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+    const handleManualScan = () => {
+        handleScan()
+    }
+
+    // 3. PERBAIKI 'completeTransfer' (Hapus 'route()')
+    const completeTransfer = () => {
+        if (form.processing) return;
+
+        // Gunakan URL string, BUKAN route()
+        form.post('/transaction/bin-to-bin/transfer', {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Reset otomatis karena props akan kosong
+            },
+            onError: (errors) => {
+                const errorMsg = Object.values(errors).join(' \n')
+                showAlert(`❌ Gagal Konfirmasi: ${errorMsg}`, 'error')
+            }
+        })
+    }
+
+    // 4. PERBAIKI 'resetTransfer' (Hapus 'route()')
+    const resetTransfer = () => {
+        // Gunakan URL string, BUKAN route()
+        router.get('/bin-to-bin', {}, { // <-- PERBAIKAN ERROR
+            preserveState: false,
+        });
+    }
+
+    const showAlert = (message, type) => {
+        alertMessage.value = message
+        alertType.value = type
+        setTimeout(() => {
+            if (alertMessage.value === message) {
+                alertMessage.value = ''
+            }
+        }, 6000)
+    }
+
+    const focusInput = () => {
+        nextTick(() => {
+            if (barcodeInputRef.value && !showCamera.value) {
+                barcodeInputRef.value.focus()
+            }
+        })
+    }
+
+
+    // --- 5. PERBAIKI LOGIKA KAMERA ---
+
+    const toggleCamera = async () => {
+        if (showCamera.value) {
+            stopCamera()
+        } else {
+            await startCamera()
+        }
+    }
+
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            })
+
+            cameraStream.value = stream
+            showCamera.value = true
+
+            await nextTick()
+
+            if (videoElement.value) {
+                videoElement.value.srcObject = stream
+                videoElement.value.play()
+                
+                // Mulai loop deteksi
+                tick(); // Panggil fungsi tick
+                
+                showAlert('📷 Kamera aktif! Arahkan barcode ke kamera.', 'success')
+            }
+        } catch (error) {
+            console.error('Camera error:', error)
+            if (error.name === "NotAllowedError") {
+                showAlert('❌ Izin kamera ditolak. Harap izinkan akses kamera di browser Anda.', 'error')
+            } else {
+                showAlert('❌ Tidak dapat mengakses kamera. Pastikan Anda menggunakan HTTPS.', 'error')
+            }
+        }
+    }
+
+    const stopCamera = () => {
+        if (cameraStream.value) {
+            cameraStream.value.getTracks().forEach(track => track.stop())
+            cameraStream.value = null
+        }
+
+        // Hentikan loop deteksi
+        if (animationFrameId.value) {
+            cancelAnimationFrame(animationFrameId.value)
+            animationFrameId.value = null
+        }
+
+        showCamera.value = false
+        isCameraScanning.value = false
+
+        if (videoElement.value) {
+            videoElement.value.srcObject = null
+        }
+        focusInput(); // Fokus kembali ke input manual setelah kamera ditutup
+    }
+
+    // Fungsi 'tick' untuk loop deteksi QR
+    const tick = () => {
+        if (!showCamera.value || !videoElement.value || !canvasElement.value) {
+            return;
+        }
+
+        isCameraScanning.value = false;
+
+        // Pastikan video sudah siap
+        if (videoElement.value.readyState === videoElement.value.HAVE_ENOUGH_DATA) {
+            const canvas = canvasElement.value;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true }); // Optimasi
+
+            canvas.height = videoElement.value.videoHeight;
+            canvas.width = videoElement.value.videoWidth;
+            
+            // Gambar frame video ke canvas
+            ctx.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height);
+            
+            // Ambil data gambar dari canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Coba deteksi QR code menggunakan jsQR
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
+            });
+
+            isCameraScanning.value = true; // Tampilkan animasi scanning line
+
+            if (code) {
+                // JIKA BERHASIL TERDETEKSI
+                isCameraScanning.value = false;
+                stopCamera(); // Matikan kamera
+                barcodeInput.value = code.data; // Masukkan hasil scan ke input
+                handleScan(); // Panggil handleScan untuk diproses
+                return; // Hentikan loop
+            }
+        }
+
+        // Lanjutkan ke frame berikutnya
+        animationFrameId.value = requestAnimationFrame(tick);
+    }
+
+    // HAPUS 'startBarcodeDetection' dan 'simulateCameraScan' (diganti 'tick')
+
+    // Computed
+    const alertClass = computed(() => {
+        return alertType.value === 'success'
+            ? 'bg-green-500 text-white border-2 border-green-600'
+            : 'bg-red-500 text-white border-2 border-red-600'
+    })
+
+    // Lifecycle
+    onMounted(() => {
+        focusInput()
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebarOpen.value) {
+                closeSidebar()
             }
         })
 
-        cameraStream.value = stream
-        showCamera.value = true
-
-        await nextTick()
-
-        if (videoElement.value) {
-            videoElement.value.srcObject = stream
-            videoElement.value.play()
-            
-            // Mulai loop deteksi
-            tick(); // Panggil fungsi tick
-            
-            showAlert('📷 Kamera aktif! Arahkan barcode ke kamera.', 'success')
-        }
-    } catch (error) {
-        console.error('Camera error:', error)
-        if (error.name === "NotAllowedError") {
-             showAlert('❌ Izin kamera ditolak. Harap izinkan akses kamera di browser Anda.', 'error')
-        } else {
-             showAlert('❌ Tidak dapat mengakses kamera. Pastikan Anda menggunakan HTTPS.', 'error')
-        }
-    }
-}
-
-const stopCamera = () => {
-    if (cameraStream.value) {
-        cameraStream.value.getTracks().forEach(track => track.stop())
-        cameraStream.value = null
-    }
-
-    // Hentikan loop deteksi
-    if (animationFrameId.value) {
-        cancelAnimationFrame(animationFrameId.value)
-        animationFrameId.value = null
-    }
-
-    showCamera.value = false
-    isCameraScanning.value = false
-
-    if (videoElement.value) {
-        videoElement.value.srcObject = null
-    }
-    focusInput(); // Fokus kembali ke input manual setelah kamera ditutup
-}
-
-// Fungsi 'tick' untuk loop deteksi QR
-const tick = () => {
-    if (!showCamera.value || !videoElement.value || !canvasElement.value) {
-        return;
-    }
-
-    isCameraScanning.value = false;
-
-    // Pastikan video sudah siap
-    if (videoElement.value.readyState === videoElement.value.HAVE_ENOUGH_DATA) {
-        const canvas = canvasElement.value;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true }); // Optimasi
-
-        canvas.height = videoElement.value.videoHeight;
-        canvas.width = videoElement.value.videoWidth;
-        
-        // Gambar frame video ke canvas
-        ctx.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height);
-        
-        // Ambil data gambar dari canvas
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Coba deteksi QR code menggunakan jsQR
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-        });
-
-        isCameraScanning.value = true; // Tampilkan animasi scanning line
-
-        if (code) {
-            // JIKA BERHASIL TERDETEKSI
-            isCameraScanning.value = false;
-            stopCamera(); // Matikan kamera
-            barcodeInput.value = code.data; // Masukkan hasil scan ke input
-            handleScan(); // Panggil handleScan untuk diproses
-            return; // Hentikan loop
-        }
-    }
-
-    // Lanjutkan ke frame berikutnya
-    animationFrameId.value = requestAnimationFrame(tick);
-}
-
-// HAPUS 'startBarcodeDetection' dan 'simulateCameraScan' (diganti 'tick')
-
-// Computed
-const alertClass = computed(() => {
-    return alertType.value === 'success'
-        ? 'bg-green-500 text-white border-2 border-green-600'
-        : 'bg-red-500 text-white border-2 border-red-600'
-})
-
-// Lifecycle
-onMounted(() => {
-    focusInput()
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && sidebarOpen.value) {
-            closeSidebar()
+        if (page.props.flash?.success) {
+            showAlert(page.props.flash.success, 'success');
+        } else if (page.props.flash?.error) {
+            showAlert(page.props.flash.error, 'error');
         }
     })
 
-    if (page.props.flash?.success) {
-        showAlert(page.props.flash.success, 'success');
-    } else if (page.props.flash?.error) {
-        showAlert(page.props.flash.error, 'error');
+    // Cleanup camera on unmount
+    const cleanup = () => {
+        stopCamera()
     }
-})
 
-// Cleanup camera on unmount
-const cleanup = () => {
-    stopCamera()
-}
-
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanup)
-}
+    if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', cleanup)
+    }
 </script>
 
 <style scoped>

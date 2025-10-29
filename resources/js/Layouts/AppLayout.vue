@@ -248,66 +248,64 @@
     </div>
 </template>
 
-
 <script setup>
-import { ref, computed } from 'vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
-import { usePermissions } from '@/Composables/usePermissions';
+    import { ref, computed } from 'vue';
+    import { Link, router, usePage } from '@inertiajs/vue3';
+    import { usePermissions } from '@/Composables/usePermissions';
 
-const props = defineProps({
-    pageTitle: {
-        type: String,
-        default: 'Dashboard'
-    },
-    pageDescription: {
-        type: String,
-        default: 'Selamat datang di Warehouse Management System'
+    const props = defineProps({
+        pageTitle: {
+            type: String,
+            default: 'Dashboard'
+        },
+        pageDescription: {
+            type: String,
+            default: 'Selamat datang di Warehouse Management System'
+        }
+    });
+
+    const page = usePage();
+    const { hasPermission, hasAnyPermission } = usePermissions();
+    const sidebarOpen = ref(false);
+
+    // Check if user has any transaction permissions
+    const hasAnyTransactionPermission = computed(() => {
+        return hasAnyPermission([
+            'incoming.view', 'incoming.create',
+            'qc.view', 'qc.input_qc_result',
+            'putaway.view', 'putaway.kerjakan_to',
+            'reservation.view', 'reservation.create_request',
+            'picking.view', 'picking.kerjakan_picking',
+            'return.view', 'return.create_return'
+        ]);
+    });
+
+    const isActive = (path) => {
+        return page.url === path;
+    };
+
+    const getUserInitials = computed(() => {
+        const name = page.props.auth.user.name;
+        const words = name.split(' ');
+        if (words.length >= 2) {
+            return words[0][0] + words[1][0];
+        }
+        return name.substring(0, 2).toUpperCase();
+    });
+
+    const logout = () => {
+        router.post('/logout');
+    };
+
+    const navLinkClass = (path) => {
+        const isActive = page.url === path || page.url.startsWith(path + '/')
+
+        const baseClasses = 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200'
+
+        if (isActive) {
+            return `${baseClasses} bg-[#157347] text-white shadow-lg` 
+        }
+
+        return `${baseClasses} text-gray-700 hover:bg-gray-100`
     }
-});
-
-const page = usePage();
-const { hasPermission, hasAnyPermission } = usePermissions();
-const sidebarOpen = ref(false);
-
-// Check if user has any transaction permissions
-const hasAnyTransactionPermission = computed(() => {
-    return hasAnyPermission([
-        'incoming.view', 'incoming.create',
-        'qc.view', 'qc.input_qc_result',
-        'putaway.view', 'putaway.kerjakan_to',
-        'reservation.view', 'reservation.create_request',
-        'picking.view', 'picking.kerjakan_picking',
-        'return.view', 'return.create_return'
-    ]);
-});
-
-const isActive = (path) => {
-    return page.url === path;
-};
-
-const getUserInitials = computed(() => {
-    const name = page.props.auth.user.name;
-    const words = name.split(' ');
-    if (words.length >= 2) {
-        return words[0][0] + words[1][0];
-    }
-    return name.substring(0, 2).toUpperCase();
-});
-
-const logout = () => {
-    router.post('/logout');
-};
-
-const navLinkClass = (path) => {
-    const isActive = page.url === path || page.url.startsWith(path + '/')
-
-    const baseClasses = 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200'
-
-    if (isActive) {
-        return `${baseClasses} bg-[#157347] text-white shadow-lg` 
-    }
-
-    return `${baseClasses} text-gray-700 hover:bg-gray-100`
-}
-
 </script>

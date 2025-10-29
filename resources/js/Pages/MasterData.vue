@@ -203,8 +203,8 @@
                 </table>
               </div>
               <div class="p-4 border-t">
-                  <Pagination :links="activeSupplierData.links" />
-              </div>
+                <Pagination :links="activeSupplierData.links" />
+              </div>
             </div>
           </div>
 
@@ -217,9 +217,9 @@
                     <tr>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Count</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -235,9 +235,6 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ bin.capacity }}</div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getBinTypeClass(bin.type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                           {{ bin.type }}
                         </span>
@@ -247,6 +244,15 @@
                           {{ bin.status }}
                         </span>
                       </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div v-if="bin.current_items_count > 0">
+                            <button @click="loadBinDetails(bin.id, bin.code)" 
+                                    class="text-sm font-semibold text-blue-600 hover:text-blue-800 underline">
+                                {{ bin.current_items_count }} Item
+                            </button>
+                        </div>
+                        <span v-else class="text-sm text-gray-400">Kosong</span>
+                    </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <button 
                           v-if="bin.qrCode || bin.id"
@@ -271,8 +277,8 @@
                 </table>
               </div>
               <div class="p-4 border-t">
-                  <Pagination :links="activeBinData.links" />
-              </div>
+                <Pagination :links="activeBinData.links" />
+              </div>
             </div>
           </div>
 
@@ -774,6 +780,67 @@
           {{ message.text }}
         </div>
       </div>
+
+      <div v-if="showBinDetailsModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    Material di Bin: {{ selectedBinDetails?.bin_code || 'Memuat...' }}
+                </h3>
+                <button @click="closeBinDetailsModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div v-if="!selectedBinDetails" class="text-center py-8 text-gray-500">Memuat data material...</div>
+            
+            <div v-else-if="selectedBinDetails.details.length === 0" class="text-center py-8 text-gray-500">
+                Bin ini tidak memiliki stok material aktif.
+            </div>
+
+            <div v-else class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch/Lot</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty Tersedia</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exp Date</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="material in selectedBinDetails.details" :key="material.id">
+                            <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{{ material.material_code }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-900">{{ material.material_name }}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ material.batch_lot }}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ material.qty_available }}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ material.uom }}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ material.exp_date }}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ material.status }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <button 
+                    @click="closeBinDetailsModal"
+                    class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Tutup
+                </button>
+            </div>
+        </div>
+      </div>
     </div>
   </div>
     </AppLayout>
@@ -783,6 +850,7 @@
 import {router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { h, ref, computed, onMounted, watch } from 'vue'
+declare const route: (name: string, params?: Record<string, any>) => string;
 
 interface PaginationLink {
     url: string | null;
@@ -875,6 +943,11 @@ const searchQuery = ref(props.search || '')
 const statusFilter = ref(props.status || '')
 const showQRModal = ref(false)
 const qrCodeData = ref<any>(null)
+const showBinDetailsModal = ref(false)
+const selectedBinDetails = ref<{ 
+    bin_code: string, 
+    details: any[] 
+} | null>(null)
 
 // Modal states
 const showAddModal = ref(false)
@@ -893,36 +966,6 @@ const tabs = [
   { id: 'bin', label: 'Bin Location' },
   { id: 'user', label: 'User & Role' }
 ]
-
-// const Pagination = {
-//   props: {
-//     links: {
-//       type: Array as () => PaginationLink[],
-//       required: true
-//     }
-//   },
-//   components: { Link },
-//   template: `
-//     <div v-if="links.length > 3">
-//       <div class="flex flex-wrap -mb-1">
-//         <template v-for="(link, key) in links" :key="key">
-//           <div 
-//             v-if="link.url === null" 
-//             class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded"
-//             v-html="link.label"
-//           ></div>
-//           <Link
-//             v-else
-//             class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-blue-500 focus:text-blue-500"
-//             :class="{ 'bg-blue-500 text-white': link.active }"
-//             :href="link.url"
-//             v-html="link.label"
-//           />
-//         </template>
-//       </div>
-//     </div>
-//   `
-// }
 
 const Pagination = (props: { links: PaginationLink[] }) => {
     // Pengecekan awal, sama seperti v-if="links.length > 3"
@@ -1003,6 +1046,35 @@ const filteredUserData = computed(() => {
         return matchesSearch && matchesStatus
     })
 })
+
+const loadBinDetails = async (binId: string, binCode: string) => {
+    selectedBinDetails.value = null; // Clear previous data
+    showBinDetailsModal.value = true;
+    
+    try {
+        const url = route('bin.stocks.details', { binId: binId });
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            showMessage('error', `Gagal memuat detail Bin ${binCode}`);
+            selectedBinDetails.value = { bin_code: binCode, details: [] };
+            return;
+        }
+
+        const result = await response.json();
+        selectedBinDetails.value = result;
+
+    } catch (error) {
+        console.error('Fetch Bin Details error:', error);
+        showMessage('error', 'Error saat memuat detail material.');
+        selectedBinDetails.value = { bin_code: binCode, details: [] };
+    }
+}
+
+const closeBinDetailsModal = () => {
+    showBinDetailsModal.value = false
+    selectedBinDetails.value = null
+}
 
 // Methods
 const toggleDarkMode = () => {
