@@ -20,6 +20,12 @@ class ReservationController extends Controller
         return Inertia::render('Reservation');
     }
 
+    public function getReservations()
+    {
+        $reservations = ReservationRequest::with('items')->get();
+        return response()->json($reservations);
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -28,62 +34,48 @@ class ReservationController extends Controller
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'request_id' => 'required|exists:reservation_requests,id',
+            'noReservasi' => 'required|string|unique:reservation_requests,no_reservasi',
+            'tanggalPermintaan' => 'required|date',
+            'departemen' => 'nullable|string',
+            'alasanReservasi' => 'nullable|string',
+            'namaProduk' => 'nullable|string',
+            'noBetsFilling' => 'nullable|string',
+            'kodeProduk' => 'nullable|string',
+            'noBets' => 'nullable|string',
+            'besarBets' => 'nullable|numeric',
             'items' => 'required|array',
-            'items.*.stock_id' => 'required|exists:inventory_stocks,id',
-            'items.*.reserved_quantity' => 'required|numeric|min:1',
         ]);
 
         DB::beginTransaction();
         try {
-            $reservationRequest = ReservationRequest::findOrFail($validated['request_id']);
-
-            // Generate reservation number
-            $reservationNumber = $this->generateReservationNumber();
-            $reservation = Reservation::create([
-                'reservation_number' => $reservationNumber,
-                'request_id' => $reservationRequest->id,
-                'status' => 'Reserved',
-                'created_by' => Auth::id(),
+            $reservationRequest = ReservationRequest::create([
+                'no_reservasi' => $validated['noReservasi'],
+                'request_type' => $request->selectedCategory,
+                'tanggal_permintaan' => $validated['tanggalPermintaan'],
+                'status' => 'Submitted',
+                'departemen' => $validated['departemen'],
+                'alasan_reservasi' => $validated['alasanReservasi'],
+                'nama_produk' => $validated['namaProduk'],
+                'no_bets_filling' => $validated['noBetsFilling'],
+                'kode_produk' => $validated['kodeProduk'],
+                'no_bets' => $validated['noBets'],
+                'besar_bets' => $validated['besarBets'],
+                'requested_by' => Auth::id(),
             ]);
 
             foreach ($validated['items'] as $item) {
-                $stock = InventoryStock::findOrFail($item['stock_id']);
-
-                // 1. Check if enough stock is available
-                if ($stock->qty_available < $item['reserved_quantity']) {
-                    throw new \Exception('Insufficient stock for reservation.');
-                }
-
-                // 2. Update stock quantities
-                $stock->decrement('qty_available', $item['reserved_quantity']);
-                $stock->increment('qty_reserved', $item['reserved_quantity']);
-
-                // 3. Log the activity
-                $this->logActivity($reservation, 'Create Reservation', [
-                    'description' => "Reserved {$item['reserved_quantity']} {$stock->uom} of {$stock->material->nama_material} for request {$reservationRequest->request_number}.",
-                    'material_id' => $stock->material_id,
-                    'batch_lot' => $stock->batch_lot,
-                    'qty_after' => $item['reserved_quantity'],
-                    'reference_document' => $reservationNumber,
-                ]);
+                $reservationRequest->items()->create($item);
             }
-
-            // 4. Update reservation request status
-            $reservationRequest->update(['status' => 'Processed']);
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Reservation {$reservationNumber} created successfully.");
+            return response()->json(['message' => 'Reservation request created successfully.'], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Reservation failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to create reservation request.'], 500);
         }
     }
 

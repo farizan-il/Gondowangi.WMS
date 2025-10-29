@@ -197,11 +197,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/reservation', [ReservationController::class, 'index'])
             ->middleware('permission:reservation.view')
             ->name('reservation');
+        Route::post('/reservation', [ReservationController::class, 'store'])
+            ->middleware('permission:reservation.create')
+            ->name('reservation.store');
+        Route::get('/api/reservations', [ReservationController::class, 'getReservations'])
+            ->middleware('permission:reservation.view')
+            ->name('api.reservations');
 
         // Picking List
         Route::get('/picking-list', [PickingListController::class, 'index'])
             ->middleware('permission:picking.view')
             ->name('picking-list');
+        Route::post('/picking-list', [PickingListController::class, 'store'])
+            ->middleware('permission:picking.create')
+            ->name('picking-list.store');
+        Route::get('/api/picking-list', [PickingListController::class, 'getPickingList'])
+            ->middleware('permission:picking.view')
+            ->name('api.picking-list');
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])

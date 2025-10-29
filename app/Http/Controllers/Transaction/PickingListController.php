@@ -20,6 +20,12 @@ class PickingListController extends Controller
         return Inertia::render('PickingList');
     }
 
+    public function getPickingList()
+    {
+        $pickingList = Reservation::with('request.items')->where('status', 'Picked')->get();
+        return response()->json($pickingList);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

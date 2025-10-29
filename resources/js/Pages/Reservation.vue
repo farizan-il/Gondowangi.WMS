@@ -454,6 +454,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
 // Data reaktif
 const showModal = ref(false)
@@ -496,83 +497,14 @@ const formData = ref({
   items: []
 })
 
-// Initialize dummy data
-const initDummyData = () => {
-  requests.value = [
-    {
-      id: 1,
-      type: 'foh-rs',
-      noReservasi: 'RSV/20250918/0001',
-      tanggalPermintaan: '2025-09-18T10:30:00',
-      departemen: 'FOH',
-      alasanReservasi: 'Kebutuhan untuk event spesial',
-      status: 'Submitted',
-      items: [
-        { kodeItem: 'FOH-001', keterangan: 'Peralatan makan', qty: 50, uom: 'PCS' }
-      ]
-    },
-    {
-      id: 2,
-      type: 'packaging',
-      noReservasi: 'RSV/20250918/0002',
-      tanggalPermintaan: '2025-09-18T14:15:00',
-      namaProduk: 'Produk A',
-      noBetsFilling: 'BF-001',
-      status: 'Approved',
-      items: [
-        { namaMaterial: 'Botol Plastik', kodePM: 'PM-001', jumlahPermintaan: 1000 }
-      ]
-    },
-    {
-      id: 3,
-      type: 'raw-material',
-      noReservasi: 'RSV/20250918/0003',
-      tanggalPermintaan: '2025-09-18T09:00:00',
-      kodeProduk: 'PROD-001',
-      noBets: 'MX-001',
-      besarBets: 500,
-      status: 'Picking',
-      items: [
-        { kodeBahan: 'RM-001', namaBahan: 'Tepung Terigu', jumlahKebutuhan: 100, jumlahKirim: 100 }
-      ]
-    },
-    {
-      id: 4,
-      type: 'add',
-      noReservasi: 'RSV/20250918/0004',
-      tanggalPermintaan: '2025-09-18T16:20:00',
-      namaProduk: 'Produk B',
-      noBetsFilling: 'BF-002',
-      status: 'Draft',
-      items: [
-        { namaMaterial: 'Label Produk', kodePM: 'PM-002', alasanPenambahan: 'Reject Produksi', jumlahPermintaan: 200 }
-      ]
-    },
-    {
-      id: 5,
-      type: 'foh-rs',
-      noReservasi: 'RSV/20250919/0001',
-      tanggalPermintaan: '2025-09-19T08:00:00',
-      departemen: 'RS',
-      alasanReservasi: 'Persiapan event wedding',
-      status: 'Done',
-      items: [
-        { kodeItem: 'RS-001', keterangan: 'Gelas wine', qty: 100, uom: 'PCS' }
-      ]
-    },
-    {
-      id: 6,
-      type: 'packaging',
-      noReservasi: 'RSV/20250919/0002',
-      tanggalPermintaan: '2025-09-19T11:30:00',
-      namaProduk: 'Produk C',
-      noBetsFilling: 'BF-003',
-      status: 'Rejected',
-      items: [
-        { namaMaterial: 'Kardus Box', kodePM: 'PM-003', jumlahPermintaan: 500 }
-      ]
-    }
-  ]
+// Fetch reservation requests from the backend
+const fetchReservations = async () => {
+  try {
+    const response = await axios.get('/api/reservations')
+    requests.value = response.data
+  } catch (error) {
+    console.error('Error fetching reservations:', error)
+  }
 }
 
 // Computed properties
@@ -780,41 +712,18 @@ const removeItem = (index) => {
   formData.value.items.splice(index, 1)
 }
 
-const submitRequest = () => {
-  const newRequest = {
-    id: requests.value.length + 1,
-    type: selectedCategory.value,
-    noReservasi: formData.value.noReservasi,
-    tanggalPermintaan: formData.value.tanggalPermintaan,
-    status: 'Submitted',
-    items: [...formData.value.items]
+const submitRequest = async () => {
+  try {
+    const response = await axios.post('/transaction/reservation', formData.value)
+    if (response.status === 200) {
+      alert('Reservation created successfully.')
+      closeModal()
+      fetchReservations()
+    }
+  } catch (error) {
+    console.error('Error creating reservation:', error)
+    alert('Failed to create reservation.')
   }
-
-  // Add type-specific fields
-  switch (selectedCategory.value) {
-    case 'foh-rs':
-      newRequest.departemen = formData.value.departemen
-      newRequest.alasanReservasi = formData.value.alasanReservasi
-      break
-    case 'packaging':
-      newRequest.namaProduk = formData.value.namaProduk
-      newRequest.noBetsFilling = formData.value.noBetsFilling
-      break
-    case 'raw-material':
-      newRequest.kodeProduk = formData.value.kodeProduk
-      newRequest.noBets = formData.value.noBets
-      newRequest.besarBets = formData.value.besarBets
-      break
-    case 'add':
-      newRequest.namaProduk = formData.value.namaProduk
-      newRequest.noBetsFilling = formData.value.noBetsFilling
-      break
-  }
-
-  requests.value.unshift(newRequest)
-
-  alert(`Request berhasil dibuat dan disubmit!\nNo Reservasi: ${newRequest.noReservasi}`)
-  closeModal()
 }
 
 const viewDetail = (request) => {
@@ -1072,6 +981,6 @@ const rejectRequest = (request) => {
 
 // Lifecycle
 onMounted(() => {
-  initDummyData()
+  fetchReservations()
 })
 </script>

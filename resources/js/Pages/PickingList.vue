@@ -403,6 +403,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import axios from 'axios'
 
 // Data reaktif
 const filterStatus = ref('ALL')
@@ -438,124 +439,18 @@ const dummyQRData = {
     'RM-001': 'SHP006|RM-001|BATCH002|25|2025-12-31|ACTIVE',
     'RM-002': 'SHP007|RM-002|BATCH003|10|2025-12-31|ACTIVE'
   },
-  bins: ['A-01-01', 'A-01-02', 'A-01-03', 'B-02-01', 'B-02-02', 'C-03-01', 'C-03-02', 
+  bins: ['A-01-01', 'A-01-02', 'A-01-03', 'B-02-01', 'B-02-02', 'C-03-01', 'C-03-02',
          'STAGING-001', 'PROD-LINE-A', 'KITCHEN-A']
 }
 
-// Initialize dummy data
-const initDummyData = () => {
-  pickingTasks.value = [
-    {
-      id: 1,
-      toNumber: 'TO/20250918/0001',
-      noReservasi: 'RSV/20250918/0001',
-      tanggalDibuat: '2025-09-18T08:30:00',
-      requester: 'John Doe',
-      departemen: 'FOH',
-      status: 'Pending',
-      items: [
-        {
-          kodeItem: 'FOH-001',
-          namaMaterial: 'Peralatan Makan',
-          lotSerial: 'LOT001',
-          sourceBin: 'A-01-01',
-          destBin: 'STAGING-001',
-          qtyDiminta: 50,
-          qtyPicked: 0,
-          uom: 'PCS',
-          status: 'Pending'
-        },
-        {
-          kodeItem: 'FOH-002',
-          namaMaterial: 'Gelas Plastik',
-          lotSerial: 'LOT002',
-          sourceBin: 'A-01-02',
-          destBin: 'STAGING-001',
-          qtyDiminta: 100,
-          qtyPicked: 0,
-          uom: 'PCS',
-          status: 'Pending'
-        },
-        {
-          kodeItem: 'FOH-003',
-          namaMaterial: 'Sendok Garpu Set',
-          lotSerial: 'LOT003',
-          sourceBin: 'A-01-03',
-          destBin: 'STAGING-001',
-          qtyDiminta: 75,
-          qtyPicked: 0,
-          uom: 'SET',
-          status: 'Pending'
-        }
-      ]
-    },
-    {
-      id: 2,
-      toNumber: 'TO/20250918/0002',
-      noReservasi: 'RSV/20250918/0002',
-      tanggalDibuat: '2025-09-18T10:15:00',
-      requester: 'Jane Smith',
-      departemen: 'Production',
-      status: 'In Progress',
-      items: [
-        {
-          kodeItem: 'PM-001',
-          namaMaterial: 'Botol Plastik',
-          lotSerial: 'BATCH001',
-          sourceBin: 'B-02-01',
-          destBin: 'PROD-LINE-A',
-          qtyDiminta: 1000,
-          qtyPicked: 750,
-          uom: 'PCS',
-          status: 'Short-Pick'
-        },
-        {
-          kodeItem: 'PM-002',
-          namaMaterial: 'Tutup Botol',
-          lotSerial: 'BATCH002',
-          sourceBin: 'B-02-02',
-          destBin: 'PROD-LINE-A',
-          qtyDiminta: 1000,
-          qtyPicked: 1000,
-          uom: 'PCS',
-          status: 'Picked'
-        }
-      ]
-    },
-    {
-      id: 3,
-      toNumber: 'TO/20250918/0003',
-      noReservasi: 'RSV/20250917/0003',
-      tanggalDibuat: '2025-09-17T14:20:00',
-      requester: 'Bob Wilson',
-      departemen: 'Kitchen',
-      status: 'Completed',
-      items: [
-        {
-          kodeItem: 'RM-001',
-          namaMaterial: 'Tepung Terigu',
-          lotSerial: 'BATCH002',
-          sourceBin: 'C-03-01',
-          destBin: 'KITCHEN-A',
-          qtyDiminta: 25,
-          qtyPicked: 25,
-          uom: 'KG',
-          status: 'Picked'
-        },
-        {
-          kodeItem: 'RM-002',
-          namaMaterial: 'Gula Pasir',
-          lotSerial: 'BATCH003',
-          sourceBin: 'C-03-02',
-          destBin: 'KITCHEN-A',
-          qtyDiminta: 10,
-          qtyPicked: 10,
-          uom: 'KG',
-          status: 'Picked'
-        }
-      ]
-    }
-  ]
+// Fetch picking list from the backend
+const fetchPickingList = async () => {
+  try {
+    const response = await axios.get('/api/picking-list')
+    pickingTasks.value = response.data
+  } catch (error) {
+    console.error('Error fetching picking list:', error)
+  }
 }
 
 // Computed properties
@@ -966,31 +861,29 @@ const updateItemStatus = (item) => {
   }
 }
 
-const finishPicking = () => {
+const finishPicking = async () => {
   if (!selectedTask.value) return
-  
-  const allItems = selectedTask.value.items
-  const pickedItems = allItems.filter(item => item.status === 'Picked')
-  const shortPickItems = allItems.filter(item => item.status === 'Short-Pick')
-  
-  let newStatus = 'Completed'
-  let message = `Picking selesai!\n\nTotal items: ${allItems.length}\nPicked: ${pickedItems.length}`
-  
-  if (shortPickItems.length > 0) {
-    newStatus = 'Short-Pick'
-    message += `\nShort-pick: ${shortPickItems.length}`
-    message += '\n\nSistem akan:\n- Update stok\n- Trigger reallocation untuk shortage\n- Notifikasi supervisor'
-  } else {
-    message += '\n\nSistem akan:\n- Update stok dari Source Bin\n- Pindahkan ke Destination Bin\n- Simpan transaksi picking'
+
+  const pickedItems = selectedTask.value.items.map(item => ({
+    stock_id: item.stock_id,
+    picked_quantity: item.qtyPicked,
+  }))
+
+  try {
+    const response = await axios.post('/transaction/picking-list', {
+      reservation_id: selectedTask.value.id,
+      items: pickedItems,
+    })
+
+    if (response.status === 200) {
+      alert('Picking successful.')
+      closePickingModal()
+      fetchPickingList()
+    }
+  } catch (error) {
+    console.error('Error finishing picking:', error)
+    alert('Failed to finish picking.')
   }
-  
-  const taskIndex = pickingTasks.value.findIndex(t => t.id === selectedTask.value.id)
-  if (taskIndex !== -1) {
-    pickingTasks.value[taskIndex].status = newStatus
-  }
-  
-  alert(message)
-  closePickingModal()
 }
 
 const printPickingList = (task) => {
@@ -1111,7 +1004,7 @@ const printPickingList = (task) => {
 
 // Lifecycle
 onMounted(() => {
-  initDummyData()
+  fetchPickingList()
 })
 
 onBeforeUnmount(() => {
