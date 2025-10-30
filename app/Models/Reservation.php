@@ -43,6 +43,11 @@ class Reservation extends Model
         return $this->belongsTo(Material::class);
     }
 
+    public function items(): HasMany
+    {
+        return $this->hasMany(ReservationRequestItem::class, 'reservation_id');
+    }
+
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);

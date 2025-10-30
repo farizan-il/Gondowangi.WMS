@@ -47,6 +47,8 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
+          
+
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="task in filteredTasks" :key="task.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ task.toNumber }}</td>
@@ -74,6 +76,14 @@
                 </div>
               </td>
             </tr>
+
+            <tr v-if="filteredTasks.length === 0">
+              <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                Tidak ada Picking Task yang ditemukan untuk status {{ filterStatus === 'ALL' ? 'apapun' : filterStatus }}.
+              </td>
+            </tr>
+            <tr v-for="task in filteredTasks" :key="task.id" class="hover:bg-gray-50">
+                          </tr>
           </tbody>
         </table>
       </div>
@@ -232,7 +242,7 @@
               </svg>
             </button>
           </div>
-          
+
           <!-- Item Info -->
           <div v-if="currentScanItem" class="bg-gray-50 p-3 rounded-lg mb-4">
             <div class="text-sm">
@@ -430,584 +440,586 @@ let scanInterval = null
 
 // Dummy QR data untuk simulasi
 const dummyQRData = {
-  box: {
-    'FOH-001': 'SHP001|FOH-001|LOT001|50|2025-12-31|ACTIVE',
-    'FOH-002': 'SHP002|FOH-002|LOT002|100|2025-12-31|ACTIVE',
-    'FOH-003': 'SHP003|FOH-003|LOT003|75|2025-12-31|ACTIVE',
-    'PM-001': 'SHP004|PM-001|BATCH001|1000|2025-12-31|ACTIVE',
-    'PM-002': 'SHP005|PM-002|BATCH002|1000|2025-12-31|ACTIVE',
-    'RM-001': 'SHP006|RM-001|BATCH002|25|2025-12-31|ACTIVE',
-    'RM-002': 'SHP007|RM-002|BATCH003|10|2025-12-31|ACTIVE'
-  },
-  bins: ['A-01-01', 'A-01-02', 'A-01-03', 'B-02-01', 'B-02-02', 'C-03-01', 'C-03-02',
-         'STAGING-001', 'PROD-LINE-A', 'KITCHEN-A']
+    box: {
+        'FOH-001': 'SHP001|FOH-001|LOT001|50|2025-12-31|ACTIVE',
+        'FOH-002': 'SHP002|FOH-002|LOT002|100|2025-12-31|ACTIVE',
+        'FOH-003': 'SHP003|FOH-003|LOT003|75|2025-12-31|ACTIVE',
+        'PM-001': 'SHP004|PM-001|BATCH001|1000|2025-12-31|ACTIVE',
+        'PM-002': 'SHP005|PM-002|BATCH002|1000|2025-12-31|ACTIVE',
+        'RM-001': 'SHP006|RM-001|BATCH002|25|2025-12-31|ACTIVE',
+        'RM-002': 'SHP007|RM-002|BATCH003|10|2025-12-31|ACTIVE'
+    },
+    bins: ['A-01-01', 'A-01-02', 'A-01-03', 'B-02-01', 'B-02-02', 'C-03-01', 'C-03-02',
+        'STAGING-001', 'PROD-LINE-A', 'KITCHEN-A']
 }
 
 // Fetch picking list from the backend
 const fetchPickingList = async () => {
-  try {
-    const response = await axios.get('/api/picking-list')
-    pickingTasks.value = response.data
-  } catch (error) {
-    console.error('Error fetching picking list:', error)
-  }
+    try {
+        // FIX UTAMA: Menggunakan fungsi route() untuk mengatasi 404
+        const response = await axios.get(route('transaction.api.picking-list'))
+        pickingTasks.value = response.data
+    } catch (error) {
+        console.error('Error fetching picking list:', error)
+    }
 }
 
 // Computed properties
 const filteredTasks = computed(() => {
-  if (filterStatus.value === 'ALL') {
-    return pickingTasks.value
-  }
-  return pickingTasks.value.filter(task => task.status === filterStatus.value)
+    if (filterStatus.value === 'ALL') {
+        return pickingTasks.value
+    }
+    return pickingTasks.value.filter(task => task.status === filterStatus.value)
 })
 
 const getTotalItemsCount = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  return selectedTask.value.items.length
+    if (!selectedTask.value?.items) return 0
+    return selectedTask.value.items.length
 })
 
 const getPickedItemsCount = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  return selectedTask.value.items.filter(item => item.status === 'Picked').length
+    if (!selectedTask.value?.items) return 0
+    return selectedTask.value.items.filter(item => item.status === 'Picked').length
 })
 
 const getShortPickItemsCount = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  return selectedTask.value.items.filter(item => item.status === 'Short-Pick').length
+    if (!selectedTask.value?.items) return 0
+    return selectedTask.value.items.filter(item => item.status === 'Short-Pick').length
 })
 
 const getPendingItemsCount = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  return selectedTask.value.items.filter(item => item.status === 'Pending').length
+    if (!selectedTask.value?.items) return 0
+    return selectedTask.value.items.filter(item => item.status === 'Pending').length
 })
 
 const getCompletedItemsCount = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  return selectedTask.value.items.filter(item => item.status === 'Picked' || item.status === 'Short-Pick').length
+    if (!selectedTask.value?.items) return 0
+    return selectedTask.value.items.filter(item => item.status === 'Picked' || item.status === 'Short-Pick').length
 })
 
 const getPickingProgress = computed(() => {
-  if (!selectedTask.value?.items) return 0
-  const total = selectedTask.value.items.length
-  const completed = getCompletedItemsCount.value
-  return total > 0 ? (completed / total) * 100 : 0
+    if (!selectedTask.value?.items) return 0
+    const total = selectedTask.value.items.length
+    const completed = getCompletedItemsCount.value
+    return total > 0 ? (completed / total) * 100 : 0
 })
 
 const canFinishPicking = computed(() => {
-  if (!selectedTask.value?.items) return false
-  return selectedTask.value.items.every(item => item.qtyPicked > 0)
+    if (!selectedTask.value?.items) return false
+    return selectedTask.value.items.every(item => item.qtyPicked > 0)
 })
 
 const getScanStepText = computed(() => {
-  const steps = [
-    '',
-    'Scan QR Box untuk validasi item',
-    'Scan QR Source Bin untuk validasi lokasi',
-    'Input quantity yang dipick',
-    'Scan QR Dest Bin (opsional)'
-  ]
-  return steps[scanStep.value]
+    const steps = [
+        '',
+        'Scan QR Box untuk validasi item',
+        'Scan QR Source Bin untuk validasi lokasi',
+        'Input quantity yang dipick',
+        'Scan QR Dest Bin (opsional)'
+    ]
+    return steps[scanStep.value]
 })
 
 // Summary Modal Computed Properties
 const getSummaryTotalItems = computed(() => {
-  if (!selectedSummaryTask.value?.items) return 0
-  return selectedSummaryTask.value.items.length
+    if (!selectedSummaryTask.value?.items) return 0
+    return selectedSummaryTask.value.items.length
 })
 
 const getSummaryPickedItems = computed(() => {
-  if (!selectedSummaryTask.value?.items) return 0
-  return selectedSummaryTask.value.items.filter(item => item.status === 'Picked').length
+    if (!selectedSummaryTask.value?.items) return 0
+    return selectedSummaryTask.value.items.filter(item => item.status === 'Picked').length
 })
 
 const getSummaryShortPickItems = computed(() => {
-  if (!selectedSummaryTask.value?.items) return 0
-  return selectedSummaryTask.value.items.filter(item => item.status === 'Short-Pick').length
+    if (!selectedSummaryTask.value?.items) return 0
+    return selectedSummaryTask.value.items.filter(item => item.status === 'Short-Pick').length
 })
 
 const getSummaryPendingItems = computed(() => {
-  if (!selectedSummaryTask.value?.items) return 0
-  return selectedSummaryTask.value.items.filter(item => item.status === 'Pending').length
+    if (!selectedSummaryTask.value?.items) return 0
+    return selectedSummaryTask.value.items.filter(item => item.status === 'Pending').length
 })
 
 // Camera Methods
 const startCamera = async () => {
-  try {
-    cameraStatus.value = 'Mengaktifkan kamera...'
-    
-    const constraints = {
-      video: {
-        facingMode: 'environment', // Use back camera on mobile
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
+    try {
+        cameraStatus.value = 'Mengaktifkan kamera...'
+        
+        const constraints = {
+            video: {
+                facingMode: 'environment', // Use back camera on mobile
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        }
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+        
+        if (videoElement.value) {
+            videoElement.value.srcObject = mediaStream
+            isCameraActive.value = true
+            isScanning.value = true
+            cameraStatus.value = 'Kamera Aktif - Siap Scan'
+            
+            // Start scanning loop
+            startScanning()
+        }
+    } catch (error) {
+        console.error('Error accessing camera:', error)
+        cameraStatus.value = 'Error: Tidak dapat mengakses kamera'
+        console.error('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin akses kamera.')
     }
-    
-    mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-    
-    if (videoElement.value) {
-      videoElement.value.srcObject = mediaStream
-      isCameraActive.value = true
-      isScanning.value = true
-      cameraStatus.value = 'Kamera Aktif - Siap Scan'
-      
-      // Start scanning loop
-      startScanning()
-    }
-  } catch (error) {
-    console.error('Error accessing camera:', error)
-    cameraStatus.value = 'Error: Tidak dapat mengakses kamera'
-    alert('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin akses kamera.')
-  }
 }
 
 const stopCamera = () => {
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop())
-    mediaStream = null
-  }
-  
-  if (videoElement.value) {
-    videoElement.value.srcObject = null
-  }
-  
-  if (scanInterval) {
-    clearInterval(scanInterval)
-    scanInterval = null
-  }
-  
-  isCameraActive.value = false
-  isScanning.value = false
-  cameraStatus.value = 'Kamera Off'
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop())
+        mediaStream = null
+    }
+    
+    if (videoElement.value) {
+        videoElement.value.srcObject = null
+    }
+    
+    if (scanInterval) {
+        clearInterval(scanInterval)
+        scanInterval = null
+    }
+    
+    isCameraActive.value = false
+    isScanning.value = false
+    cameraStatus.value = 'Kamera Off'
 }
 
 const toggleCamera = () => {
-  if (isCameraActive.value) {
-    stopCamera()
-  } else {
-    startCamera()
-  }
+    if (isCameraActive.value) {
+        stopCamera()
+    } else {
+        startCamera()
+    }
 }
 
 const startScanning = () => {
-  // Simulate QR code scanning
-  // In production, you would use a library like jsQR or @zxing/library
-  scanInterval = setInterval(() => {
-    if (!isScanning.value || !videoElement.value) return
-    
-    // This is where you would implement actual QR code detection
-    // For now, it's just a placeholder for the scanning loop
-  }, 100)
+    // Simulate QR code scanning
+    // In production, you would use a library like jsQR or @zxing/library
+    scanInterval = setInterval(() => {
+        if (!isScanning.value || !videoElement.value) return
+        
+        // This is where you would implement actual QR code detection
+        // For now, it's just a placeholder for the scanning loop
+    }, 100)
 }
 
 const simulateScan = () => {
-  if (!currentScanItem.value) return
-  
-  let simulatedQR = ''
-  
-  switch (scanStep.value) {
-    case 1: // Simulate Box QR
-      simulatedQR = dummyQRData.box[currentScanItem.value.kodeItem]
-      break
-    case 2: // Simulate Source Bin
-      simulatedQR = currentScanItem.value.sourceBin
-      break
-    case 4: // Simulate Dest Bin
-      simulatedQR = currentScanItem.value.destBin
-      break
-    default:
-      alert('Step ini tidak memerlukan scan QR')
-      return
-  }
-  
-  qrInput.value = simulatedQR
-  
-  // Visual feedback
-  const originalStatus = cameraStatus.value
-  cameraStatus.value = '✓ QR Terdeteksi!'
-  
-  setTimeout(() => {
-    cameraStatus.value = originalStatus
-    processQR()
-  }, 500)
+    if (!currentScanItem.value) return
+    
+    let simulatedQR = ''
+    
+    switch (scanStep.value) {
+        case 1: // Simulate Box QR
+            simulatedQR = dummyQRData.box[currentScanItem.value.kodeItem]
+            break
+        case 2: // Simulate Source Bin
+            simulatedQR = currentScanItem.value.sourceBin
+            break
+        case 4: // Simulate Dest Bin
+            simulatedQR = currentScanItem.value.destBin
+            break
+        default:
+            console.warn('Step ini tidak memerlukan scan QR')
+            return
+    }
+    
+    qrInput.value = simulatedQR
+    
+    // Visual feedback
+    const originalStatus = cameraStatus.value
+    cameraStatus.value = '✓ QR Terdeteksi!'
+    
+    setTimeout(() => {
+        cameraStatus.value = originalStatus
+        processQR()
+    }, 500)
 }
 
 // Methods
 const getStatusClass = (status) => {
-  const classes = {
-    'Pending': 'bg-gray-100 text-gray-800',
-    'In Progress': 'bg-yellow-100 text-yellow-800',
-    'Completed': 'bg-green-100 text-green-800',
-    'Short-Pick': 'bg-orange-100 text-orange-800'
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
+    const classes = {
+        'Pending': 'bg-gray-100 text-gray-800',
+        'In Progress': 'bg-yellow-100 text-yellow-800',
+        'Completed': 'bg-green-100 text-green-800',
+        'Short-Pick': 'bg-orange-100 text-orange-800'
+    }
+    return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 const getItemStatusClass = (status) => {
-  const classes = {
-    'Pending': 'bg-gray-100 text-gray-800',
-    'Picked': 'bg-green-100 text-green-800',
-    'Short-Pick': 'bg-orange-100 text-orange-800'
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
+    const classes = {
+        'Pending': 'bg-gray-100 text-gray-800',
+        'Picked': 'bg-green-100 text-green-800',
+        'Short-Pick': 'bg-orange-100 text-orange-800'
+    }
+    return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 const getItemRowClass = (status) => {
-  const classes = {
-    'Picked': 'bg-green-50',
-    'Short-Pick': 'bg-orange-50',
-    'Pending': 'bg-white'
-  }
-  return classes[status] || 'bg-white'
+    const classes = {
+        'Picked': 'bg-green-50',
+        'Short-Pick': 'bg-orange-50',
+        'Pending': 'bg-white'
+    }
+    return classes[status] || 'bg-white'
 }
 
 const getItemAchievement = (item) => {
-  if (item.status === 'Pending') return '-'
-  if (item.qtyDiminta === 0) return '0%'
-  const percentage = Math.round((item.qtyPicked / item.qtyDiminta) * 100)
-  return `${percentage}% (${item.qtyPicked}/${item.qtyDiminta})`
+    if (item.status === 'Pending') return '-'
+    if (item.qtyDiminta === 0) return '0%'
+    const percentage = Math.round((item.qtyPicked / item.qtyDiminta) * 100)
+    return `${percentage}% (${item.qtyPicked}/${item.qtyDiminta})`
 }
 
 const formatDateTime = (dateString) => {
-  return new Date(dateString).toLocaleString('id-ID', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+    return new Date(dateString).toLocaleString('id-ID', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })
 }
 
 const viewReservation = (noReservasi) => {
-  alert(`Melihat detail reservasi: ${noReservasi}`)
+    console.log(`Melihat detail reservasi: ${noReservasi}`)
 }
 
 const viewDetail = (task) => {
-  selectedSummaryTask.value = task
-  showSummaryModal.value = true
+    selectedSummaryTask.value = task
+    showSummaryModal.value = true
 }
 
 const startPicking = (task) => {
-  selectedTask.value = task
-  if (task.status === 'Pending') {
-    const taskIndex = pickingTasks.value.findIndex(t => t.id === task.id)
-    if (taskIndex !== -1) {
-      pickingTasks.value[taskIndex].status = 'In Progress'
+    selectedTask.value = task
+    if (task.status === 'Pending') {
+        const taskIndex = pickingTasks.value.findIndex(t => t.id === task.id)
+        if (taskIndex !== -1) {
+            pickingTasks.value[taskIndex].status = 'In Progress'
+        }
     }
-  }
-  showPickingModal.value = true
+    showPickingModal.value = true
 }
 
 const closePickingModal = () => {
-  showPickingModal.value = false
-  selectedTask.value = null
-  resetScanner()
+    showPickingModal.value = false
+    selectedTask.value = null
+    resetScanner()
 }
 
 const closeSummaryModal = () => {
-  showSummaryModal.value = false
-  selectedSummaryTask.value = null
+    showSummaryModal.value = false
+    selectedSummaryTask.value = null
 }
 
 const startItemQRScan = (item, index) => {
-  if (item.status === 'Picked') return
-  
-  currentScanItem.value = item
-  currentItemIndex.value = index
-  showQRScannerModal.value = true
-  resetScanner()
+    if (item.status === 'Picked') return
+    
+    currentScanItem.value = item
+    currentItemIndex.value = index
+    showQRScannerModal.value = true
+    resetScanner()
 }
 
 const closeQRScanner = () => {
-  stopCamera()
-  showQRScannerModal.value = false
-  resetScanner()
+    stopCamera()
+    showQRScannerModal.value = false
+    resetScanner()
 }
 
 const resetScanner = () => {
-  scanStep.value = 1
-  qrInput.value = ''
-  manualQty.value = ''
+    scanStep.value = 1
+    qrInput.value = ''
+    manualQty.value = ''
 }
 
 const processQR = () => {
-  if (!qrInput.value && scanStep.value !== 3) {
-    alert('Silakan scan atau input QR Code!')
-    return
-  }
+    if (!qrInput.value && scanStep.value !== 3) {
+        console.error('Silakan scan atau input QR Code!')
+        return
+    }
 
-  switch (scanStep.value) {
-    case 1:
-      validateQRBox(qrInput.value)
-      break
-    case 2:
-      validateSourceBin(qrInput.value)
-      break
-    case 3:
-      confirmQuantity()
-      break
-    case 4:
-      validateDestBin(qrInput.value)
-      break
-  }
+    switch (scanStep.value) {
+        case 1:
+            validateQRBox(qrInput.value)
+            break
+        case 2:
+            validateSourceBin(qrInput.value)
+            break
+        case 3:
+            confirmQuantity()
+            break
+        case 4:
+            validateDestBin(qrInput.value)
+            break
+    }
 }
 
 const validateQRBox = (qrContent) => {
-  const qrParts = qrContent.split('|')
-  if (qrParts.length < 2) {
-    alert('Format QR Box tidak valid!')
-    return
-  }
-  
-  const itemCode = qrParts[1]
-  const lotNo = qrParts[2]
-  
-  if (itemCode !== currentScanItem.value.kodeItem || lotNo !== currentScanItem.value.lotSerial) {
-    alert(`Item tidak sesuai!\nHarus: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}\nDi-scan: ${itemCode} - ${lotNo}`)
-    return
-  }
-  
-  scanStep.value = 2
-  qrInput.value = ''
-  alert(`✓ Item valid: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.namaMaterial}`)
+    const qrParts = qrContent.split('|')
+    if (qrParts.length < 2) {
+        console.error('Format QR Box tidak valid!')
+        return
+    }
+    
+    const itemCode = qrParts[1]
+    const lotNo = qrParts[2]
+    
+    if (itemCode !== currentScanItem.value.kodeItem || lotNo !== currentScanItem.value.lotSerial) {
+        console.error(`Item tidak sesuai!\nHarus: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}\nDi-scan: ${itemCode} - ${lotNo}`)
+        return
+    }
+    
+    scanStep.value = 2
+    qrInput.value = ''
+    console.log(`✓ Item valid: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.namaMaterial}`)
 }
 
 const validateSourceBin = (binCode) => {
-  if (!currentScanItem.value) return
-  
-  if (binCode !== currentScanItem.value.sourceBin) {
-    alert(`Lokasi bin salah!\nHarus: ${currentScanItem.value.sourceBin}\nDi-scan: ${binCode}`)
-    return
-  }
-  
-  scanStep.value = 3
-  qrInput.value = ''
-  manualQty.value = currentScanItem.value.qtyDiminta.toString()
-  alert(`✓ Source Bin valid: ${binCode}`)
+    if (!currentScanItem.value) return
+    
+    if (binCode !== currentScanItem.value.sourceBin) {
+        console.error(`Lokasi bin salah!\nHarus: ${currentScanItem.value.sourceBin}\nDi-scan: ${binCode}`)
+        return
+    }
+    
+    scanStep.value = 3
+    qrInput.value = ''
+    manualQty.value = currentScanItem.value.qtyDiminta.toString()
+    console.log(`✓ Source Bin valid: ${binCode}`)
 }
 
 const confirmQuantity = () => {
-  if (!manualQty.value || parseInt(manualQty.value) <= 0) {
-    alert('Silakan input quantity yang valid!')
-    return
-  }
-  
-  const qtyPicked = parseInt(manualQty.value)
-  const qtyDiminta = currentScanItem.value.qtyDiminta
-  
-  if (qtyPicked > qtyDiminta) {
-    alert(`Quantity melebihi yang diminta!\nDiminta: ${qtyDiminta}\nInput: ${qtyPicked}`)
-    return
-  }
-  
-  currentScanItem.value.qtyPicked = qtyPicked
-  
-  if (qtyPicked === qtyDiminta) {
-    currentScanItem.value.status = 'Picked'
-    alert(`✓ Item berhasil dipick complete: ${qtyPicked}/${qtyDiminta}`)
-  } else {
-    currentScanItem.value.status = 'Short-Pick'
-    alert(`⚠ Short-pick detected: ${qtyPicked}/${qtyDiminta}`)
-  }
-  
-  if (currentScanItem.value.destBin && currentScanItem.value.destBin !== '-') {
-    scanStep.value = 4
-    qrInput.value = ''
-  } else {
-    finishCurrentItem()
-  }
+    if (!manualQty.value || parseInt(manualQty.value) <= 0) {
+        console.error('Silakan input quantity yang valid!')
+        return
+    }
+    
+    const qtyPicked = parseInt(manualQty.value)
+    const qtyDiminta = currentScanItem.value.qtyDiminta
+    
+    if (qtyPicked > qtyDiminta) {
+        console.error(`Quantity melebihi yang diminta!\nDiminta: ${qtyDiminta}\nInput: ${qtyPicked}`)
+        return
+    }
+    
+    currentScanItem.value.qtyPicked = qtyPicked
+    
+    if (qtyPicked === qtyDiminta) {
+        currentScanItem.value.status = 'Picked'
+        console.log(`✓ Item berhasil dipick complete: ${qtyPicked}/${qtyDiminta}`)
+    } else {
+        currentScanItem.value.status = 'Short-Pick'
+        console.warn(`⚠ Short-pick detected: ${qtyPicked}/${qtyDiminta}`)
+    }
+    
+    if (currentScanItem.value.destBin && currentScanItem.value.destBin !== '-') {
+        scanStep.value = 4
+        qrInput.value = ''
+    } else {
+        finishCurrentItem()
+    }
 }
 
 const validateDestBin = (binCode) => {
-  if (!currentScanItem.value) return
-  
-  if (binCode !== currentScanItem.value.destBin) {
-    alert(`Destination bin salah!\nHarus: ${currentScanItem.value.destBin}\nDi-scan: ${binCode}`)
-    return
-  }
-  
-  alert(`✓ Destination Bin valid: ${binCode}`)
-  finishCurrentItem()
+    if (!currentScanItem.value) return
+    
+    if (binCode !== currentScanItem.value.destBin) {
+        console.error(`Destination bin salah!\nHarus: ${currentScanItem.value.destBin}\nDi-scan: ${binCode}`)
+        return
+    }
+    
+    console.log(`✓ Destination Bin valid: ${binCode}`)
+    finishCurrentItem()
 }
 
 const finishCurrentItem = () => {
-  alert(`Item ${currentScanItem.value.kodeItem} berhasil diselesaikan!`)
-  closeQRScanner()
-  
-  const remainingItems = selectedTask.value.items.filter(item => item.status === 'Pending')
-  if (remainingItems.length === 0) {
-    alert('Semua item sudah dipick! Silakan klik "Selesai Picking"')
-  }
+    console.log(`Item ${currentScanItem.value.kodeItem} berhasil diselesaikan!`)
+    closeQRScanner()
+    
+    const remainingItems = selectedTask.value.items.filter(item => item.status === 'Pending')
+    if (remainingItems.length === 0) {
+        console.log('Semua item sudah dipick! Silakan klik "Selesai Picking"')
+    }
 }
 
 const prevScanStep = () => {
-  if (scanStep.value > 1) {
-    scanStep.value--
-    qrInput.value = ''
-  }
+    if (scanStep.value > 1) {
+        scanStep.value--
+        qrInput.value = ''
+    }
 }
 
 const updateItemStatus = (item) => {
-  if (!item.qtyPicked || item.qtyPicked <= 0) {
-    item.status = 'Pending'
-    return
-  }
-  
-  if (item.qtyPicked >= item.qtyDiminta) {
-    item.status = 'Picked'
-    item.qtyPicked = item.qtyDiminta
-  } else {
-    item.status = 'Short-Pick'
-  }
+    if (!item.qtyPicked || item.qtyPicked <= 0) {
+        item.status = 'Pending'
+        return
+    }
+    
+    if (item.qtyPicked >= item.qtyDiminta) {
+        item.status = 'Picked'
+        item.qtyPicked = item.qtyDiminta
+    } else {
+        item.status = 'Short-Pick'
+    }
 }
 
 const finishPicking = async () => {
-  if (!selectedTask.value) return
+    if (!selectedTask.value) return
 
-  const pickedItems = selectedTask.value.items.map(item => ({
-    stock_id: item.stock_id,
-    picked_quantity: item.qtyPicked,
-  }))
+    const pickedItems = selectedTask.value.items.map(item => ({
+        stock_id: item.stock_id,
+        picked_quantity: item.qtyPicked,
+    }))
 
-  try {
-    const response = await axios.post('/transaction/picking-list', {
-      reservation_id: selectedTask.value.id,
-      items: pickedItems,
-    })
+    try {
+        // FIX: Menggunakan fungsi route() untuk POST request
+        const response = await axios.post(route('transaction.picking-list.store'), {
+            reservation_id: selectedTask.value.id,
+            items: pickedItems,
+        })
 
-    if (response.status === 200) {
-      alert('Picking successful.')
-      closePickingModal()
-      fetchPickingList()
+        if (response.status === 200) {
+            console.log('Picking successful.')
+            closePickingModal()
+            fetchPickingList()
+        }
+    } catch (error) {
+        console.error('Error finishing picking:', error)
+        console.error('Failed to finish picking.')
     }
-  } catch (error) {
-    console.error('Error finishing picking:', error)
-    alert('Failed to finish picking.')
-  }
 }
 
 const printPickingList = (task) => {
-  const printWindow = window.open('', '_blank')
-  
-  const totalItems = task.items.length
-  const pickedItems = task.items.filter(item => item.status === 'Picked').length
-  const shortPickItems = task.items.filter(item => item.status === 'Short-Pick').length
-  
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>Picking List - ${task.toNumber}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-          .info-section { margin: 15px 0; }
-          .info-row { display: flex; justify-content: space-between; margin: 8px 0; }
-          .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          .items-table th, .items-table td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 11px; }
-          .items-table th { background-color: #f0f0f0; font-weight: bold; }
-          .picked { background-color: #e6ffe6; }
-          .short-pick { background-color: #fff2e6; }
-          .summary { margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; }
-          .signature { margin-top: 40px; display: flex; justify-content: space-between; }
-          .signature div { text-align: center; }
-          .signature-line { border-top: 1px solid #000; width: 150px; margin-top: 40px; }
-          @media print {
-            body { margin: 0; font-size: 10px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>PICKING LIST</h2>
-          <p><strong>TO Number: ${task.toNumber}</strong></p>
-          <p>Creation Date: ${formatDateTime(task.tanggalDibuat)} | Warehouse: Main WH</p>
-        </div>
-        
-        <div class="info-section">
-          <div class="info-row">
-            <span><strong>No Reservasi:</strong> ${task.noReservasi}</span>
-            <span><strong>Transaction Type:</strong> Picking</span>
-          </div>
-          <div class="info-row">
-            <span><strong>Requester:</strong> ${task.requester}</span>
-            <span><strong>Departemen:</strong> ${task.departemen}</span>
-          </div>
-          <div class="info-row">
-            <span><strong>Status:</strong> ${task.status}</span>
-            <span><strong>Print Date:</strong> ${new Date().toLocaleString('id-ID')}</span>
-          </div>
-        </div>
+    const printWindow = window.open('', '_blank')
+    
+    const totalItems = task.items.length
+    const pickedItems = task.items.filter(item => item.status === 'Picked').length
+    const shortPickItems = task.items.filter(item => item.status === 'Short-Pick').length
+    
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Picking List - ${task.toNumber}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
+                    .info-section { margin: 15px 0; }
+                    .info-row { display: flex; justify-content: space-between; margin: 8px 0; }
+                    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    .items-table th, .items-table td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 11px; }
+                    .items-table th { background-color: #f0f0f0; font-weight: bold; }
+                    .picked { background-color: #e6ffe6; }
+                    .short-pick { background-color: #fff2e6; }
+                    .summary { margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; }
+                    .signature { margin-top: 40px; display: flex; justify-content: space-between; }
+                    .signature div { text-align: center; }
+                    .signature-line { border-top: 1px solid #000; width: 150px; margin-top: 40px; }
+                    @media print {
+                        body { margin: 0; font-size: 10px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>PICKING LIST</h2>
+                    <p><strong>TO Number: ${task.toNumber}</strong></p>
+                    <p>Creation Date: ${formatDateTime(task.tanggalDibuat)} | Warehouse: Main WH</p>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-row">
+                        <span><strong>No Reservasi:</strong> ${task.noReservasi}</span>
+                        <span><strong>Transaction Type:</strong> Picking</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Requester:</strong> ${task.requester}</span>
+                        <span><strong>Departemen:</strong> ${task.departemen}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Status:</strong> ${task.status}</span>
+                        <span><strong>Print Date:</strong> ${new Date().toLocaleString('id-ID')}</span>
+                    </div>
+                </div>
 
-        <div class="summary">
-          <strong>Summary:</strong> Total ${totalItems} items | Picked: ${pickedItems} | Short-pick: ${shortPickItems} | Pending: ${totalItems - pickedItems - shortPickItems}
-        </div>
-        
-        <table class="items-table">
-          <tr>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">No</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 12%;">Code Item</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 25%;">Material Description</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">SN</th>
-            <th colspan="2" style="text-align: center; width: 20%;">Bin Location</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 8%;">Quantity</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">UoM</th>
-            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Resv. Qty</th>
-          </tr>
-          <tr>
-            <th style="text-align: center; width: 10%;">Source Bin Location</th>
-            <th style="text-align: center; width: 10%;">Dest. Bin Location</th>
-          </tr>
-          ${task.items.map((item, index) => `
-            <tr class="${item.status === 'Picked' ? 'picked' : item.status === 'Short-Pick' ? 'short-pick' : ''}" style="height: 40px;">
-              <td style="text-align: center; vertical-align: middle;">${index + 1}</td>
-              <td style="vertical-align: middle;">${item.kodeItem}</td>
-              <td style="vertical-align: middle;">${item.namaMaterial}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.lotSerial}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.sourceBin}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.destBin}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.qtyDiminta}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.uom}</td>
-              <td style="text-align: center; vertical-align: middle;">${item.qtyPicked || ''}</td>
-            </tr>
-          `).join('')}
-        </table>
-        
-        <div class="signature">
-          <div>
-            <p>Diserahkan Oleh:</p>
-            <div class="signature-line"></div>
-            <p>Warehouse Staff</p>
-          </div>
-          <div>
-            <p>Diterima Oleh:</p>
-            <div class="signature-line"></div>
-            <p>${task.requester}</p>
-          </div>
-          <div>
-            <p>Mengetahui:</p>
-            <div class="signature-line"></div>
-            <p>Supervisor</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `)
-  
-  printWindow.document.close()
-  printWindow.focus()
-  
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 500)
+                <div class="summary">
+                    <strong>Summary:</strong> Total ${totalItems} items | Picked: ${pickedItems} | Short-pick: ${shortPickItems} | Pending: ${totalItems - pickedItems - shortPickItems}
+                </div>
+                
+                <table class="items-table">
+                    <tr>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">No</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 12%;">Code Item</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 25%;">Material Description</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">SN</th>
+                        <th colspan="2" style="text-align: center; width: 20%;">Bin Location</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 8%;">Quantity</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">UoM</th>
+                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Resv. Qty</th>
+                    </tr>
+                    <tr>
+                        <th style="text-align: center; width: 10%;">Source Bin Location</th>
+                        <th style="text-align: center; width: 10%;">Dest. Bin Location</th>
+                    </tr>
+                    ${task.items.map((item, index) => `
+                        <tr class="${item.status === 'Picked' ? 'picked' : item.status === 'Short-Pick' ? 'short-pick' : ''}" style="height: 40px;">
+                            <td style="text-align: center; vertical-align: middle;">${index + 1}</td>
+                            <td style="vertical-align: middle;">${item.kodeItem}</td>
+                            <td style="vertical-align: middle;">${item.namaMaterial}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.lotSerial}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.sourceBin}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.destBin}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.qtyDiminta}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.uom}</td>
+                            <td style="text-align: center; vertical-align: middle;">${item.qtyPicked || ''}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                
+                <div class="signature">
+                    <div>
+                        <p>Diserahkan Oleh:</p>
+                        <div class="signature-line"></div>
+                        <p>Warehouse Staff</p>
+                    </div>
+                    <div>
+                        <p>Diterima Oleh:</p>
+                        <div class="signature-line"></div>
+                        <p>${task.requester}</p>
+                    </div>
+                    <div>
+                        <p>Mengetahui:</p>
+                        <div class="signature-line"></div>
+                        <p>Supervisor</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+    `)
+    
+    printWindow.document.close()
+    printWindow.focus()
+    
+    setTimeout(() => {
+        printWindow.print()
+        printWindow.close()
+    }, 500)
 }
 
 // Lifecycle
 onMounted(() => {
-  fetchPickingList()
+    fetchPickingList()
 })
 
 onBeforeUnmount(() => {
-  stopCamera()
+    stopCamera()
 })
 </script>

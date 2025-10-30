@@ -196,13 +196,22 @@ Route::middleware('auth')->group(function () {
         // Reservation
         Route::get('/reservation', [ReservationController::class, 'index'])
             ->middleware('permission:reservation.view')
-            ->name('reservation');
+            ->name('reservation.index');
+            
+        // Reservation Store (POST)
         Route::post('/reservation', [ReservationController::class, 'store'])
             ->middleware('permission:reservation.create')
             ->name('reservation.store');
-        Route::get('/api/reservations', [ReservationController::class, 'getReservations'])
+
+        // ENDPOINT UNTUK AMBIL DATA (AJAX/Web)
+        Route::get('/reservations/data', [ReservationController::class, 'getReservationsData'])
             ->middleware('permission:reservation.view')
-            ->name('api.reservations');
+            ->name('reservation.data');
+            
+        // NEW ENDPOINT: Material Search API
+        Route::get('/materials/search', [ReservationController::class, 'searchMaterials'])
+            ->middleware('permission:reservation.create') // Gunakan permission yang sesuai
+            ->name('materials.search');
 
         // Picking List
         Route::get('/picking-list', [PickingListController::class, 'index'])

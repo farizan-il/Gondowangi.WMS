@@ -133,6 +133,7 @@
                     Tidak ada data yang ditemukan
                   </td>
                 </tr>
+
                 <tr v-for="request in filteredRequests" :key="request.id" class="hover:bg-gray-50 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{{ request.noReservasi }}
                   </td>
@@ -160,14 +161,6 @@
                         class="bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
                         Cetak
                       </button>
-                      <!-- <button v-if="request.status === 'Submitted'" @click="approveRequest(request)"
-                        class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
-                        Approve
-                      </button>
-                      <button v-if="request.status === 'Submitted'" @click="rejectRequest(request)"
-                        class="bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded text-xs font-medium transition-colors">
-                        Reject
-                      </button> -->
                     </div>
                   </td>
                 </tr>
@@ -179,7 +172,8 @@
 
       <!-- Modal Create Request -->
       <div v-if="showModal"
-        class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
           <div class="p-6">
             <!-- Header Modal -->
@@ -225,7 +219,7 @@
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
                     {{ selectedCategory === 'packaging' || selectedCategory === 'add' ? 'Tanggal & Jam Permintaan' :
-                    'Tanggal Permintaan' }}
+                      'Tanggal Permintaan' }}
                   </label>
                   <input v-model="formData.tanggalPermintaan" type="datetime-local"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
@@ -248,10 +242,10 @@
                   <select v-model="formData.departemen"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                     <option value="">Pilih Departemen</option>
-                    <option value="FOH">FOH (Front of House)</option>
-                    <option value="RS">RS (Restaurant Service)</option>
-                    <option value="Kitchen">Kitchen</option>
-                    <option value="Bar">Bar</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Produksi">Produksi</option>
+                    <!-- <option value="Kitchen">Kitchen</option>
+                    <option value="Bar">Bar</option> -->
                   </select>
                 </div>
 
@@ -331,10 +325,11 @@
                         <template v-if="selectedCategory === 'packaging'">
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                            Nama Material</th>
+                            Kode PM</th>
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                            Kode PM</th>
+                            Nama Material</th>
+                          
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
                             Jumlah Permintaan</th>
@@ -360,10 +355,10 @@
                         <template v-if="selectedCategory === 'add'">
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                            Nama Material</th>
+                            Kode PM</th>
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                            Kode PM</th>
+                            Nama Material</th>
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
                             Alasan Penambahan</th>
@@ -383,13 +378,25 @@
 
                         <!-- FOH & RS Row -->
                         <template v-if="selectedCategory === 'foh-rs'">
-                          <td class="px-4 py-3 whitespace-nowrap">
+                          <td class="px-4 py-3 relative whitespace-nowrap z-10">
                             <input v-model="item.kodeItem" type="text"
+                              @input="debounceSearch(item.kodeItem, index, 'kodeItem')"
+                              @focus="startSearch(index, 'kodeItem')"
+                              @blur="endSearch()"
                               class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <ul v-if="isSearching(index, 'kodeItem') && materialSuggestions.length > 0"
+                                class="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                                <li v-for="material in materialSuggestions" :key="material.id"
+                                    @mousedown.prevent="selectMaterial(material, index, 'kodeItem')"
+                                    class="p-2 text-sm cursor-pointer hover:bg-blue-100 flex justify-between">
+                                    <span>{{ material.kodeItem }}</span>
+                                    <span class="text-gray-500 text-xs truncate ml-2">{{ material.keterangan || material.namaMaterial }}</span>
+                                </li>
+                            </ul>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
                             <input v-model="item.keterangan" type="text"
-                              class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 text-gray-700" readonly>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
                             <input v-model="item.qty" type="number"
@@ -397,7 +404,7 @@
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
                             <select v-model="item.uom"
-                              class="w-full min-w-[80px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              class="w-full min-w-[80px] text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 text-gray-700" readonly disabled>
                               <option value="">UoM</option>
                               <option value="PCS">PCS</option>
                               <option value="KG">KG</option>
@@ -408,13 +415,25 @@
 
                         <!-- Packaging Row -->
                         <template v-if="selectedCategory === 'packaging'">
+                          <td class="px-4 py-3 relative whitespace-nowrap z-10">
+                            <input v-model="item.kodePM" type="text"
+                               @input="debounceSearch(item.kodePM, index, 'kodePM')"
+                               @focus="startSearch(index, 'kodePM')"
+                               @blur="endSearch()"
+                              class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          </td>
+                          <ul v-if="isSearching(index, 'kodePM') && materialSuggestions.length > 0"
+                              class="absolute left-10 right-0 mt-10 w-150 max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-999">
+                              <li v-for="material in materialSuggestions" :key="material.id"
+                                  @mousedown.prevent="selectMaterial(material, index, 'kodePM')"
+                                  class="p-2 text-sm cursor-pointer hover:bg-blue-100 flex justify-between">
+                                  <span>{{ material.kodePM }}</span>
+                                  <span class="text-gray-500 text-xs truncate ml-2">{{ material.namaMaterial }}</span>
+                              </li>
+                          </ul>
                           <td class="px-4 py-3 whitespace-nowrap">
                             <input v-model="item.namaMaterial" type="text"
-                              class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          </td>
-                          <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model="item.kodePM" type="text"
-                              class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 text-gray-700" readonly>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
                             <input v-model="item.jumlahPermintaan" type="number"
@@ -422,6 +441,73 @@
                           </td>
                         </template>
 
+                        <!-- Raw Material Row -->
+                        <template v-if="selectedCategory === 'raw-material'">
+                            <td class="px-4 py-3 relative whitespace-nowrap z-10">
+                                <input v-model="item.kodeBahan" type="text"
+                                    @input="debounceSearch(item.kodeBahan, index, 'kodeBahan')"
+                                    @focus="startSearch(index, 'kodeBahan')"
+                                    @blur="endSearch()"
+                                    class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                
+                            </td>
+                            <ul v-if="isSearching(index, 'kodeBahan') && materialSuggestions.length > 0"
+                                    class="absolute left-10 right-0 mt-10 w-150 max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                                    <li v-for="material in materialSuggestions" :key="material.id"
+                                        @mousedown.prevent="selectMaterial(material, index, 'kodeBahan')"
+                                        class="p-2 text-sm cursor-pointer hover:bg-blue-100 flex justify-between">
+                                        <span>{{ material.kodeBahan }}</span>
+                                        <span class="text-gray-500 text-xs truncate ml-2">{{ material.namaBahan }}</span>
+                                    </li>
+                                </ul>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.namaBahan" type="text"
+                                    class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 text-gray-700" readonly>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.jumlahKebutuhan" type="number"
+                                    class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.jumlahKirim" type="number"
+                                    class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                        </template>
+
+                        <!-- ADD Row -->
+                        <template v-if="selectedCategory === 'add'">
+                            
+                            <td class="px-4 py-3 relative whitespace-nowrap z-10">
+                                <input v-model="item.kodePM" type="text"
+                                    @input="debounceSearch(item.kodePM, index, 'kodePM')"
+                                    @focus="startSearch(index, 'kodePM')"
+                                    @blur="endSearch()"
+                                    class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                
+                            </td>
+                            <ul v-if="isSearching(index, 'kodePM') && materialSuggestions.length > 0"
+                                    class="absolute left-10 right-0 mt-10 w-150 max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                                    <li v-for="material in materialSuggestions" :key="material.id"
+                                        @mousedown.prevent="selectMaterial(material, index, 'kodePM')"
+                                        class="p-2 text-sm cursor-pointer hover:bg-blue-100 flex justify-between">
+                                        <span>{{ material.kodePM }}</span>
+                                        <span class="text-gray-500 text-xs truncate ml-2">{{ material.namaMaterial }}</span>
+                                    </li>
+                                </ul>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.namaMaterial" type="text"
+                                    class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 text-gray-700" readonly>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.alasanPenambahan" type="text"
+                                    class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <input v-model="item.jumlahPermintaan" type="number"
+                                    class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                        </template>
+                        
                         <td class="px-4 py-3 whitespace-nowrap">
                           <button @click="removeItem(index)"
                             class="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors">Hapus</button>
@@ -448,6 +534,158 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Detail Request (Pastikan ada pengecekan optional chaining untuk items) -->
+    <div v-if="showDetailModal && selectedRequest"
+      class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+      style="background-color: rgba(43, 51, 63, 0.67);">
+      <div class="bg-white rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h3 class="text-xl font-bold text-gray-800">
+              Detail Reservasi: {{ selectedRequest.noReservasi }}
+            </h3>
+            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 p-4 rounded-lg">
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-gray-600">Kategori Request</p>
+              <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getCategoryClass(selectedRequest.type)">
+                {{ getCategoryName(selectedRequest.type) }}
+              </span>
+            </div>
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-gray-600">Tanggal Permintaan</p>
+              <p class="font-medium text-gray-800">{{ formatDateTime(selectedRequest.tanggalPermintaan) }}</p>
+            </div>
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-gray-600">Status</p>
+              <span :class="getStatusClass(selectedRequest.status)" class="px-3 py-1 text-xs font-semibold rounded-full">
+                {{ selectedRequest.status }}
+              </span>
+            </div>
+            
+            <template v-if="selectedRequest.type === 'foh-rs'">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Departemen</p>
+                <p class="text-gray-800">{{ selectedRequest.departemen }}</p>
+              </div>
+              <div class="space-y-1 md:col-span-2">
+                <p class="text-sm font-medium text-gray-600">Alasan Reservasi</p>
+                <p class="text-gray-800">{{ selectedRequest.alasanReservasi || '-' }}</p>
+              </div>
+            </template>
+
+            <template v-else-if="selectedRequest.type === 'packaging' || selectedRequest.type === 'add'">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Nama Produk</p>
+                <p class="text-gray-800">{{ selectedRequest.namaProduk }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">No Bets Filling/Mixing</p>
+                <p class="text-gray-800">{{ selectedRequest.noBetsFilling }}</p>
+              </div>
+            </template>
+
+            <template v-else-if="selectedRequest.type === 'raw-material'">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Kode Produk</p>
+                <p class="text-gray-800">{{ selectedRequest.kodeProduk }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">No Bets Ekstrak/Mixing</p>
+                <p class="text-gray-800">{{ selectedRequest.noBets }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Besar Bets (Kg)</p>
+                <p class="text-gray-800">{{ selectedRequest.besarBets }} Kg</p>
+              </div>
+            </template>
+          </div>
+
+          <h4 class="text-lg font-semibold text-gray-800 mb-4">Daftar Item yang Diminta</h4>
+          
+          <div v-if="!selectedRequest.items || selectedRequest.items.length === 0" class="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
+            Tidak ada detail item yang tercatat.
+          </div>
+          
+          <div v-else class="overflow-x-auto border border-gray-200 rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-16">No</th>
+                  <template v-if="selectedRequest.type === 'foh-rs'">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Item</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Keterangan</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">UoM</th>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'raw-material'">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Bahan</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Bahan</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kebutuhan</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kirim</th>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'packaging'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'add'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Alasan Tambahan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
+                  </template>
+
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                <!-- Gunakan selectedRequest.items yang sudah dijamin camelCase oleh Controller -->
+                <tr v-for="(item, index) in selectedRequest.items" :key="index">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ index + 1 }}</td>
+                  <template v-if="selectedRequest.type === 'foh-rs'">
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeItem }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.keterangan }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.qty }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.uom }}</td>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'packaging'">
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'raw-material'">
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeBahan }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaBahan }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKebutuhan }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKirim }}</td>
+                  </template>
+                  <template v-else-if="selectedRequest.type === 'add'">
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.alasanPenambahan }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
+                  </template>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+            <button @click="closeDetailModal"
+              class="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
@@ -455,13 +693,20 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { router } from '@inertiajs/vue3'
 
 // Data reaktif
 const showModal = ref(false)
 const selectedCategory = ref('')
-const requests = ref([])
 const showFilterPanel = ref(false)
 const searchQuery = ref('')
+const showDetailModal = ref(false);
+const selectedRequest = ref(null);
+
+// ** NEW STATE for Dynamic Search **
+const materialSuggestions = ref([]);
+const activeSearchIndex = ref(null); // { index: number, field: string }
+let searchTimeout = null;
 
 // Filter state
 const filters = ref({
@@ -497,13 +742,27 @@ const formData = ref({
   items: []
 })
 
+const props = defineProps({
+  // Tambahkan prop untuk data awal
+  initialRequests: {
+    type: Array,
+    default: () => []
+  },
+  errors: Object,
+  auth: Object,
+  permissions: Array,
+});
+
+const requests = ref(props.initialRequests || []);
+
 // Fetch reservation requests from the backend
 const fetchReservations = async () => {
   try {
-    const response = await axios.get('/api/reservations')
-    requests.value = response.data
+    const response = await axios.get(route('transaction.reservation.data'));
+    // Data dari backend sudah di-map ke camelCase di Controller, jadi langsung assign
+    requests.value = response.data;
   } catch (error) {
-    console.error('Error fetching reservations:', error)
+    console.error('Error fetching reservations:', error);
   }
 }
 
@@ -601,6 +860,91 @@ const activeFiltersCount = computed(() => {
   return count
 })
 
+// ** NEW DYNAMIC SEARCH METHODS **
+
+const startSearch = (index, field) => {
+    // Memberi tahu Vue baris mana yang sedang diisi
+    activeSearchIndex.value = { index, field };
+    // Hanya membersihkan suggestions, tidak langsung memuat
+    materialSuggestions.value = [];
+}
+
+const endSearch = () => {
+    // Tunggu sebentar sebelum menutup dropdown untuk memberi waktu event mousedown berjalan
+    setTimeout(() => {
+        activeSearchIndex.value = null;
+        materialSuggestions.value = [];
+    }, 200); 
+}
+
+const isSearching = (index, field) => {
+    return activeSearchIndex.value && 
+           activeSearchIndex.value.index === index && 
+           activeSearchIndex.value.field === field;
+}
+
+const searchMaterials = async (query, type) => {
+    if (!query || query.length < 2) {
+        materialSuggestions.value = [];
+        return;
+    }
+    
+    try {
+        const response = await axios.get(route('transaction.materials.search'), {
+            params: { query, type }
+        });
+        materialSuggestions.value = response.data;
+    } catch (error) {
+        console.error('Error fetching material suggestions:', error);
+        materialSuggestions.value = [];
+    }
+}
+
+const debounceSearch = (query, index, field) => {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    // Set active search state
+    activeSearchIndex.value = { index, field };
+
+    searchTimeout = setTimeout(() => {
+        searchMaterials(query, selectedCategory.value);
+    }, 300); // Tunggu 300ms setelah input berhenti
+}
+
+const selectMaterial = (material, index, field) => {
+    const item = formData.value.items[index];
+
+    // Reset fields yang terkait sebelum mengisi yang baru
+    item.kodeItem = '';
+    item.keterangan = '';
+    item.uom = '';
+    item.kodePM = '';
+    item.namaMaterial = '';
+    item.kodeBahan = '';
+    item.namaBahan = '';
+    
+    // Auto-fill berdasarkan tipe dan data yang dikembalikan
+    if (selectedCategory.value === 'foh-rs') {
+        item.kodeItem = material.kodeItem;
+        item.keterangan = material.keterangan;
+        item.uom = material.uom;
+    } else if (selectedCategory.value === 'packaging' || selectedCategory.value === 'add') {
+        item.kodePM = material.kodePM;
+        item.namaMaterial = material.namaMaterial;
+    } else if (selectedCategory.value === 'raw-material') {
+        item.kodeBahan = material.kodeBahan;
+        item.namaBahan = material.namaBahan;
+    }
+
+    // Tutup suggestions
+    materialSuggestions.value = [];
+    activeSearchIndex.value = null;
+}
+
+// ** END NEW DYNAMIC SEARCH METHODS **
+
+
 // Methods
 const getStatusClass = (status) => {
   const classes = {
@@ -625,13 +969,18 @@ const getDisplayText = (request) => {
 }
 
 const formatDateTime = (dateString) => {
-  return new Date(dateString).toLocaleString('id-ID', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return '-';
+  try {
+    return new Date(dateString).toLocaleString('id-ID', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateString;
+  }
 }
 
 const resetFilters = () => {
@@ -672,7 +1021,7 @@ const resetForm = () => {
 
 const generateReservationNumber = () => {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const count = requests.value.length + 1
+  const count = requests.value.length + 1 
   formData.value.noReservasi = `RSV/${today}/${String(count).padStart(4, '0')}`
 }
 
@@ -713,45 +1062,124 @@ const removeItem = (index) => {
 }
 
 const submitRequest = async () => {
-  try {
-    const response = await axios.post('/transaction/reservation', formData.value)
-    if (response.status === 200) {
-      alert('Reservation created successfully.')
-      closeModal()
-      fetchReservations()
-    }
-  } catch (error) {
-    console.error('Error creating reservation:', error)
-    alert('Failed to create reservation.')
+
+  if (!isFormValid.value) {
+    console.error('Mohon lengkapi semua field yang diperlukan dan pastikan data item terisi.');
+    return;
   }
+
+  // Siapkan payload, tambahkan 'request_type' yang dibutuhkan oleh Controller
+  const payload = {
+    ...formData.value,
+    request_type: selectedCategory.value, // Menggunakan request_type sesuai nama kolom di backend
+  };
+
+  // Gunakan router.post dari Inertia untuk submit
+  router.post(route('transaction.reservation.store'), payload, {
+    preserveScroll: true,
+
+    onSuccess: () => {
+      console.log('✅ Reservation request berhasil dibuat!'); 
+      closeModal();
+      fetchReservations(); 
+      // Hapus window.location.reload()
+    },
+
+    onError: (errors) => {
+      console.error('Validation errors:', errors);
+
+      let errorMessage = '❌ Gagal membuat reservasi karena data tidak lengkap:\n\n';
+      for (const field in errors) {
+        if (Object.prototype.hasOwnProperty.call(errors, field)) {
+          errorMessage += `• ${errors[field][0]}\n`;
+        }
+      }
+      console.error(errorMessage);
+    }
+  });
 }
 
 const viewDetail = (request) => {
-  alert(`Melihat detail request: ${request.noReservasi}`)
+  // PENTING: Gunakan JSON parse/stringify untuk membuat deep copy agar reaktivitas aman
+  selectedRequest.value = JSON.parse(JSON.stringify(request)); 
+  showDetailModal.value = true;
+}
+
+const closeDetailModal = () => {
+  showDetailModal.value = false;
+  selectedRequest.value = null;
 }
 
 const printForm = (request) => {
+  // PENTING: Gunakan deep copy untuk mencegah manipulasi data asli saat mencetak
+  const requestToPrint = JSON.parse(JSON.stringify(request));
+  
+  if (!requestToPrint.items || !Array.isArray(requestToPrint.items)) {
+     console.error("Tidak dapat mencetak: Data item tidak valid atau kosong.");
+     // Ganti alert/confirm dengan logging karena tidak diperbolehkan
+     return;
+  }
+  
   // Create print window with form template
   const printWindow = window.open('', '_blank')
 
   let formTitle = ''
   let formContent = ''
+  
+  // Pastikan requestToPrint.items digunakan di sini
+  const itemsHtml = requestToPrint.items.map((item, idx) => {
+      let cells = `<td>${idx + 1}</td>`;
+      // Menggunakan requestToPrint.type.toLowerCase() untuk menjamin konsistensi
+      const type = requestToPrint.type ? requestToPrint.type.toLowerCase() : ''; 
 
-  switch (request.type) {
+      if (type === 'foh-rs') {
+          cells += `
+              <td>${item.kodeItem || '-'}</td>
+              <td>${item.keterangan || '-'}</td>
+              <td>${item.qty || '-'}</td>
+              <td>${item.uom || '-'}</td>
+          `;
+      } else if (type === 'packaging') {
+          cells += `
+              <td>${item.namaMaterial || '-'}</td>
+              <td>${item.kodePM || '-'}</td>
+              <td>${item.jumlahPermintaan || '-'}</td>
+          `;
+      } else if (type === 'raw-material') {
+          cells += `
+              <td>${item.kodeBahan || '-'}</td>
+              <td>${item.namaBahan || '-'}</td>
+              <td>${item.jumlahKebutuhan || '-'}</td>
+              <td>${item.jumlahKirim || '-'}</td>
+          `;
+      } else if (type === 'add') {
+          cells += `
+              <td>${item.namaMaterial || '-'}</td>
+              <td>${item.kodePM || '-'}</td>
+              <td>${item.alasanPenambahan || '-'}</td>
+              <td>${item.jumlahPermintaan || '-'}</td>
+          `;
+      }
+
+      return `<tr>${cells}</tr>`;
+  }).join('');
+
+  // FIX: Menggunakan .toLowerCase() pada switch untuk mengatasi masalah case sensitivity
+  switch (requestToPrint.type ? requestToPrint.type.toLowerCase() : '') {
     case 'foh-rs':
       formTitle = 'FORM FOH & RS REQUEST'
       formContent = `
         <div class="info-section">
           <div class="info-row">
-            <span><strong>No Reservasi:</strong> ${request.noReservasi}</span>
-            <span><strong>Tanggal:</strong> ${formatDateTime(request.tanggalPermintaan)}</span>
+            <span><strong>No Reservasi:</strong> ${requestToPrint.noReservasi}</span>
+            <span><strong>Tanggal:</strong> ${formatDateTime(requestToPrint.tanggalPermintaan)}</span>
           </div>
           <div class="info-row">
-            <span><strong>Departemen:</strong> ${request.departemen}</span>
-            <span><strong>Status:</strong> ${request.status}</span>
+            <span><strong>Departemen:</strong> ${requestToPrint.departemen}</span>
+            <span><strong>Status:</strong> ${requestToPrint.status}</span>
           </div>
           <div class="info-row">
-            <span><strong>Alasan Reservasi:</strong> ${request.alasanReservasi || '-'}</span>
+            <span><strong>Alasan Reservasi:</strong> ${requestToPrint.alasanReservasi || '-'}</span>
           </div>
         </div>
         
@@ -766,15 +1194,7 @@ const printForm = (request) => {
             </tr>
           </thead>
           <tbody>
-          ${request.items.map((item, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${item.kodeItem}</td>
-              <td>${item.keterangan}</td>
-              <td>${item.qty}</td>
-              <td>${item.uom}</td>
-            </tr>
-          `).join('')}
+          ${itemsHtml}
           </tbody>
         </table>
       `
@@ -785,12 +1205,12 @@ const printForm = (request) => {
       formContent = `
         <div class="info-section">
           <div class="info-row">
-            <span><strong>No Reservasi:</strong> ${request.noReservasi}</span>
-            <span><strong>Tanggal & Jam:</strong> ${formatDateTime(request.tanggalPermintaan)}</span>
+            <span><strong>No Reservasi:</strong> ${requestToPrint.noReservasi}</span>
+            <span><strong>Tanggal & Jam:</strong> ${formatDateTime(requestToPrint.tanggalPermintaan)}</span>
           </div>
           <div class="info-row">
-            <span><strong>Nama Produk:</strong> ${request.namaProduk}</span>
-            <span><strong>No Bets Filling:</strong> ${request.noBetsFilling}</span>
+            <span><strong>Nama Produk:</strong> ${requestToPrint.namaProduk}</span>
+            <span><strong>No Bets Filling:</strong> ${requestToPrint.noBetsFilling}</span>
           </div>
         </div>
         
@@ -804,14 +1224,7 @@ const printForm = (request) => {
             </tr>
           </thead>
           <tbody>
-          ${request.items.map((item, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${item.namaMaterial}</td>
-              <td>${item.kodePM}</td>
-              <td>${item.jumlahPermintaan}</td>
-            </tr>
-          `).join('')}
+          ${itemsHtml}
           </tbody>
         </table>
       `
@@ -822,15 +1235,15 @@ const printForm = (request) => {
       formContent = `
         <div class="info-section">
           <div class="info-row">
-            <span><strong>No Reservasi:</strong> ${request.noReservasi}</span>
-            <span><strong>Tanggal:</strong> ${formatDateTime(request.tanggalPermintaan)}</span>
+            <span><strong>No Reservasi:</strong> ${requestToPrint.noReservasi}</span>
+            <span><strong>Tanggal:</strong> ${formatDateTime(requestToPrint.tanggalPermintaan)}</span>
           </div>
           <div class="info-row">
-            <span><strong>Kode Produk:</strong> ${request.kodeProduk}</span>
-            <span><strong>No Bets:</strong> ${request.noBets}</span>
+            <span><strong>Kode Produk:</strong> ${requestToPrint.kodeProduk}</span>
+            <span><strong>No Bets:</strong> ${requestToPrint.noBets}</span>
           </div>
           <div class="info-row">
-            <span><strong>Besar Bets:</strong> ${request.besarBets} Kg</span>
+            <span><strong>Besar Bets:</strong> ${requestToPrint.besarBets} Kg</span>
           </div>
         </div>
         
@@ -845,15 +1258,7 @@ const printForm = (request) => {
             </tr>
           </thead>
           <tbody>
-          ${request.items.map((item, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${item.kodeBahan}</td>
-              <td>${item.namaBahan}</td>
-              <td>${item.jumlahKebutuhan}</td>
-              <td>${item.jumlahKirim}</td>
-            </tr>
-          `).join('')}
+          ${itemsHtml}
           </tbody>
         </table>
       `
@@ -864,12 +1269,12 @@ const printForm = (request) => {
       formContent = `
         <div class="info-section">
           <div class="info-row">
-            <span><strong>No Reservasi:</strong> ${request.noReservasi}</span>
-            <span><strong>Tanggal & Jam:</strong> ${formatDateTime(request.tanggalPermintaan)}</span>
+            <span><strong>No Reservasi:</strong> ${requestToPrint.noReservasi}</span>
+            <span><strong>Tanggal & Jam:</strong> ${formatDateTime(requestToPrint.tanggalPermintaan)}</span>
           </div>
           <div class="info-row">
-            <span><strong>Nama Produk:</strong> ${request.namaProduk}</span>
-            <span><strong>No Bets Filling:</strong> ${request.noBetsFilling}</span>
+            <span><strong>Nama Produk:</strong> ${requestToPrint.namaProduk}</span>
+            <span><strong>No Bets Filling:</strong> ${requestToPrint.noBetsFilling}</span>
           </div>
         </div>
         
@@ -884,25 +1289,20 @@ const printForm = (request) => {
             </tr>
           </thead>
           <tbody>
-          ${request.items.map((item, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${item.namaMaterial}</td>
-              <td>${item.kodePM}</td>
-              <td>${item.alasanPenambahan}</td>
-              <td>${item.jumlahPermintaan}</td>
-            </tr>
-          `).join('')}
+          ${itemsHtml}
           </tbody>
         </table>
       `
       break
+    default:
+        console.error("Tipe request tidak dikenal: ", requestToPrint.type);
+        return; // Hentikan jika tipe tidak dikenal
   }
 
   printWindow.document.write(`
     <html>
       <head>
-        <title>${formTitle} - ${request.noReservasi}</title>
+        <title>${formTitle} - ${requestToPrint.noReservasi}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
@@ -922,7 +1322,7 @@ const printForm = (request) => {
       <body>
         <div class="header">
           <h2>${formTitle}</h2>
-          <p>No: ${request.noReservasi}</p>
+          <p>No: ${requestToPrint.noReservasi}</p>
         </div>
         
         ${formContent}
@@ -958,29 +1358,15 @@ const printForm = (request) => {
 }
 
 const approveRequest = (request) => {
-  if (confirm(`Apakah Anda yakin ingin APPROVE request ${request.noReservasi}?`)) {
-    const requestIndex = requests.value.findIndex(r => r.id === request.id)
-    if (requestIndex !== -1) {
-      requests.value[requestIndex].status = 'Approved'
-    }
-
-    alert(`Request ${request.noReservasi} berhasil di-APPROVE!\n\nSistem akan:\n- Lock stok sesuai FIFO/FEFO\n- Buat Picking Task\n- Masuk ke Halaman Picking`)
-  }
+  console.log(`Menyetujui request ${request.noReservasi}. Implementasi logik API diperlukan di sini.`);
+  // Logik yang sebenarnya harus menggunakan Inertia.post atau axios.post ke endpoint API
 }
 
 const rejectRequest = (request) => {
-  if (confirm(`Apakah Anda yakin ingin REJECT request ${request.noReservasi}?`)) {
-    const requestIndex = requests.value.findIndex(r => r.id === request.id)
-    if (requestIndex !== -1) {
-      requests.value[requestIndex].status = 'Rejected'
-    }
-
-    alert(`Request ${request.noReservasi} berhasil di-REJECT!`)
-  }
+  console.log(`Menolak request ${request.noReservasi}. Implementasi logik API diperlukan di sini.`);
+  // Logik yang sebenarnya harus menggunakan Inertia.post atau axios.post ke endpoint API
 }
 
 // Lifecycle
-onMounted(() => {
-  fetchReservations()
-})
+onMounted(() => {})
 </script>
