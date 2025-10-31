@@ -60,6 +60,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/user', [MasterDataController::class, 'storeUser']);
         Route::put('/user/{id}', [MasterDataController::class, 'updateUser']);
         Route::delete('/user/{id}', [MasterDataController::class, 'deleteUser']);
+
+        // API endpoint for bin locations
+        Route::get('/bins', [MasterDataController::class, 'getAllBins']);
     });
     
     // Bin Routes

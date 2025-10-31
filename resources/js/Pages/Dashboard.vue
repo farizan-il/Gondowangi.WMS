@@ -489,7 +489,8 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
 // Types
 interface MaterialItem {
@@ -559,24 +560,17 @@ const transferData = ref<TransferData>({
   notes: ''
 })
 
-// Alerts
-const alerts = ref<Alert[]>([
-  { id: '1', type: 'warning', message: '5 item akan expired dalam 30 hari' },
-  { id: '2', type: 'error', message: '2 item sudah expired!' }
-])
-
 // Bin Locations Data
-const binLocations = ref<BinLocation[]>([
-  { code: 'STD-A-01-01', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 3, maxItems: 10, capacity: '1000 KG' },
-  { code: 'STD-A-01-02', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 5, maxItems: 10, capacity: '1000 KG' },
-  { code: 'STD-A-02-01', zone: 'Standard Zone A', warehouse: 'WH-001', type: 'STD', currentItems: 2, maxItems: 10, capacity: '800 KG' },
-  { code: 'STD-B-01-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 1, maxItems: 8, capacity: '500 L' },
-  { code: 'STD-B-02-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 0, maxItems: 8, capacity: '500 L' },
-  { code: 'STD-B-03-01', zone: 'Standard Zone B', warehouse: 'WH-001', type: 'STD', currentItems: 8, maxItems: 8, capacity: '500 L' },
-  { code: 'HAZ-A-01-01', zone: 'Hazardous Zone A', warehouse: 'WH-002', type: 'HAZ', currentItems: 1, maxItems: 5, capacity: '200 L' },
-  { code: 'HAZ-A-01-02', zone: 'Hazardous Zone A', warehouse: 'WH-002', type: 'HAZ', currentItems: 0, maxItems: 5, capacity: '200 L' },
-  { code: 'HAZ-B-01-01', zone: 'Hazardous Zone B', warehouse: 'WH-002', type: 'HAZ', currentItems: 5, maxItems: 5, capacity: '300 L' }
-])
+const binLocations = ref<BinLocation[]>([])
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('/master-data/bins');
+    binLocations.value = response.data;
+  } catch (error) {
+    console.error('Error fetching bin locations:', error);
+  }
+});
 
 // Table columns
 const tableColumns = [
@@ -591,63 +585,14 @@ const tableColumns = [
   { key: 'status', label: 'Status' }
 ]
 
-// Dummy data
-const materialItems = ref<MaterialItem[]>([
-  {
-    id: '1',
-    type: 'RM',
-    kode: 'RM001',
-    nama: 'Alcohol 96%',
-    lot: 'LOT240901001',
-    lokasi: 'STD-A-01-01',
-    qty: 250,
-    uom: 'L',
-    expiredDate: '2025-12-31',
-    status: 'Released',
-    history: [
-      { id: '1', date: '2024-09-12T08:00:00', action: 'Incoming GR001', detail: 'Diterima dari Supplier A', user: 'Admin' },
-      { id: '2', date: '2024-09-13T10:30:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-14T14:15:00', action: 'Put Away', detail: 'Disimpan di STD-A-01-01', user: 'Operator' }
-    ]
-  },
-  {
-    id: '2',
-    type: 'PM',
-    kode: 'PM001',
-    nama: 'Plastic Bottle 500ml',
-    lot: 'LOT240902001',
-    lokasi: 'STD-B-01-01',
-    qty: 5000,
-    uom: 'pcs',
-    expiredDate: '2026-08-15',
-    status: 'Released',
-    history: [
-      { id: '1', date: '2024-09-02T09:00:00', action: 'Incoming GR002', detail: 'Diterima dari Supplier B', user: 'Admin' },
-      { id: '2', date: '2024-09-02T11:00:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' },
-      { id: '3', date: '2024-09-03T08:30:00', action: 'Put Away', detail: 'Disimpan di STD-B-01-01', user: 'Operator' }
-    ]
-  },
-  {
-    id: '3',
-    type: 'RM',
-    kode: 'RM002',
-    nama: 'Sodium Lauryl Sulfate',
-    lot: 'LOT240903001',
-    lokasi: 'STD-A-02-01',
-    qty: 100,
-    uom: 'kg',
-    expiredDate: '2024-10-15',
-    status: 'Released',
-    history: [
-      { id: '1', date: '2024-09-03T14:00:00', action: 'Incoming GR003', detail: 'Diterima dari Supplier C', user: 'Admin' },
-      { id: '2', date: '2024-09-03T15:30:00', action: 'QC Approved', detail: 'Lulus quality control', user: 'QC Team' }
-    ]
-  }
-])
+const { materialItems, alerts } = defineProps<{
+  materialItems: MaterialItem[],
+  alerts: Alert[]
+}>()
 
 // Computed properties
 const uniqueLocations = computed(() => {
-  return [...new Set(materialItems.value.map(item => item.lokasi))].sort()
+  return [...new Set(materialItems.map(item => item.lokasi))].sort()
 })
 
 const availableBins = computed(() => {
@@ -673,7 +618,7 @@ const isTransferValid = computed(() => {
 })
 
 const filteredItems = computed(() => {
-  let filtered = materialItems.value
+  let filtered = materialItems
 
   // Search filter
   if (searchQuery.value) {

@@ -23,6 +23,11 @@ class MasterDataController extends Controller
 
     private const PER_PAGE = 20; 
 
+    public function getAllBins()
+    {
+        return WarehouseBin::all();
+    }
+
     public function index()
     {
         // 1. Ambil data dengan Paginasi
