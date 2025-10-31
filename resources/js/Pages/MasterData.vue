@@ -794,9 +794,9 @@
                 </button>
             </div>
 
-            <div v-if="!selectedBinDetails" class="text-center py-8 text-gray-500">Memuat data material...</div>
+            <div v-if="selectedBinDetails?.isLoading" class="text-center py-8 text-gray-500">Memuat data material...</div>
             
-            <div v-else-if="selectedBinDetails.details.length === 0" class="text-center py-8 text-gray-500">
+            <div v-else-if="!selectedBinDetails?.details || selectedBinDetails.details.length === 0" class="text-center py-8 text-gray-500">
                 Bin ini tidak memiliki stok material aktif.
             </div>
 
@@ -944,9 +944,10 @@ const statusFilter = ref(props.status || '')
 const showQRModal = ref(false)
 const qrCodeData = ref<any>(null)
 const showBinDetailsModal = ref(false)
-const selectedBinDetails = ref<{ 
-    bin_code: string, 
-    details: any[] 
+const selectedBinDetails = ref<{
+    bin_code: string,
+    details: any[],
+    isLoading: boolean
 } | null>(null)
 
 // Modal states
@@ -1048,7 +1049,7 @@ const filteredUserData = computed(() => {
 })
 
 const loadBinDetails = async (binId: string, binCode: string) => {
-    selectedBinDetails.value = null; // Clear previous data
+    selectedBinDetails.value = { bin_code: binCode, details: [], isLoading: true };
     showBinDetailsModal.value = true;
     
     try {
@@ -1056,18 +1057,20 @@ const loadBinDetails = async (binId: string, binCode: string) => {
         const response = await fetch(url);
         
         if (!response.ok) {
-            showMessage('error', `Gagal memuat detail Bin ${binCode}`);
-            selectedBinDetails.value = { bin_code: binCode, details: [] };
+            const errorData = await response.json();
+            const errorMessage = errorData.message || `Gagal memuat detail Bin ${binCode}`;
+            showMessage('error', errorMessage);
+            selectedBinDetails.value = { bin_code: binCode, details: [], isLoading: false };
             return;
         }
 
         const result = await response.json();
-        selectedBinDetails.value = result;
+        selectedBinDetails.value = { ...result, isLoading: false };
 
     } catch (error) {
         console.error('Fetch Bin Details error:', error);
         showMessage('error', 'Error saat memuat detail material.');
-        selectedBinDetails.value = { bin_code: binCode, details: [] };
+        selectedBinDetails.value = { bin_code: binCode, details: [], isLoading: false };
     }
 }
 

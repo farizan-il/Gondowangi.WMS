@@ -98,32 +98,38 @@ class MasterDataController extends Controller
 
     public function getBinStockDetails($binId)
     {
-        // Ambil stok yang tersedia di Bin ini
-        $stocks = InventoryStock::with('material')
-            ->where('bin_id', $binId)
-            ->where('qty_on_hand', '>', 0)
-            ->get();
+        try {
+            $bin = WarehouseBin::findOrFail($binId);
 
-        $bin = WarehouseBin::findOrFail($binId);
+            $stocks = InventoryStock::with('material')
+                ->where('bin_id', $binId)
+                ->where('qty_on_hand', '>', 0)
+                ->get();
 
-        $materialDetails = $stocks->map(function ($stock) {
-            return [
-                'id' => $stock->id,
-                'material_code' => $stock->material->kode_item ?? 'N/A',
-                'material_name' => $stock->material->nama_material ?? 'N/A',
-                'batch_lot' => $stock->batch_lot,
-                'qty_on_hand' => (float)$stock->qty_on_hand,
-                'qty_available' => (float)$stock->qty_available,
-                'uom' => $stock->uom,
-                'exp_date' => $stock->exp_date ? $stock->exp_date->format('Y-m-d') : 'N/A',
-                'status' => ucfirst($stock->status),
-            ];
-        });
+            $materialDetails = $stocks->map(function ($stock) {
+                return [
+                    'id' => $stock->id,
+                    'material_code' => $stock->material ? $stock->material->kode_item : 'N/A',
+                    'material_name' => $stock->material ? $stock->material->nama_material : 'N/A',
+                    'batch_lot' => $stock->batch_lot,
+                    'qty_on_hand' => (float)$stock->qty_on_hand,
+                    'qty_available' => (float)$stock->qty_available,
+                    'uom' => $stock->uom,
+                    'exp_date' => $stock->exp_date ? $stock->exp_date->format('Y-m-d') : 'N/A',
+                    'status' => ucfirst($stock->status),
+                ];
+            });
 
-        return response()->json([
-            'bin_code' => $bin->bin_code,
-            'details' => $materialDetails
-        ]);
+            return response()->json([
+                'bin_code' => $bin->bin_code,
+                'details' => $materialDetails
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Bin not found.'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error getting bin stock details: ' . $e->getMessage());
+            return response()->json(['message' => 'An error occurred while fetching bin stock details.'], 500);
+        }
     }
 
     // ========== SKU/MATERIAL ==========
