@@ -199,7 +199,7 @@
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.pabrikPembuat }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">
                         <span
-                          :class="item.statusQC === 'To QC' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'"
+                          :class="item.statusQC === 'To QC' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'"
                           class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                           {{ item.statusQC }}
                         </span>
@@ -871,14 +871,14 @@ const formatTime = (dateString) => {
 }
 
 const getStatusClass = (status) => {
-  const classes = {
-    'Draft': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    'Karantina': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-    'Arrived': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    'QC': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-    'Completed': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+    const classes = {
+        'Draft': 'bg-gray-100 text-gray-800',
+        'Karantina': 'bg-yellow-100 text-yellow-800',
+        'Proses': 'bg-orange-100 text-orange-800',
+        'Selesai': 'bg-green-100 text-green-800' 
+    }
+    // Ganti 'Completed' lama dengan 'Selesai'
+    return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 

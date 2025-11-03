@@ -62,17 +62,24 @@
                       class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
                       Periksa QC
                     </button>
+
                     <button v-if="item.statusQC === 'PASS'" @click="printGRSlip(item)"
                       class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
                       Cetak GR Slip
                     </button>
+                    <button v-if="item.statusQC === 'PASS'" @click="printReleaseQRLabel(item)"
+                      class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
+                      Cetak Label QR (RELEASED)
+                    </button>
+
                     <button v-if="item.statusQC === 'REJECT'" @click="printReturnSlip(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
-                      Cetak Return Slip
+                      Cetak Slip Return
                     </button>
-                    <button v-if="item.statusQC !== 'To QC'" @click="printQRLabel(item)"
-                      class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
-                      Cetak Label QR
+                    
+                    <button v-if="item.statusQC === 'REJECT'" @click="printRejectQRLabel(item)"
+                      class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
+                      Cetak Label QR (REJECT)
                     </button>
                   </div>
                 </td>
@@ -464,11 +471,15 @@ import axios from 'axios'
 import { Html5Qrcode } from 'html5-qrcode'
 import QRCode from 'qrcode';
 
+// ... (semua variabel ref, let qrScanner, dan props lainnya)
+
 let qrScanner = null
 
 const props = defineProps({
   itemsToQC: Array
 })
+
+// ... (semua deklarasi variabel reaktif, computed, dan isProcessing)
 
 // Data reaktif
 const showDetailModal = ref(false)
@@ -489,12 +500,6 @@ const scanInterval = ref(null)
 const html5QrCode = ref(null)
 const scannerStatus = ref('')
 const scanError = ref('')
-
-const scannerStatusClass = computed(() => {
-  if (scannerStatus.value.includes('Aktif')) return 'bg-green-500 text-white'
-  if (scannerStatus.value.includes('Error')) return 'bg-red-500 text-white'
-  return 'bg-yellow-500 text-white'
-})
 
 // Form QC data
 const qcForm = ref({
@@ -530,18 +535,24 @@ const isQCFormValid = computed(() => {
     qcForm.value.qtyBoxUtuh !== ''
 })
 
+const scannerStatusClass = computed(() => {
+  if (scannerStatus.value.includes('Aktif')) return 'bg-green-500 text-white'
+  if (scannerStatus.value.includes('Error')) return 'bg-red-500 text-white'
+  return 'bg-yellow-500 text-white'
+})
+
 const generateQRDataURL = async (qrContent: string): Promise<string> => {
-    try {
-        const url = await QRCode.toDataURL(qrContent, {
-            width: 150, // Sesuaikan ukuran cetak
-            margin: 1,
-            errorCorrectionLevel: 'M',
-        });
-        return url;
-    } catch (err) {
-        console.error("Gagal generate QR Data URL:", err);
-        return ""; // Mengembalikan string kosong jika gagal
-    }
+  try {
+    const url = await QRCode.toDataURL(qrContent, {
+      width: 150, // Sesuaikan ukuran cetak
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+    return url;
+  } catch (err) {
+    console.error("Gagal generate QR Data URL:", err);
+    return ""; // Mengembalikan string kosong jika gagal
+  }
 };
 
 const formatDateOnlyPrint = (dateString: string | Date | null) => {
@@ -730,6 +741,7 @@ const submitQC = () => {
   })
 }
 
+// ... (openQRScanner, startHtml5QrcodeScanner, loadQRScanner, closeQRScanner, checkCameraPermission, startCamera, startQRScanningAlternative, startQRScanning, stopCamera, processQRCode tidak berubah)
 // QR Scanner functions
 const openQRScanner = async () => {
   console.log('🚀 Opening QR Scanner...')
@@ -1221,299 +1233,520 @@ const processQRCode = async (qrData) => {
   }
 }
 
+
 // Action handlers
 const printGRSlip = (item) => {
   const printWindow = window.open('', '_blank')
 
   printWindow.document.write(`
-    <html>
-      <head>
-        <title>Good Receipt Slip - ${item.kodeItem}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-          .content { margin: 20px 0; }
-          .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
-          .signature { margin-top: 40px; display: flex; justify-content: space-between; }
-          .signature div { text-align: center; }
-          .signature-line { border-top: 1px solid #000; width: 150px; margin-top: 40px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>GOOD RECEIPT SLIP</h2>
-          <p>No: GR/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${String(item.id).padStart(4, '0')}</p>
-        </div>
-        <div class="content">
-          <div class="info-row">
-            <span><strong>No PO:</strong> ${item.noPo}</span>
-            <span><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</span>
-          </div>
-          <div class="info-row">
-            <span><strong>No Surat Jalan:</strong> ${item.noSuratJalan}</span>
-            <span><strong>No Kendaraan:</strong> ${item.noKendaraan}</span>
-          </div>
-          <div class="info-row">
-            <span><strong>Supplier:</strong> ${item.supplier}</span>
-            <span><strong>Driver:</strong> ${item.namaDriver}</span>
-          </div>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f0f0f0;">
-              <th style="border: 1px solid #000; padding: 8px;">Kode Item</th>
-              <th style="border: 1px solid #000; padding: 8px;">Nama Material</th>
-              <th style="border: 1px solid #000; padding: 8px;">Quantity</th>
-              <th style="border: 1px solid #000; padding: 8px;">UoM</th>
-              <th style="border: 1px solid #000; padding: 8px;">Status</th>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #000; padding: 8px;">${item.kodeItem}</td>
-              <td style="border: 1px solid #000; padding: 8px;">${item.namaMaterial}</td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.qtyReceived}</td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.uom}</td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center; color: green; font-weight: bold;">PASS</td>
-            </tr>
-          </table>
-        </div>
-        <div class="signature">
-          <div><p>Received By:</p><div class="signature-line"></div><p>Warehouse Staff</p></div>
-          <div><p>QC By:</p><div class="signature-line"></div><p>Quality Control</p></div>
-          <div><p>Approved By:</p><div class="signature-line"></div><p>Supervisor</p></div>
-        </div>
-      </body>
-    </html>
-  `)
+    <html>
+      <head>
+        <title>Good Receipt Slip - ${item.kodeItem}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+          .content { margin: 20px 0; }
+          .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
+          .signature { margin-top: 40px; display: flex; justify-content: space-between; }
+          .signature div { text-align: center; }
+          .signature-line { border-top: 1px solid #000; width: 150px; margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>GOOD RECEIPT SLIP</h2>
+          <p>No: GR/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${String(item.id).padStart(4, '0')}</p>
+        </div>
+        <div class="content">
+          <div class="info-row">
+            <span><strong>No PO:</strong> ${item.noPo}</span>
+            <span><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</span>
+          </div>
+          <div class="info-row">
+            <span><strong>No Surat Jalan:</strong> ${item.noSuratJalan}</span>
+            <span><strong>No Kendaraan:</strong> ${item.noKendaraan}</span>
+          </div>
+          <div class="info-row">
+            <span><strong>Supplier:</strong> ${item.supplier}</span>
+            <span><strong>Driver:</strong> ${item.namaDriver}</span>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="background-color: #f0f0f0;">
+              <th style="border: 1px solid #000; padding: 8px;">Kode Item</th>
+              <th style="border: 1px solid #000; padding: 8px;">Nama Material</th>
+              <th style="border: 1px solid #000; padding: 8px;">Quantity</th>
+              <th style="border: 1px solid #000; padding: 8px;">UoM</th>
+              <th style="border: 1px solid #000; padding: 8px;">Status</th>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #000; padding: 8px;">${item.kodeItem}</td>
+              <td style="border: 1px solid #000; padding: 8px;">${item.namaMaterial}</td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.qtyReceived}</td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.uom}</td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: center; color: green; font-weight: bold;">PASS</td>
+            </tr>
+          </table>
+        </div>
+        <div class="signature">
+          <div><p>Received By:</p><div class="signature-line"></div><p>Warehouse Staff</p></div>
+          <div><p>QC By:</p><div class="signature-line"></div><p>Quality Control</p></div>
+          <div><p>Approved By:</p><div class="signature-line"></div><p>Supervisor</p></div>
+        </div>
+      </body>
+    </html>
+  `)
 
   printWindow.document.close()
   printWindow.focus()
   setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
 }
+
+// START: Fungsi yang Diperbarui dan Ditambahkan
 
 const printReturnSlip = (item) => {
   const printWindow = window.open('', '_blank')
 
   printWindow.document.write(`
-    <html>
-      <head>
-        <title>Return Slip - ${item.kodeItem}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; background-color: #ffe6e6; }
-          .reject-note { background-color: #ffe6e6; border: 1px solid #ff0000; padding: 10px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>RETURN SLIP</h2>
-          <p>No: RTN/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${String(item.id).padStart(4, '0')}</p>
-        </div>
-        <div class="reject-note">
-          <strong>ALASAN REJECT:</strong><br>
-          Material tidak memenuhi standar QC. Barang akan dikembalikan ke supplier.
-        </div>
-      </body>
-    </html>
-  `)
+    <html>
+      <head>
+        <title>Return Slip - ${item.kodeItem}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; background-color: #ffe6e6; }
+          h2 { color: #ff0000; } /* Merah untuk penekanan */
+          .content { margin: 20px 0; }
+          .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          .reject-note { background-color: #ffe6e6; border: 1px solid #ff0000; padding: 10px; margin: 20px 0; }
+          .signature { margin-top: 40px; display: flex; justify-content: space-between; }
+          .signature div { text-align: center; }
+          .signature-line { border-top: 1px solid #000; width: 150px; margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>RETURN SLIP (SLIP PENGEMBALIAN)</h2>
+          <p>No: RTN/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${String(item.id).padStart(4, '0')}</p>
+        </div>
+        <div class="content">
+          <div class="info-row">
+            <span><strong>No PO:</strong> ${item.noPo}</span>
+            <span><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</span>
+          </div>
+          <div class="info-row">
+            <span><strong>No Surat Jalan:</strong> ${item.noSuratJalan}</span>
+            <span><strong>No Kendaraan:</strong> ${item.noKendaraan}</span>
+          </div>
+          <div class="info-row">
+            <span><strong>Supplier:</strong> ${item.supplier}</span>
+            <span><strong>Driver:</strong> ${item.namaDriver}</span>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="background-color: #f0f0f0;">
+              <th>Kode Item</th>
+              <th>Nama Material</th>
+              <th>Quantity Reject</th>
+              <th>UoM</th>
+              <th>Catatan Reject</th>
+            </tr>
+            <tr>
+              <td>${item.kodeItem}</td>
+              <td>${item.namaMaterial}</td>
+              <td style="text-align: center;">${item.qtyReceived}</td>
+              <td style="text-align: center;">${item.uom}</td>
+              <td style="color: red; font-weight: bold;">[Diisi dari data QC: Catatan Reject]</td>
+            </tr>
+          </table>
+        </div>
+        <div class="reject-note">
+          **PERHATIAN:** Material ini ditolak (REJECT) berdasarkan hasil Quality Control dan harus dikembalikan.
+        </div>
+        <div class="signature">
+          <div><p>QC By:</p><div class="signature-line"></div><p>Quality Control</p></div>
+          <div><p>Known By:</p><div class="signature-line"></div><p>Supplier / Driver</p></div>
+        </div>
+      </body>
+    </html>
+  `)
 
   printWindow.document.close()
   printWindow.focus()
   setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
 }
 
-const printQRLabel = async (item) => {
-    const today = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric' });
-    const qrContent = item.qrCode || `${item.shipmentNumber}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
-    
-    const qrDataURL = await generateQRDataURL(qrContent);
+// Mengganti printQRLabel menjadi printReleaseQRLabel untuk kejelasan
+const printReleaseQRLabel = async (item) => {
+  const today = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric' });
+  // Asumsi format qrContent: NoShipment|KodeItem|Status|Qty|ExpDate
+  const qrContent = item.qrCode || `${item.shipmentNumber}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
 
-    if (!qrDataURL) {
-        alert("Gagal membuat QR Code untuk dicetak.");
-        return;
-    }
+  const qrDataURL = await generateQRDataURL(qrContent);
 
-    const wadahInfo = `1000 x 11 + 500 x 1`; 
-    const tanggalTerima = item.incomingGood?.tanggal_terima || item.tanggalTerima;
+  if (!qrDataURL) {
+    alert("Gagal membuat QR Code untuk dicetak.");
+    return;
+  }
 
-    const printWindow = window.open('', '_blank');
+  // Data placeholder (sesuaikan dengan data real Anda)
+  const wadahInfo = `1000 x 11 + 500 x 1`;
+  const tanggalTerima = item.incomingGood?.tanggal_terima || item.tanggalTerima;
 
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Label RELEASE - ${item.kodeItem}</title>
-            <style>
-                @page { size: 10cm 15cm; margin: 0; }
-                
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-size: 10pt;
-                }
-                
-                .label-container {
-                    width: 10cm;
-                    height: 15cm;
-                    border: 3px solid #000;
-                    display: flex;
-                    flex-direction: column;
-                    background: white;
-                    color: black;
-                }
-                
-                .logo-section {
-                    text-align: center;
-                    padding: 5px 0;
-                }
-                
-                .status-box {
-                    text-align: center;
-                    border-top: 2px solid #000;
-                    padding: 5px 0;
-                    font-size: 14pt;
-                    font-weight: bold;
-                    letter-spacing: 5px;
-                    background-color: #f0f0f0; /* Memberi sedikit latar belakang */
-                }
-                
-                .detail-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 10pt;
-                }
-                
-                .detail-table td {
-                    padding: 3px 6px;
-                    border: 1px solid #000;
-                    vertical-align: top;
-                    height: 20px;
-                }
-                
-                .detail-table .label-col {
-                    width: 25%;
-                    font-weight: normal;
-                }
-                
-                .detail-table .value-col {
-                    font-weight: bold;
-                    width: 75%;
-                }
-                
-                .detail-table .qr-cell {
-                    width: 120px; 
-                    text-align: center;
-                    padding: 5px;
-                }
-                
-                .qr-code-placeholder {
-                    width: 110px;
-                    height: 110px;
-                    display: block;
-                    margin: 0 auto;
-                    border: 1px solid #000;
-                }
+  const printWindow = window.open('', '_blank');
 
-                .footer-row {
-                    border-top: 1px solid #000;
-                    padding: 3px 6px;
-                    font-size: 8pt;
-                    display: flex;
-                    justify-content: space-between;
-                }
+  printWindow.document.write(`
+        <html>
+        <head>
+            <title>Label RELEASE - ${item.kodeItem}</title>
+            <style>
+                @page { size: 10cm 15cm; margin: 0; }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    font-size: 10pt;
+                }
+                
+                .label-container {
+                    width: 10cm;
+                    height: 15cm;
+                    border: 3px solid green; /* Hijau untuk RELEASE */
+                    display: flex;
+                    flex-direction: column;
+                    background: white;
+                    color: black;
+                }
+                
+                .logo-section {
+                    text-align: center;
+                    padding: 5px 0;
+                }
+                
+                .status-box {
+                    text-align: center;
+                    border-top: 2px solid green;
+                    padding: 5px 0;
+                    font-size: 14pt;
+                    font-weight: bold;
+                    letter-spacing: 5px;
+                    background-color: #e6ffe6; /* Latar belakang hijau muda */
+                    color: green;
+                }
+                
+                .detail-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 10pt;
+                }
+                
+                .detail-table td {
+                    padding: 3px 6px;
+                    border: 1px solid #000;
+                    vertical-align: top;
+                    height: 20px;
+                }
+                
+                .detail-table .label-col {
+                    width: 25%;
+                    font-weight: normal;
+                }
+                
+                .detail-table .value-col {
+                    font-weight: bold;
+                    width: 75%;
+                }
+                
+                .detail-table .qr-cell {
+                    width: 120px; 
+                    text-align: center;
+                    padding: 5px;
+                }
+                
+                .qr-code-image {
+                    width: 110px;
+                    height: 110px;
+                    display: block;
+                    margin: 0 auto;
+                    border: 1px solid #000;
+                }
 
-                .footer-row-2 {
-                    border-top: 1px solid #000;
-                    padding: 5px 6px;
-                    font-size: 9pt;
-                    text-align: right;
-                }
-                
-                .signature-section {
-                    border-top: 2px solid #000;
-                    padding: 5px 6px;
-                    font-size: 8pt;
-                    text-align: right;
-                    font-weight: bold;
-                }
-                
-                /* Class untuk kolom yang memanjang (full width) */
-                .full-col {
-                    border-right: none !important;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="label-container">
-                <div class="logo-section">
-                    <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" style="width: 150px; height: auto;" alt="Logo">
-                </div>
-                
-                <div class="status-box">R E L E A S E</div>
+                .signature-section {
+                    border-top: 2px solid #000;
+                    padding: 5px 6px;
+                    font-size: 9pt;
+                    text-align: right;
+                    font-weight: bold;
+                }
+                
+                /* Class untuk kolom yang memanjang (full width) */
+                .full-col {
+                    border-right: none !important;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="label-container">
+                <div class="logo-section">
+                    <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" style="width: 150px; height: auto;" alt="Logo">
+                </div>
+                
+                <div class="status-box">R E L E A S E</div>
 
-                <table class="detail-table">
-                    <tr>
-                        <td class="label-col value-col" colspan="2" style="font-size: 12pt;">
-                            <span style="font-weight: normal;">[${item.kodeItem}]</span> ${item.namaMaterial}
-                        </td>
-                        <td class="qr-cell" rowspan="6">
-                             <img src="${qrDataURL}" class="qr-code-image" alt="QR Code Release">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Kode Barang</td>
-                        <td class="value-col">: ${item.kodeItem}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">No Lot</td>
-                        <td class="value-col">: ${item.batchLot}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Supplier</td>
-                        <td class="value-col">: ${item.supplier}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Jmlh Barang</td>
-                        <td class="value-col">: ${item.qtyReceived} ${item.uom}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col"></td>
-                        <td class="value-col" style="font-size: 9pt;">: ${wadahInfo} box</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Tgl Datang</td>
-                        <td class="value-col">: ${formatDateOnlyPrint(tanggalTerima)}</td>
-                        <td class="value-col" style="text-align: right;">QL1001-01</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Exp. Date</td>
-                        <td class="value-col">: ${formatDateOnlyPrint(item.expDate)}</td>
-                        <td class="value-col" style="text-align: right;">Rev. 02</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col full-col">Dibuat Oleh</td>
-                        <td class="value-col full-col" colspan="2">: ${usePage().props.auth?.user?.name || 'Logistik'}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="3" class="signature-section">
-                            Logistik
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <script>
-                // Jalankan print setelah DOM dimuat
-                window.onload = function() {
-                    window.print();
-                    setTimeout(() => window.close(), 100);
-                }
-            <\/script>
-        </body>
-        </html>
-    `);
+                <table class="detail-table">
+                    <tr>
+                        <td class="label-col value-col" colspan="2" style="font-size: 12pt;">
+                            <span style="font-weight: normal;">[${item.kodeItem}]</span> ${item.namaMaterial}
+                        </td>
+                        <td class="qr-cell" rowspan="6">
+                             <img src="${qrDataURL}" class="qr-code-image" alt="QR Code Release">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Kode Barang</td>
+                        <td class="value-col">: ${item.kodeItem}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">No Lot</td>
+                        <td class="value-col">: ${item.batchLot || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Supplier</td>
+                        <td class="value-col">: ${item.supplier}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Jmlh Barang</td>
+                        <td class="value-col">: ${item.qtyReceived} ${item.uom}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col"></td>
+                        <td class="value-col" style="font-size: 9pt;">: ${wadahInfo} box</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Tgl Datang</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(tanggalTerima)}</td>
+                        <td class="value-col" style="text-align: right;">QL1001-01</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Exp. Date</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(item.expDate)}</td>
+                        <td class="value-col" style="text-align: right;">Rev. 02</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col full-col">Dibuat Oleh</td>
+                        <td class="value-col full-col" colspan="2">: ${usePage().props.auth?.user?.name || 'Logistik'}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="signature-section">
+                            Logistik
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <script>
+                // Jalankan print setelah DOM dimuat
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => window.close(), 100);
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
 
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close() }, 500);
+  printWindow.document.close();
+  printWindow.focus();
 }
+
+// Fungsi BARU untuk mencetak label QR REJECT
+const printRejectQRLabel = async (item) => {
+  const today = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric' });
+  // Format QR dengan status REJECT
+  const qrContent = item.qrCode || `${item.shipmentNumber}|${item.kodeItem}|REJECT|${item.qtyReceived}|${item.expDate}`;
+
+  const qrDataURL = await generateQRDataURL(qrContent);
+
+  if (!qrDataURL) {
+    alert("Gagal membuat QR Code untuk dicetak.");
+    return;
+  }
+
+  // Data placeholder (sesuaikan dengan data real Anda)
+  const wadahInfo = `1000 x 11 + 500 x 1`;
+  const tanggalTerima = item.incomingGood?.tanggal_terima || item.tanggalTerima;
+
+  const printWindow = window.open('', '_blank');
+
+  printWindow.document.write(`
+        <html>
+        <head>
+            <title>Label REJECT - ${item.kodeItem}</title>
+            <style>
+                @page { size: 10cm 15cm; margin: 0; }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    font-size: 10pt;
+                }
+                
+                .label-container {
+                    width: 10cm;
+                    height: 15cm;
+                    border: 3px solid red; /* Merah untuk REJECT */
+                    display: flex;
+                    flex-direction: column;
+                    background: white;
+                    color: black;
+                }
+                
+                .logo-section {
+                    text-align: center;
+                    padding: 5px 0;
+                }
+                
+                .status-box {
+                    text-align: center;
+                    border-top: 2px solid red;
+                    padding: 5px 0;
+                    font-size: 14pt;
+                    font-weight: bold;
+                    letter-spacing: 5px;
+                    background-color: #ffe6e6; /* Latar belakang merah muda */
+                    color: red;
+                }
+                
+                .detail-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 10pt;
+                }
+                
+                .detail-table td {
+                    padding: 3px 6px;
+                    border: 1px solid #000;
+                    vertical-align: top;
+                    height: 20px;
+                }
+                
+                .detail-table .label-col {
+                    width: 25%;
+                    font-weight: normal;
+                }
+                
+                .detail-table .value-col {
+                    font-weight: bold;
+                    width: 75%;
+                }
+                
+                .detail-table .qr-cell {
+                    width: 120px; 
+                    text-align: center;
+                    padding: 5px;
+                }
+                
+                .qr-code-image {
+                    width: 110px;
+                    height: 110px;
+                    display: block;
+                    margin: 0 auto;
+                    border: 1px solid #000;
+                }
+
+                .signature-section {
+                    border-top: 2px solid #000;
+                    padding: 5px 6px;
+                    font-size: 9pt;
+                    text-align: right;
+                    font-weight: bold;
+                }
+                
+                /* Class untuk kolom yang memanjang (full width) */
+                .full-col {
+                    border-right: none !important;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="label-container">
+                <div class="logo-section">
+                    <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" style="width: 150px; height: auto;" alt="Logo">
+                </div>
+                
+                <div class="status-box">R E J E C T</div>
+
+                <table class="detail-table">
+                    <tr>
+                        <td class="label-col value-col" colspan="2" style="font-size: 12pt; color: red;">
+                            <span style="font-weight: normal;">[${item.kodeItem}]</span> ${item.namaMaterial}
+                        </td>
+                        <td class="qr-cell" rowspan="6">
+                             <img src="${qrDataURL}" class="qr-code-image" alt="QR Code Reject">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Kode Barang</td>
+                        <td class="value-col">: ${item.kodeItem}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">No Lot</td>
+                        <td class="value-col">: ${item.batchLot || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Supplier</td>
+                        <td class="value-col">: ${item.supplier}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Jmlh Barang</td>
+                        <td class="value-col">: ${item.qtyReceived} ${item.uom}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col"></td>
+                        <td class="value-col" style="font-size: 9pt;">: ${wadahInfo} box</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Tgl Datang</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(tanggalTerima)}</td>
+                        <td class="value-col" style="text-align: right;">QL1001-01</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Exp. Date</td>
+                        <td class="value-col">: ${formatDateOnlyPrint(item.expDate)}</td>
+                        <td class="value-col" style="text-align: right;">Rev. 02</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col full-col">Dibuat Oleh</td>
+                        <td class="value-col full-col" colspan="2">: ${usePage().props.auth?.user?.name || 'Logistik'}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="signature-section">
+                            Logistik
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <script>
+                // Jalankan print setelah DOM dimuat
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => window.close(), 100);
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+
+  printWindow.document.close();
+  printWindow.focus();
+}
+
+// Mengganti nama fungsi lama (printQRLabel)
+const printQRLabel = printReleaseQRLabel;
+
+// END: Fungsi yang Diperbarui dan Ditambahkan
 
 onUnmounted(() => {
   stopCamera()

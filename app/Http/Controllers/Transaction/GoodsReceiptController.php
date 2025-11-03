@@ -28,38 +28,50 @@ class GoodsReceiptController extends Controller
         ->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($incoming) {
+
+            // 1. Ambil semua item
+            $items = $incoming->items->map(function ($item) {
+                return [
+                    'kodeItem' => $item->material->kode_item ?? '',
+                    'namaMaterial' => $item->material->nama_material ?? '',
+                    'batchLot' => $item->batch_lot,
+                    'expDate' => $item->exp_date,
+                    'qtyWadah' => $item->qty_wadah,
+                    'qtyUnit' => $item->qty_unit,
+                    'kondisiBaik' => $item->kondisi_baik,
+                    'kondisiTidakBaik' => $item->kondisi_tidak_baik,
+                    'coaAda' => $item->coa_ada,
+                    'coaTidakAda' => $item->coa_tidak_ada,
+                    'labelMfgAda' => $item->label_mfg_ada,
+                    'labelMfgTidakAda' => $item->label_mfg_tidak_ada,
+                    'labelCoaSesuai' => $item->label_coa_sesuai,
+                    'labelCoaTidakSesuai' => $item->label_coa_tidak_sesuai,
+                    'pabrikPembuat' => $item->pabrik_pembuat,
+                    'statusQC' => $item->status_qc,
+                    'qrCode' => $item->qr_code,
+                ];
+            });
+
+            // 2. LOGIKA PENENTUAN STATUS GR BARU
+            // Cek apakah ada item yang statusQC-nya masih 'To QC'
+            $isStillToQC = $items->contains(fn($item) => $item['statusQC'] === 'To QC');
+            
+            // Tentukan status akhir untuk ditampilkan
+            $finalStatus = $isStillToQC ? 'Proses' : 'Selesai';
+            
             return [
                 'id' => $incoming->id,
                 'incomingNumber' => $incoming->incoming_number,
-                'noPo' => $incoming->purchaseOrder->no_po ?? '',
+                'noPo' => $incoming->po_id ?? '',
                 'noSuratJalan' => $incoming->no_surat_jalan,
                 'supplier' => $incoming->supplier->nama_supplier ?? '',
                 'tanggalTerima' => $incoming->tanggal_terima,
                 'noKendaraan' => $incoming->no_kendaraan,
                 'namaDriver' => $incoming->nama_driver,
                 'kategori' => $incoming->kategori,
-                'status' => $incoming->status,
-                'items' => $incoming->items->map(function ($item) {
-                    return [
-                        'kodeItem' => $item->material->kode_item ?? '',
-                        'namaMaterial' => $item->material->nama_material ?? '',
-                        'batchLot' => $item->batch_lot,
-                        'expDate' => $item->exp_date,
-                        'qtyWadah' => $item->qty_wadah,
-                        'qtyUnit' => $item->qty_unit,
-                        'kondisiBaik' => $item->kondisi_baik,
-                        'kondisiTidakBaik' => $item->kondisi_tidak_baik,
-                        'coaAda' => $item->coa_ada,
-                        'coaTidakAda' => $item->coa_tidak_ada,
-                        'labelMfgAda' => $item->label_mfg_ada,
-                        'labelMfgTidakAda' => $item->label_mfg_tidak_ada,
-                        'labelCoaSesuai' => $item->label_coa_sesuai,
-                        'labelCoaTidakSesuai' => $item->label_coa_tidak_sesuai,
-                        'pabrikPembuat' => $item->pabrik_pembuat,
-                        'statusQC' => $item->status_qc,
-                        'qrCode' => $item->qr_code,
-                    ];
-                })
+                // Ganti status lama dengan status otomatis
+                'status' => $finalStatus, 
+                'items' => $items,
             ];
         });
 

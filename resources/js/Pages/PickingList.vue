@@ -166,8 +166,6 @@
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Kode Item</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Nama Material</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Lot/Serial</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Source Bin</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Dest Bin</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Diminta</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Picked</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">UoM</th>
@@ -181,8 +179,6 @@
                     <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.kodeItem }}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.namaMaterial }}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.lotSerial }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.sourceBin }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.destBin }}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.qtyDiminta }}</td>
                     <td class="px-3 py-2 whitespace-nowrap">
                       <input v-model="item.qtyPicked" type="number" :max="item.qtyDiminta" class="w-20 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" @input="updateItemStatus(item)">

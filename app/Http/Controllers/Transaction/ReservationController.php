@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryStock;
 use App\Models\Reservation;
 use App\Models\ReservationRequest;
-use App\Models\Material; // Import model Material
+use App\Models\Material; // Import model Material (tetap diperlukan untuk metadata dan ID material)
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Traits\ActivityLogger;
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
@@ -95,7 +96,7 @@ class ReservationController extends Controller
     }
     
     /**
-     * Endpoint API untuk mencari material secara dinamis.
+     * Endpoint API untuk mencari material secara dinamis, BERDASARKAN STOK yang tersedia.
      */
     public function searchMaterials(Request $request)
     {
@@ -118,50 +119,62 @@ class ReservationController extends Controller
             return response()->json([]);
         }
 
-        $materials = Material::where('kategori', $materialCategory)
+        // ** REVISI UTAMA: Mengambil data langsung dari InventoryStock **
+        $materialsInStock = InventoryStock::join('materials', 'inventory_stock.material_id', '=', 'materials.id')
+            ->select(
+                'materials.id as materialId', 
+                'materials.kode_item', 
+                'materials.nama_material', 
+                'materials.satuan', 
+                'materials.deskripsi'
+            )
+            // Menjumlahkan qty_available dari semua baris stok material yang sama
+            ->selectRaw('SUM(inventory_stock.qty_available) as total_available_stock')
+            ->where('materials.kategori', $materialCategory)
             ->where(function ($q) use ($query) {
-                // Cari berdasarkan kode item atau nama material
-                $q->where('kode_item', 'like', '%' . $query . '%')
-                  ->orWhere('nama_material', 'like', '%' . $query . '%');
+                // Mencari berdasarkan kode item atau nama material
+                $q->where('materials.kode_item', 'like', '%' . $query . '%')
+                  ->orWhere('materials.nama_material', 'like', '%' . $query . '%');
             })
+            // Mengelompokkan berdasarkan material untuk mendapatkan total stok
+            ->groupBy('materials.id', 'materials.kode_item', 'materials.nama_material', 'materials.satuan', 'materials.deskripsi')
+            // Hanya menampilkan material yang memiliki stok tersedia > 0
+            ->having('total_available_stock', '>', 0) 
             ->limit(10)
-            ->get()
-            ->map(function ($material) use ($type) {
-                // Map hasil ke format yang dibutuhkan Vue
-                $base = [
-                    'id' => $material->id,
-                    'kodeItem' => $material->kode_item,
-                    'namaMaterial' => $material->nama_material,
-                    'satuan' => $material->satuan,
-                ];
+            ->get();
 
-                // Sesuaikan output keys berdasarkan tipe request
-                if ($type === 'foh-rs') {
-                    // Untuk FOH & RS, kita butuh kodeItem dan satuan
-                    return [
-                        ...$base,
-                        'keterangan' => $material->deskripsi,
-                        'uom' => $material->satuan,
-                    ];
-                } elseif ($type === 'packaging' || $type === 'add') {
-                    // Untuk Packaging/ADD, kita butuh kodePM, namaMaterial
-                    return [
-                        ...$base,
-                        'kodePM' => $material->kode_item, // Asumsi kode_item digunakan sebagai kodePM
-                        'namaMaterial' => $material->nama_material,
-                        'satuan' => $material->satuan,
-                    ];
-                } elseif ($type === 'raw-material') {
-                    // Untuk Raw Material, kita butuh kodeBahan, namaBahan
-                    return [
-                        ...$base,
-                        'kodeBahan' => $material->kode_item, // Asumsi kode_item digunakan sebagai kodeBahan
-                        'namaBahan' => $material->nama_material,
-                        'satuan' => $material->satuan,
-                    ];
-                }
-                return $base;
-            });
+
+        $materials = $materialsInStock->map(function ($material) use ($type) {
+            $base = [
+                'id' => $material->materialId, // ID material
+                'kodeItem' => $material->kode_item,
+                'namaMaterial' => $material->nama_material,
+                'satuan' => $material->satuan,
+                'stokAvailable' => (float) $material->total_available_stock, // Stok Agregat
+            ];
+
+            // Sesuaikan output keys berdasarkan tipe request
+            if ($type === 'foh-rs') {
+                return [
+                    ...$base,
+                    'keterangan' => $material->deskripsi,
+                    'uom' => $material->satuan, // Menggunakan satuan sebagai uom
+                ];
+            } elseif ($type === 'packaging' || $type === 'add') {
+                return [
+                    ...$base,
+                    'kodePM' => $material->kode_item,
+                    'namaMaterial' => $material->nama_material,
+                ];
+            } elseif ($type === 'raw-material') {
+                return [
+                    ...$base,
+                    'kodeBahan' => $material->kode_item,
+                    'namaBahan' => $material->nama_material,
+                ];
+            }
+            return $base;
+        });
 
         return response()->json($materials);
     }
@@ -187,8 +200,61 @@ class ReservationController extends Controller
             'noBets' => 'nullable|string',
             'besarBets' => 'nullable|numeric',
             'items' => 'required|array',
+            'items.*.kodeItem' => 'nullable|required_if:request_type,foh-rs|string',
+            'items.*.kodePM' => 'nullable|required_if:request_type,packaging,add|string',
+            'items.*.kodeBahan' => 'nullable|required_if:request_type,raw-material|string',
+            'items.*.qty' => 'nullable|required_if:request_type,foh-rs|numeric|min:0',
+            'items.*.jumlahPermintaan' => 'nullable|required_if:request_type,packaging,add|numeric|min:0',
+            'items.*.jumlahKebutuhan' => 'nullable|required_if:request_type,raw-material|numeric|min:0',
             'request_type' => 'required|string',
         ]);
+
+        // ** START: VALIDASI STOK SERVER-SIDE (Final Guard) **
+        $stockErrors = [];
+        foreach ($validated['items'] as $index => $item) {
+            $materialCodeKey = '';
+            $qtyKey = '';
+            $requestType = $validated['request_type'];
+
+            if ($requestType === 'foh-rs') {
+                $materialCodeKey = 'kodeItem';
+                $qtyKey = 'qty';
+            } elseif ($requestType === 'packaging' || $requestType === 'add') {
+                $materialCodeKey = 'kodePM';
+                $qtyKey = 'jumlahPermintaan';
+            } elseif ($requestType === 'raw-material') {
+                $materialCodeKey = 'kodeBahan';
+                $qtyKey = 'jumlahKebutuhan';
+            }
+
+            $materialCode = $item[$materialCodeKey] ?? null;
+            $requestedQty = (float) ($item[$qtyKey] ?? 0);
+
+            if ($materialCode && $requestedQty > 0) {
+                // 1. Cari Material (masih perlu untuk mendapatkan ID material)
+                $material = Material::where('kode_item', $materialCode)->first();
+
+                if (!$material) {
+                    $stockErrors["items.{$index}"] = "Material dengan kode {$materialCode} tidak ditemukan.";
+                    continue;
+                }
+                
+                // 2. Hitung total stok tersedia dari InventoryStock
+                $totalAvailableStock = InventoryStock::where('material_id', $material->id)
+                                                     ->sum('qty_available');
+
+                // 3. Bandingkan
+                if ($requestedQty > $totalAvailableStock) {
+                    $stockErrors["items.{$index}"] = "Permintaan untuk **{$materialCode}** ({$requestedQty}) melebihi stok yang tersedia ({$totalAvailableStock}).";
+                }
+            }
+        }
+
+        if (!empty($stockErrors)) {
+            throw ValidationException::withMessages($stockErrors);
+        }
+        // ** END: VALIDASI STOK SERVER-SIDE **
+
 
         DB::beginTransaction();
         try {
@@ -196,7 +262,7 @@ class ReservationController extends Controller
                 'no_reservasi' => $validated['noReservasi'],
                 'request_type' => $validated['request_type'],
                 'tanggal_permintaan' => $validated['tanggalPermintaan'],
-                'status' => 'Submitted',
+                'status' => 'In Progress',
                 'departemen' => $validated['departemen'],
                 'alasan_reservasi' => $validated['alasanReservasi'],
                 'nama_produk' => $validated['namaProduk'],
@@ -211,10 +277,10 @@ class ReservationController extends Controller
             $mappedItems = collect($validated['items'])->map(function ($item) {
                 $dbItem = [];
                 foreach ($item as $key => $value) {
-                    // Konversi camelCase ke snake_case (handle kasus PM, UOM, QTY, dll.)
+                    // Konversi camelCase ke snake_case
                     $snakeCaseKey = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $key));
                     
-                    // Override untuk kasus khusus yang diketahui, seperti PM/UOM/QTY
+                    // Override untuk kasus khusus yang diketahui
                     if ($key === 'kodePM') $snakeCaseKey = 'kode_pm';
                     if ($key === 'qty') $snakeCaseKey = 'qty';
                     if ($key === 'uom') $snakeCaseKey = 'uom';
@@ -226,11 +292,12 @@ class ReservationController extends Controller
                     if ($key === 'jumlahKebutuhan') $snakeCaseKey = 'jumlah_kebutuhan';
                     if ($key === 'jumlahKirim') $snakeCaseKey = 'jumlah_kirim';
                     if ($key === 'alasanPenambahan') $snakeCaseKey = 'alasan_penambahan';
+                    // Abaikan stokAvailable karena tidak ada di DB
+                    if ($key === 'stokAvailable') continue;
 
 
                     $dbItem[$snakeCaseKey] = $value;
                 }
-                // Tambahkan pengecekan jika kolom yang diperlukan tidak ada.
                 return $dbItem;
             });
 

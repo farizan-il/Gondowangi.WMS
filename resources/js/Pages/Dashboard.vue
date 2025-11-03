@@ -22,24 +22,27 @@
         </div>
 
         <!-- Alerts/Notifications -->
-        <div v-if="alerts.length > 0" class="mb-4 space-y-2">
-          <div v-for="alert in alerts" :key="alert.id" :class="getAlertClass(alert.type)"
-            class="p-3 rounded-lg flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clip-rule="evenodd" />
-              </svg>
-              <span>{{ alert.message }}</span>
-            </div>
-            <button @click="dismissAlert(alert.id)" class="text-current opacity-70 hover:opacity-100">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div v-if="localAlerts.length > 0" class="mb-4 space-y-2">
+          <div v-for="alert in localAlerts" :key="alert.id" 
+              :class="[
+                  getAlertClass(alert.type),
+                  // Berikan highlight jika filter ini aktif
+                  {'ring-2 ring-yellow-500 ring-offset-2': activeAlertFilter === 'putAwayRequired' && alert.type === 'warning'}
+              ]"
+              class="p-3 rounded-lg flex items-center justify-between cursor-pointer transition duration-150 ease-in-out"
+              
+              @click="alert.type === 'warning' ? triggerPutAwayFilter() : null" >
+              <div class="flex items-center space-x-2">
+                  <span>{{ alert.message }}</span>
+              </div>
+              
+              <button @click.stop="dismissAlert(alert.id)" class="text-current opacity-70 hover:opacity-100 p-1"> 
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+              </button>
           </div>
-        </div>
+      </div>
 
         <!-- Toolbar -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -129,7 +132,7 @@
               <tr v-for="item in filteredItems" :key="item.id" @click="openDetailPanel(item)" :class="getRowClass(item)"
                 class="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span :class="item.type === 'RM' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
+                  <span :class="item.type === 'Raw Material' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
                     class="px-2 py-1 text-xs font-semibold rounded-full">
                     {{ item.type }}
                   </span>
@@ -148,22 +151,45 @@
                     {{ item.status }}
                   </span>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm space-x-2">
-                  <button @click.stop="printQR(item)" class="text-blue-600 hover:text-blue-900 transition-colors"
-                    title="Print QR">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5a3 3 0 000 6H4V4zm3 2h.01M8 16h.01" />
-                    </svg>
-                  </button>
-                  <button @click.stop="openBinToBinModal(item)"
-                    class="text-green-600 hover:text-green-900 transition-colors" title="Bin to Bin Transfer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                  </button>
-                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm space-x-2 flex items-center">
+    
+                <template v-if="item.requiresPutAway">
+                    <button @click.stop="openBinToBinModal(item)"
+                        class="px-2 py-1 text-xs font-semibold bg-indigo-500 text-white rounded hover:bg-indigo-700 transition-colors flex items-center space-x-1" 
+                        title="Put Away Cepat ke lokasi permanen">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span>Put Away</span>
+                    </button>
+
+                    <button @click.stop="openQRDetailModal(item)" 
+                        class="text-blue-600 hover:text-blue-900 transition-colors ml-2" 
+                        title="Cetak/Lihat Detail QR">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5a3 3 0 000 6H4V4zm3 2h.01M8 16h.01" />
+                        </svg>
+                    </button>
+                </template>
+
+                <template v-else>
+                    <button @click.stop="openQRDetailModal(item)" 
+                        class="text-blue-600 hover:text-blue-900 transition-colors" 
+                        title="Cetak/Lihat Detail QR">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5a3 3 0 000 6H4V4zm3 2h.01M8 16h.01" />
+                        </svg>
+                    </button>
+
+                    <button @click.stop="openBinToBinModal(item)"
+                        class="text-green-600 hover:text-green-900 transition-colors ml-2" 
+                        title="Bin to Bin Transfer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </button>
+                </template>
+            </td>
               </tr>
             </tbody>
           </table>
@@ -461,7 +487,7 @@
               <!-- Movement History -->
               <div>
                 <h4 class="text-sm font-medium text-gray-900 mb-3">Riwayat Pergerakan</h4>
-                <div class="space-y-3">
+                <div v-if="selectedItem.history.length > 0" class="space-y-3">
                   <div v-for="history in selectedItem.history" :key="history.id" class="flex items-start space-x-3">
                     <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <div class="flex-1 text-sm">
@@ -470,9 +496,12 @@
                         <span class="text-gray-500 text-xs">{{ formatDateTime(history.date) }}</span>
                       </div>
                       <p class="text-gray-600 text-xs mt-1">{{ history.detail }}</p>
-                      <p class="text-gray-500 text-xs">{{ history.user }}</p>
+                      <p class="text-gray-500 text-xs">Oleh: {{ history.user }}</p>
                     </div>
                   </div>
+                </div>
+                <div v-else class="text-sm text-gray-500 italic p-3 bg-gray-50 rounded-lg">
+                  Belum ada riwayat pergerakan untuk item ini.
                 </div>
               </div>
             </div>
@@ -483,6 +512,50 @@
       <!-- Backdrop for detail panel -->
       <div v-if="showDetailPanel" @click="closeDetailPanel" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[997]">
       </div>
+      <div v-if="showQRDetailModal && qrItem"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]">
+        <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+          <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h3 class="text-xl font-semibold text-gray-900">
+              QR Code: <span :class="qrItem.qr_type === 'Karantina' ? 'text-orange-600' : 'text-green-600'">
+                {{ qrItem.qr_type }}
+              </span>
+            </h3>
+            <button @click="closeQRDetailModal" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="text-center space-y-4">
+            <div id="qr-code-to-print" class="p-4 border border-gray-200 rounded-lg inline-block">
+                <div class="w-48 h-48 bg-gray-200 mx-auto flex items-center justify-center">
+                    <span class="text-xs text-gray-600">
+                        [QR CODE: {{ qrItem.qr_type }}]
+                    </span>
+                </div>
+                </div>
+            
+            <p class="text-sm font-medium text-gray-700">Kode: **{{ qrItem.kode }}-{{ qrItem.lot }}**</p>
+            <p class="text-xs text-gray-500">
+              Data Terenkripsi: `{{ qrItem.qr_data.substring(0, 40) }}...`
+            </p>
+
+            <div class="mt-6 flex justify-between gap-3">
+              <button @click="closeQRDetailModal"
+                class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                Tutup
+              </button>
+              <button @click="triggerPrint(qrItem)"
+                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2v2H5v-2h2M17 17v-5H7v5m12 0a2 2 0 01-2 2H7a2 2 0 01-2-2m2-5V4a2 2 0 012-2h6a2 2 0 012 2v8M7 7h10"/></svg>
+                <span>Cetak QR</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -492,10 +565,17 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
+const activeAlertFilter = ref<string>('');
+
+const props = defineProps<{
+    materialItems: MaterialItem[],
+    alerts: Alert[]
+}>();
+
 // Types
 interface MaterialItem {
   id: string
-  type: 'RM' | 'PM'
+  type: 'Raw Material' | 'Packaging Material'
   kode: string
   nama: string
   lot: string
@@ -505,6 +585,7 @@ interface MaterialItem {
   expiredDate: string
   status: 'Waiting QC' | 'Karantina' | 'Released' | 'Reject' | 'In Production' | 'Returned'
   history: HistoryItem[]
+  qr_type: 'Karantina' | 'Released' | 'Waiting QC' | 'Reject'
 }
 
 interface HistoryItem {
@@ -550,6 +631,9 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 const selectedItem = ref<MaterialItem | null>(null)
 const showDetailPanel = ref(false)
 const showBinToBinModal = ref(false)
+const showQRDetailModal = ref(false)
+const qrItem = ref<MaterialItem | null>(null)
+const localAlerts = ref<Alert[]>([...props.alerts]);
 
 // Transfer Data
 const transferData = ref<TransferData>({
@@ -585,14 +669,14 @@ const tableColumns = [
   { key: 'status', label: 'Status' }
 ]
 
-const { materialItems, alerts } = defineProps<{
-  materialItems: MaterialItem[],
-  alerts: Alert[]
-}>()
+// const { materialItems, alerts } = defineProps<{
+//   materialItems: MaterialItem[],
+//   alerts: Alert[]
+// }>()
 
 // Computed properties
 const uniqueLocations = computed(() => {
-  return [...new Set(materialItems.map(item => item.lokasi))].sort()
+    return [...new Set(props.materialItems.map(item => item.lokasi))].sort() 
 })
 
 const availableBins = computed(() => {
@@ -618,7 +702,14 @@ const isTransferValid = computed(() => {
 })
 
 const filteredItems = computed(() => {
-  let filtered = materialItems
+  let filtered = props.materialItems
+
+  if (activeAlertFilter.value === 'putAwayRequired') {
+      // Filter: Status harus 'Released' DAN Lokasi harus dimulai dengan 'QRT-'
+      filtered = filtered.filter(item => 
+          item.status === 'RELEASED' && item.lokasi.startsWith('QRT-')
+      )
+  }
 
   // Search filter
   if (searchQuery.value) {
@@ -660,6 +751,17 @@ const filteredItems = computed(() => {
 
   return filtered
 })
+
+// Fungsi untuk memicu filter put away
+const triggerPutAwayFilter = () => {
+    if (activeAlertFilter.value === 'putAwayRequired') {
+        // Jika sudah aktif, nonaktifkan (toggle off)
+        activeAlertFilter.value = '';
+    } else {
+        // Jika belum aktif, aktifkan
+        activeAlertFilter.value = 'putAwayRequired';
+    }
+}
 
 // Methods
 const toggleDarkMode = () => {
@@ -751,22 +853,32 @@ const formatDateTime = (date: string) => {
 }
 
 const openDetailPanel = (item: MaterialItem) => {
-  selectedItem.value = item
-  showDetailPanel.value = true
+    selectedItem.value = item
+    showDetailPanel.value = true
 }
 
 const closeDetailPanel = () => {
-  showDetailPanel.value = false
-  setTimeout(() => {
-    selectedItem.value = null
-  }, 300)
+    showDetailPanel.value = false
+    setTimeout(() => {
+        selectedItem.value = null
+    }, 300)
 }
 
 const dismissAlert = (alertId: string) => {
-  const index = alerts.value.findIndex(alert => alert.id === alertId)
-  if (index > -1) {
-    alerts.value.splice(index, 1)
-  }
+    const index = localAlerts.value.findIndex(alert => alert.id === alertId)
+    if (index > -1) {
+        localAlerts.value.splice(index, 1)
+    }
+}
+
+const openQRDetailModal = (item: MaterialItem) => {
+    qrItem.value = item
+    showQRDetailModal.value = true
+}
+
+const closeQRDetailModal = () => {
+    showQRDetailModal.value = false
+    qrItem.value = null
 }
 
 // Bin to Bin Transfer Methods
@@ -779,6 +891,50 @@ const openBinToBinModal = (item: MaterialItem) => {
     notes: ''
   }
   showBinToBinModal.value = true
+}
+
+const triggerPrint = (item: MaterialItem) => {
+  console.log(`Mempersiapkan cetak QR Code untuk: ${item.kode}-${item.lot} (Tipe: ${item.qr_type})`);
+  
+  // LOGIKA PENCETAKAN WINDOW POP-UP (Printer friendly)
+  const content = document.getElementById('qr-code-to-print')?.innerHTML;
+  
+  if (content) {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Cetak QR Code</title>');
+      // Sertakan CSS untuk cetak, misalnya Tailwind minimal
+      printWindow.document.write('<style>');
+      printWindow.document.write('body { font-family: sans-serif; margin: 0; padding: 10mm; }');
+      printWindow.document.write('#qr-content { display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid black; padding: 10mm; width: fit-content; margin: 0 auto; }');
+      printWindow.document.write('h4 { margin-bottom: 5px; font-size: 14pt; }');
+      printWindow.document.write('p { margin: 0; font-size: 8pt; }');
+      printWindow.document.write('.qr-area { margin-bottom: 10px; }');
+      printWindow.document.write('@media print { body { padding: 0; } #qr-content { border: none; padding: 0; } }');
+      printWindow.document.write('</style>');
+      printWindow.document.write('</head><body>');
+      
+      let titleText = item.status === 'Karantina' ? 'QR KARANTINA' : 'QR RELEASED';
+      
+      printWindow.document.write('<div id="qr-content">');
+      printWindow.document.write(`<h4>${titleText}</h4>`);
+      printWindow.document.write('<div class="qr-area">');
+      printWindow.document.write(content); // Konten QR Code
+      printWindow.document.write('</div>');
+      printWindow.document.write(`<p>Kode Material: ${item.kode}</p>`);
+      printWindow.document.write(`<p>Lot/Serial: ${item.lot}</p>`);
+      printWindow.document.write(`<p>Qty: ${item.qty} ${item.uom}</p>`);
+      printWindow.document.write(`<p>Lokasi: ${item.lokasi}</p>`);
+      printWindow.document.write(`</div>`);
+      printWindow.document.write('<script>window.onload = function() { window.print(); window.close(); }<\/script>');
+      printWindow.document.write('</body></html>');
+      
+      printWindow.document.close();
+      // Tidak perlu printWindow.print() di sini karena sudah ada di onload script
+    }
+  } else {
+    alert('Gagal mengambil konten QR Code untuk dicetak.');
+  }
 }
 
 const closeBinToBinModal = () => {
@@ -845,6 +1001,18 @@ const exportData = () => {
 }
 
 const printQR = (item: MaterialItem) => {
-  alert(`Print QR Code untuk ${item.kode} - ${item.nama}`)
+  let qrTitle = '';
+  if (item.qr_type === 'Karantina') {
+    qrTitle = 'QR KARANTINA (JANGAN DIGUNAKAN)';
+    alert(`Print QR KARANTINA untuk ${item.kode} - ${item.lot}\nData QR: ${item.qr_data}`);
+    // Panggil fungsi print untuk QR Karantina
+    // Contoh: window.open(`/print/qr/quarantine?data=${encodeURIComponent(item.qr_data)}`, '_blank');
+  } else {
+    qrTitle = 'QR RELEASED (SIAP PRODUKSI)';
+    alert(`Print QR RELEASED untuk ${item.kode} - ${item.lot}\nData QR: ${item.qr_data}`);
+    // Panggil fungsi print untuk QR Released
+    // Contoh: window.open(`/print/qr/released?data=${encodeURIComponent(item.qr_data)}`, '_blank');
+  }
+  console.log(`Logika cetak QR Code: ${qrTitle}`);
 }
 </script>

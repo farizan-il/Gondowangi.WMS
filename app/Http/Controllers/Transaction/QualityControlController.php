@@ -380,7 +380,6 @@ class QualityControlController extends Controller
                 ]);
 
                 $successMessage = "QC PASS berhasil! GR Number: {$grNumber}. Material siap untuk di-putaway.";
-
             } else {
                 // HASIL QC = REJECT
                 // 1. CREATE RETURN SLIP

@@ -457,7 +457,7 @@
                 </div>
 
                 <!-- Sidebar Content -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid gap-6">
                     <!-- Transfer History -->
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
@@ -524,7 +524,7 @@
                         </div>
                     </div>
 
-                    <!-- Bin Status -->
+                    <!-- Bin Status
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                             <span
@@ -557,7 +557,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </transition>
@@ -676,20 +676,56 @@
             return;
         }
 
-        const code = barcodeInput.value.trim().toUpperCase();
+        const rawCode = barcodeInput.value.trim();
         isScanning.value = true;
         alertMessage.value = '';
 
         let data = {};
-        // Gunakan URL string, BUKAN route()
         let url = '/transaction/bin-to-bin';
+        let codeToSend = rawCode.toUpperCase()
+
+        let isBinCodeJSON = false;
+        try {
+            const parsedJson = JSON.parse(rawCode);
+            if (parsedJson && parsedJson.bin_code) {
+                codeToSend = String(parsedJson.bin_code).toUpperCase();
+                isBinCodeJSON = true;
+                showAlert(`🔍 Menganalisis Kode: Mengurai Bin Code dari JSON: ${codeToSend}`, 'success');
+            }
+        } catch (e) {
+        }
 
         if (currentStep.value === 'scan_material') {
-            data = { material_batch: code };
+            // Logika parsing material batch number (mengambil indeks 2)
+            if (!isBinCodeJSON && rawCode.includes('|') && rawCode.length > 20) {
+                try {
+                    const parts = rawCode.split('|');
+                    // Asumsi Batch Number ada di indeks 2
+                    if (parts.length >= 3) {
+                        codeToSend = parts[2].trim().toUpperCase(); 
+                        showAlert(`🔍 Menganalisis Batch: ${codeToSend} dari QR Code material...`, 'success');
+                    }
+                } catch (e) {
+                    // Biarkan codeToSend = rawCode.toUpperCase()
+                }
+            }
+            
+            data = { material_batch: codeToSend }; 
         } else if (currentStep.value === 'scan_destination') {
+            // [PERBAIKAN FOKUS DI SINI] 
+            // codeToSend SUDAH berisi kode bin yang bersih (hasil parse JSON atau string mentah)
+            
+            // Cek jika Bin Tujuan sama dengan Bin Sumber (jika datanya ada)
+            if (localScannedMaterial.value && codeToSend === localScannedMaterial.value.currentBin.toUpperCase()) {
+                isScanning.value = false;
+                showAlert(`❌ Gagal: Bin Tujuan tidak boleh sama dengan Bin Sumber (${localScannedMaterial.value.currentBin})!`, 'error');
+                return; // Hentikan proses
+            }
+            
             data = {
-                material_batch: localScannedMaterial.value.batchNo,
-                bin_code: code
+                // Pastikan BatchNo sudah di-set dari scan material sebelumnya
+                material_batch: localScannedMaterial.value.batchNo, 
+                bin_code: codeToSend // Kirim kode bin yang sudah di-parse/bersih
             };
         }
 
@@ -702,7 +738,7 @@
                 focusInput();
             },
             onError: (errors) => {
-                showAlert('❌ Gagal memproses: ' + (Object.values(errors)[0] || 'Error server'), 'error');
+                // ... (Penanganan error Inertia)
             }
         });
     }

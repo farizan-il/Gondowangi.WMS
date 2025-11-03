@@ -10,7 +10,44 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $inventoryItems = InventoryStock::with(['material', 'bin'])->get()->map(function ($item) {
+        // PENTING: Gunakan 'material_id' sebagai local key untuk relasi movements
+        $inventoryItems = InventoryStock::with([
+            'material', 
+            'bin', 
+            'movements.executedBy', 
+            'movements.fromBin', 
+            'movements.toBin'
+        ])->get()->map(function ($item) {
+            
+            // Logika pemrosesan history (sama seperti sebelumnya)
+            $history = $item->movements->map(function ($movement) {
+                // ... (Logika mapping history) ...
+                $detail = '';
+                if ($movement->movement_type === 'GR') {
+                    $detail = "Penerimaan $movement->qty $movement->uom di lokasi " . ($movement->toBin->bin_code ?? 'N/A') . ". Ref: " . ($movement->reference_document ?? 'N/A');
+                } elseif ($movement->movement_type === 'B2B') {
+                    $detail = "Transfer Bin to Bin: Pindah $movement->qty $movement->uom dari " . ($movement->fromBin->bin_code ?? 'N/A') . " ke " . ($movement->toBin->bin_code ?? 'N/A') . ". Ref: " . ($movement->reference_document ?? 'N/A');
+                } else {
+                    $detail = "$movement->movement_type $movement->qty $movement->uom. Lokasi: " . ($movement->toBin->bin_code ?? 'N/A') . ". Ref: " . ($movement->reference_document ?? 'N/A');
+                }
+
+                return [
+                    'id' => $movement->id,
+                    'date' => $movement->movement_date->toISOString(),
+                    'action' => $movement->movement_type,
+                    'detail' => $detail,
+                    'user' => $movement->executedBy->name ?? 'System',
+                ];
+            });
+
+            // LOGIKA PUT AWAY CERDAS BARU
+            $requiresPutAway = false;
+            $binCode = $item->bin->bin_code ?? '';
+            
+            if ($item->status === 'RELEASED' && str_starts_with($binCode, 'QRT-')) {
+                $requiresPutAway = true;
+            }
+            
             return [
                 'id' => $item->id,
                 'type' => $item->material->kategori,
@@ -22,14 +59,29 @@ class DashboardController extends Controller
                 'uom' => $item->uom,
                 'expiredDate' => $item->exp_date->toDateString(),
                 'status' => $item->status,
-                'history' => [], // You might want to fetch this from StockMovement model later
+                'history' => $history,
+                'qr_data' => json_encode([
+                    'id' => $item->id,
+                    'kode' => $item->material->kode_item,
+                    'lot' => $item->batch_lot,
+                    'status' => $item->status,
+                ]),
+                'qr_type' => $item->status,
+                'requiresPutAway' => $requiresPutAway, // BARU
             ];
         });
 
-        $expiringSoonCount = InventoryStock::where('exp_date', '<=', now()->addDays(30))->where('exp_date', '>', now())->count();
+        // Hitung total item yang membutuhkan Put Away untuk Notifikasi Global
+        $putAwayCount = $inventoryItems->filter(fn($item) => $item['requiresPutAway'])->count();
         $expiredCount = InventoryStock::where('exp_date', '<=', now())->count();
+        $expiringSoonCount = InventoryStock::where('exp_date', '<=', now()->addDays(30))->where('exp_date', '>', now())->count();
 
         $alerts = [];
+        // Notifikasi Cerdas Put Away
+        if ($putAwayCount > 0) {
+             $alerts[] = ['id' => '0', 'type' => 'info', 'message' => "💡 **$putAwayCount item** status Released tapi masih di Bin Karantina (`QRT-*`). Segera lakukan **Put Away**."];
+        }
+        
         if ($expiringSoonCount > 0) {
             $alerts[] = ['id' => '1', 'type' => 'warning', 'message' => "$expiringSoonCount item akan expired dalam 30 hari"];
         }

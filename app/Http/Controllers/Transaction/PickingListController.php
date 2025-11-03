@@ -31,7 +31,6 @@ class PickingListController extends Controller
             // Asumsi Lot/Bin Location akan ditambahkan saat proses Picking
             'lotSerial' => '-', // Data ini harusnya dicari dari Stock saat picking
             'sourceBin' => 'WH_LOC_UNK', // Akan diisi saat picking
-            'destBin' => 'STAGING-AREA', // Lokasi tujuan
             
             'qtyDiminta' => $qtyDiminta,
             'qtyPicked' => (float) ($item->qty_picked ?? 0), // Mengambil dari qty_picked di item detail

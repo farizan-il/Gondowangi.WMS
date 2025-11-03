@@ -996,8 +996,24 @@ const processWizardStep = () => {
   const scannedValue = qrInput.value.trim()
 
   // [PERBAIKAN] Logika validasi yang lebih baik
+  let parsedBinCode = ''
   let isValid = false
   let expected = ''
+
+  try {
+      const parsedJson = JSON.parse(scannedValue)
+      // Asumsikan kode bin ada di properti 'bin_code'
+      if (parsedJson && parsedJson.bin_code) {
+        parsedBinCode = String(parsedJson.bin_code).toUpperCase()
+      } else {
+         // Jika ada JSON tapi tidak ada bin_code, anggap sebagai string biasa
+         parsedBinCode = scannedValue.toUpperCase()
+      }
+    } 
+    catch (e) {
+      // Jika gagal parse, anggap scannedValue sebagai string kode bin biasa
+      parsedBinCode = scannedValue.toUpperCase()
+    }
 
   switch (currentWizardStep.value) {
     case 1: // Scan Box
@@ -1014,47 +1030,47 @@ const processWizardStep = () => {
 
     case 2: // Scan Source Bin
       expected = item.sourceBin
-      isValid = (scannedValue.toUpperCase() === item.sourceBin.toUpperCase())
+      isValid = (parsedBinCode === expected.toUpperCase())
       if (isValid) {
         item.sourceBinScanned = true
         currentWizardStep.value = 3
       } else {
-        alert(`Source Bin tidak sesuai! Expected: ${expected}, Scanned: ${scannedValue}`)
+        // Tampilkan pesan error yang lebih informatif
+        alert(`Source Bin tidak sesuai! Expected: ${expected}, Scanned Code: ${parsedBinCode || scannedValue}`)
       }
       break
 
     case 3: // Scan Destination Bin
       expected = item.destBin
-      isValid = (scannedValue.toUpperCase() === item.destBin.toUpperCase())
+      isValid = (parsedBinCode === expected.toUpperCase())
+      
       if (isValid) {
-        item.destBinScanned = true
-        item.status = 'completed'
-        
-        if (item.actualQty === undefined || item.actualQty === null) {
-          item.actualQty = item.qty
+          item.destBinScanned = true
+          item.status = 'completed'
+          
+          if (item.actualQty === undefined || item.actualQty === null) {
+            item.actualQty = item.qty
+          }
+          
+          alert('✓ Scan selesai! Semua tahap berhasil.')
+          closeQRModal()
+        } else {
+          alert(`Destination Bin tidak sesuai! Expected: ${expected}, Scanned Code: ${parsedBinCode || scannedValue}`)
         }
-        
-        alert('✓ Scan selesai! Semua tahap berhasil.')
-        closeQRModal()
-      } else {
-        alert(`Destination Bin tidak sesuai! Expected: ${expected}, Scanned: ${scannedValue}`)
-      }
-      break
+        break
   }
   
   // Reset input
   qrInput.value = ''
-  lastScannedValue.value = '' // Reset last scanned value agar tidak membingungkan
+  lastScannedValue.value = ''
 
   if (isValid && currentWizardStep.value <= 3 && !useCameraMode.value) {
-    // Fokus ulang ke input manual untuk step berikutnya
     nextTick(() => {
       qrInputRef.value?.focus()
     })
   } else if (!isValid && !useCameraMode.value) {
-    // Fokus ulang jika salah scan
      nextTick(() => {
-      qrInputRef.value?.select() // Pilih teks yang salah
+      qrInputRef.value?.select()
     })
   }
   // Jika pakai kamera, biarkan scanner berjalan

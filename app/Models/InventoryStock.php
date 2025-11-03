@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InventoryStock extends Model
 {
@@ -68,5 +69,13 @@ class InventoryStock extends Model
     {
         $this->qty_available = $this->qty_on_hand - $this->qty_reserved;
         $this->save();
+    }
+
+    public function movements(): HasMany
+    {
+ 
+        return $this->hasMany(StockMovement::class, 'material_id', 'material_id')
+            ->whereColumn('batch_lot', 'batch_lot')
+            ->orderByDesc('movement_date');
     }
 }
