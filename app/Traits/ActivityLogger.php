@@ -21,6 +21,41 @@ trait ActivityLogger
      * @param array $data
      * @return void
      */
+    // public function logActivity($model, string $action, array $data = [])
+    // {
+    //     $logModel = $this->getLogModelFor($model);
+
+    //     if (!$logModel) {
+    //         return;
+    //     }
+
+    //     $request = app(Request::class);
+
+    //     $logData = [
+    //         'user_id' => Auth::id(),
+    //         'action' => $action,
+    //         'description' => $data['description'] ?? null,
+    //         'material_id' => $data['material_id'] ?? null,
+    //         'batch_lot' => $data['batch_lot'] ?? null,
+    //         'exp_date' => $data['exp_date'] ?? null,
+    //         'qty_before' => $data['qty_before'] ?? 0,
+    //         'qty_after' => $data['qty_after'] ?? 0,
+    //         'bin_from' => $data['bin_from'] ?? null,
+    //         'bin_to' => $data['bin_to'] ?? null,
+    //         'reference_document' => $data['reference_document'] ?? null,
+    //         'old_value' => $data['old_value'] ?? null,
+    //         'new_value' => $data['new_value'] ?? null,
+    //         'ip_address' => $request->ip(),
+    //         'user_agent' => $request->userAgent(),
+    //         'device_info' => $this->getDeviceInfo($request),
+    //     ];
+
+    //     // Dynamically add the foreign key for the model
+    //     $foreignKey = strtolower(class_basename($model)) . '_id';
+    //     $logData[$foreignKey] = $model->id;
+
+    //     $logModel::create($logData);
+    // }
     public function logActivity($model, string $action, array $data = [])
     {
         $logModel = $this->getLogModelFor($model);
@@ -54,7 +89,8 @@ trait ActivityLogger
         $foreignKey = strtolower(class_basename($model)) . '_id';
         $logData[$foreignKey] = $model->id;
 
-        $logModel::create($logData);
+        // PERUBAHAN: Kembalikan instance model yang dibuat
+        return $logModel::create($logData); 
     }
 
     /**
@@ -75,6 +111,7 @@ trait ActivityLogger
             'App\Models\ReturnModel' => ReturnActivityLog::class,
             'App\Models\Warehouse' => WarehouseActivityLog::class,
             // Add other mappings here
+            'App\Models\TransferOrder' => ActivityLog::class,
             'App\Models\Material' => ActivityLog::class,
             'App\Models\Supplier' => ActivityLog::class,
             'App\Models\WarehouseBin' => ActivityLog::class,

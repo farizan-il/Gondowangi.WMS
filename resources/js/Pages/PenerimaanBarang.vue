@@ -55,9 +55,13 @@
                     <button @click="printFinanceSlip(shipment)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">Cetak
                       Finance</button>
-                    <button @click="showQRModal(shipment)"
-                      class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs">Cetak Label
-                      QR</button>
+                    <button 
+                        @click="showQRModal(shipment)"
+                        :disabled="shipment.status === 'Selesai'" 
+                        :class="shipment.status === 'Selesai' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'"
+                        class="px-2 py-1 rounded text-xs">
+                        Cetak Label QR
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -162,7 +166,18 @@
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.kodeItem }}</td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.namaMaterial }}</td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.batchLot }}</td>
-                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.expDate }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                        <div class="font-semibold mb-1">
+                            {{ formatDateOnly(item.expDate) }}
+                        </div>
+                        
+                        <span 
+                            :class="getCountdown(item.expDate).class"
+                            class="px-2 py-0.5 text-xs font-medium rounded-full"
+                        >
+                            {{ getCountdown(item.expDate).text }}
+                        </span>
+                    </td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyWadah) }}</td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyUnit) }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">
@@ -225,8 +240,10 @@
                 Cetak Finance
               </button>
               <button @click="showQRModal(selectedShipment)"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                Cetak Label QR
+                  :disabled="!isPrintQREnabled"
+                  :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+                  class="px-4 py-2 text-white rounded-md">
+                  Cetak Label QR
               </button>
             </div>
           </div>
@@ -346,6 +363,12 @@
                 <table class="min-w-full divide-y divide-gray-200" style="min-width: 1400px;">
                   <thead class="bg-gray-50">
                     <tr>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                          Halal/Non-Halal
+                      </th>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                          Bin Karantina Tujuan
+                      </th>
                       <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Kode
                         Item</th>
                       <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Nama
@@ -376,6 +399,24 @@
                   </thead>
                   <tbody class="divide-y divide-gray-200 bg-white">
                     <tr v-for="(item, index) in newShipment.items" :key="index">
+                      <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="flex gap-1">
+                            <button @click="toggleCheckbox(item, 'isHalal')"
+                                :class="[item.isHalal ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700', 'px-2 py-1 text-xs rounded']">Halal</button>
+                            <button @click="toggleCheckbox(item, 'isNonHalal')"
+                                :class="[item.isNonHalal ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700', 'px-2 py-1 text-xs rounded']">Non-Halal</button>
+                        </div>
+                    </td>
+
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <select v-model="item.binTarget"
+                            class="w-32 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
+                            <option value="">Pilih Bin QRT</option>
+                            <option v-for="bin in qrtBins" :key="bin.code" :value="bin.code">
+                                {{ bin.code }}
+                            </option>
+                        </select>
+                    </td>
                       <td class="px-3 py-2 whitespace-nowrap">
                           <div class="relative">
                               <input 
@@ -549,9 +590,11 @@
                           Download QR
                         </button>
                         <button @click="printSingleQR(item)"
-                          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                          :disabled="!isPrintQREnabled"
+                          :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+                          class="text-white px-3 py-1 rounded text-sm">
                           Cetak QR
-                        </button>
+                      </button>
                       </div>
                     </div>
 
@@ -575,10 +618,14 @@
             <!-- Footer Modal QR -->
             <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
               <button @click="closeQRModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
-                Tutup
+                  Tutup
               </button>
-              <button @click="printAllQR" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                Cetak Semua QR
+              
+              <button @click="printAllQR" 
+                  :disabled="!isPrintQREnabled"
+                  :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+                  class="px-4 py-2 text-white rounded-md">
+                  Cetak Semua QR
               </button>
             </div>
           </div>
@@ -683,7 +730,6 @@ const addNewItem = () => {
     skuSearch: '',
     filteredMaterials: [],
     showSuggestions: false,
-
     kondisiBaik: false,
     kondisiTidakBaik: false,
     coaAda: false,
@@ -692,9 +738,18 @@ const addNewItem = () => {
     labelMfgTidakAda: false,
     labelCoaSesuai: false,
     labelCoaTidakSesuai: false,
-    statusQC: 'Karantina'
+    statusQC: 'Karantina',
+    binTarget: '',
+    isHalal: false,
+    isNonHalal: false,
   })
 }
+
+const qrtBins = [
+    { code: 'QRT-HALAL', name: 'Karantina Halal' },
+    { code: 'QRT-NON HALAL', name: 'Karantina Non Halal' },
+    { code: 'QRT-HALAL-AC', name: 'Karantina hALAL AC' },
+];
 
 const removeItem = (index) => {
   newShipment.value.items.splice(index, 1)
@@ -702,7 +757,11 @@ const removeItem = (index) => {
 
 const toggleCheckbox = (item, field) => {
   // Reset all related checkboxes first
-  if (field === 'kondisiBaik' || field === 'kondisiTidakBaik') {
+  if (field === 'isHalal' || field === 'isNonHalal') {
+      item.isHalal = false
+      item.isNonHalal = false
+  }
+  else if (field === 'kondisiBaik' || field === 'kondisiTidakBaik') {
     item.kondisiBaik = false
     item.kondisiTidakBaik = false
   } else if (field === 'coaAda' || field === 'coaTidakAda') {
@@ -853,13 +912,50 @@ const formatDate = (dateString) => {
   })
 }
 
+const isPrintQREnabled = computed(() => {
+    // Tombol Cetak QR (Karantina) hanya aktif jika shipment belum Selesai.
+    // Status 'Selesai' berarti QC sudah tuntas dan label Karantina tidak relevan lagi.
+    if (selectedShipment.value) {
+        return selectedShipment.value.status !== 'Selesai';
+    }
+    // Jika modal tidak terbuka, defaultnya adalah false (atau true jika merujuk ke tabel)
+    // Untuk konteks modal, kita cek status selectedShipment.
+    return false; // Jika tidak ada shipment yang dipilih
+});
+
 const formatDateOnly = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+    if (!dateString) return '-';
+    const date = new Date(dateString.split('T')[0]); 
+    return date.toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+}
+
+const getCountdown = (dateString) => {
+    if (!dateString) return { text: 'N/A', class: 'text-gray-500' };
+
+    // Hapus bagian waktu/timezone jika ada
+    const expDate = new Date(dateString.split('T')[0]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Atur waktu hari ini ke tengah malam untuk perbandingan akurat
+    
+    // Hitung selisih dalam hari
+    const diffTime = expDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return { text: 'Expired', class: 'bg-red-500 text-white' };
+    } else if (diffDays === 0) {
+        return { text: 'Hari Ini!', class: 'bg-red-400 text-white' };
+    } else if (diffDays <= 30) {
+        return { text: `${diffDays} hari lagi`, class: 'bg-orange-400 text-white' };
+    } else if (diffDays <= 90) {
+        return { text: `${diffDays} hari lagi`, class: 'bg-yellow-400 text-gray-900' };
+    } else {
+        return { text: `${diffDays} hari lagi`, class: 'text-green-600' };
+    }
 }
 
 const formatTime = (dateString) => {
@@ -1254,6 +1350,15 @@ const printChecklist = (shipment) => {
                 <span class="checkbox-inline">Ada ${shipment.items[0]?.coaAda ? '✓' : ''}</span>
                 <span class="checkbox-inline">Tidak ${shipment.items[0]?.coaTidakAda ? '✓' : ''}</span>
               </td>
+            </tr>
+            <tr>
+              <td class="field-label">Kategori Halal</td> <td class="field-value">
+                  <span class="checkbox-inline">Halal ${shipment.items[0]?.isHalal ? '✓' : ''}</span>
+                  <span class="checkbox-inline">Non-Halal ${shipment.items[0]?.isNonHalal ? '✓' : ''}</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="field-label">Bin QRT Tujuan</td> <td class="field-value">${shipment.items[0]?.binTarget || 'Belum Ditentukan'}</td>
             </tr>
             <tr>
               <td class="field-label">Jumlah Wadah</td>

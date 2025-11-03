@@ -198,15 +198,16 @@ class PutawayTransferController extends Controller
                     'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $material['qty'])
                 ]);
 
-                $this->logActivity($transferOrder, 'Create Putaway TO', [
+                $test = $this->logActivity($transferOrder, 'Create Putaway TO', [
                     'description' => "Created Putaway TO for {$material['qty']} {$stock->uom} of {$stock->material->nama_material}",
                     'material_id' => $stock->material_id,
                     'batch_lot' => $stock->batch_lot,
                     'qty_after' => $material['qty'],
-                    'bin_from' => $sourceBin->bin_code,
-                    'bin_to' => $destBin->bin_code,
+                    'bin_from' => $sourceBin->bin_code, // Biarkan sebagai string kode bin
+                    'bin_to' => $destBin->bin_code,      // Biarkan sebagai string kode bin
                     'reference_document' => $toNumber,
                 ]);
+
             }
 
             DB::commit();

@@ -49,7 +49,9 @@
                   <div class="font-medium">{{ item.kodeItem }}</div>
                   <div class="text-xs text-gray-500">{{ item.namaMaterial }}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.qtyReceived }} {{ item.uom }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ formatInteger(item.qtyReceived) }} {{ item.uom }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span :class="getQCStatusClass(item.statusQC)"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -142,8 +144,7 @@
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Quantity Received</label>
-                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ selectedItem?.qtyReceived }} {{
-                    selectedItem?.uom }}</div>
+                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ formatInteger(item.qtyReceived) }} {{ item.uom }}</div>
                 </div>
 
                 <div>
@@ -534,6 +535,14 @@ const isQCFormValid = computed(() => {
     qcForm.value.jumlahBoxUtuh !== '' &&
     qcForm.value.qtyBoxUtuh !== ''
 })
+
+const formatInteger = (value: number | string | null | undefined): number | string => {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+    // Mengubah ke float lalu membulatkan ke integer terdekat
+    return Math.round(parseFloat(value as string));
+}
 
 const scannerStatusClass = computed(() => {
   if (scannerStatus.value.includes('Aktif')) return 'bg-green-500 text-white'

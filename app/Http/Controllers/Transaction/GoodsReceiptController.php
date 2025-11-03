@@ -48,6 +48,9 @@ class GoodsReceiptController extends Controller
                     'labelCoaTidakSesuai' => $item->label_coa_tidak_sesuai,
                     'pabrikPembuat' => $item->pabrik_pembuat,
                     'statusQC' => $item->status_qc,
+                    'binTarget' => $item->bin_target,
+                    'isHalal' => $item->is_halal,
+                    'isNonHalal' => $item->is_non_halal,
                     'qrCode' => $item->qr_code,
                 ];
             });
@@ -75,20 +78,6 @@ class GoodsReceiptController extends Controller
             ];
         });
 
-        // Data untuk dropdown
-        $purchaseOrders = PurchaseOrder::with('supplier')
-            ->where('status', 'completed')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($po) {
-                return [
-                    'id' => $po->id,
-                    'no_po' => $po->no_po,
-                    'supplier_id' => $po->supplier_id,
-                    'supplier_name' => $po->supplier->nama_supplier ?? ''
-                ];
-            });
-
         $suppliers = Supplier::where('status', 'active')
             ->orderBy('nama_supplier')
             ->get(['id', 'kode_supplier', 'nama_supplier']);
@@ -110,7 +99,6 @@ class GoodsReceiptController extends Controller
 
         return Inertia::render('PenerimaanBarang', [
             'shipments' => $incomingGoods,
-            'purchaseOrders' => $purchaseOrders,
             'suppliers' => $suppliers,
             'materials' => $materials,
         ]);
@@ -133,6 +121,9 @@ class GoodsReceiptController extends Controller
             'items.*.expDate' => 'nullable|date',
             'items.*.qtyWadah' => 'required|numeric|min:0',
             'items.*.qtyUnit' => 'required|numeric|min:0',
+            'items.*.binTarget' => 'required|string|max:255',
+            'items.*.isHalal' => 'nullable|boolean',
+            'items.*.isNonHalal' => 'nullable|boolean',
             'items.*.pabrikPembuat' => 'nullable|string|max:255',
             'items.*.kondisiBaik' => 'nullable|boolean',
             'items.*.kondisiTidakBaik' => 'nullable|boolean',
@@ -179,7 +170,7 @@ class GoodsReceiptController extends Controller
                     $itemData['expDate'] ?? ''
                 );
 
-                $tester = IncomingGoodsItem::create([
+                IncomingGoodsItem::create([
                     'incoming_id' => $incoming->id,
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
@@ -196,12 +187,15 @@ class GoodsReceiptController extends Controller
                     'label_mfg_tidak_ada' => $itemData['labelMfgTidakAda'] ?? false,
                     'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? false,
                     'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
+
+                    'bin_target' => $itemData['binTarget'],
+                    'is_halal' => $itemData['isHalal'] ?? false,
+                    'is_non_halal' => $itemData['isNonHalal'] ?? false,
                     
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
                     'status_qc' => 'To QC',
                     'qr_code' => $qrCode,
                 ]);
-                // dd($tester);
 
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [

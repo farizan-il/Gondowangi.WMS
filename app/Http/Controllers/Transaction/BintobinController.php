@@ -191,8 +191,6 @@ class BintobinController extends Controller
                 throw new \Exception('Kuantitas transfer melebihi stok yang tersedia (' . $stock->qty_available . ' ' . $stock->uom . ').');
             }
 
-            // --- LOGIKA PERBAIKAN: HINDARI DUPLIKASI ---
-
             // Cari apakah sudah ada stok DENGAN BATCH YANG SAMA di bin tujuan
             $existingStockInTargetBin = InventoryStock::where('material_id', $stock->material_id)
                 ->where('batch_lot', $stock->batch_lot)

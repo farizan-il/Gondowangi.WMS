@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActivityLog extends Model
 {
@@ -36,23 +37,59 @@ class ActivityLog extends Model
         'exp_date' => 'date',
     ];
 
-    public function user()
+    // public function user()
+    // {
+    //     return $this->belongsTo(User::class, 'user_id');
+    // }
+
+    // public function material()
+    // {
+    //     return $this->belongsTo(Material::class);
+    // }
+
+    // public function supplier()
+    // {
+    //     return $this->belongsTo(Supplier::class);
+    // }
+
+    // public function warehouseBin()
+    // {
+    //     return $this->belongsTo(WarehouseBin::class, 'warehousebin_id');
+    // }
+
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function material()
+    public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
     }
 
-    public function supplier()
+    public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
-    public function warehouseBin()
+    // Relasi ke Bin yang dicatat
+    public function warehouseBin(): BelongsTo
     {
-        return $this->belongsTo(WarehouseBin::class, 'warehousebin_id');
+        // Asumsi 'warehousebin_id' merujuk ke Bin Utama untuk log ini (misalnya Bin Akhir)
+        return $this->belongsTo(WarehouseBin::class, 'warehousebin_id'); 
+    }
+
+    // --- BARU: Relasi untuk Bin Asal (bin_from) ---
+    public function binAsal(): BelongsTo
+    {
+        // Asumsi 'bin_from' menyimpan ID dari WarehouseBin
+        return $this->belongsTo(WarehouseBin::class, 'bin_from');
+    }
+    
+    // --- BARU: Relasi untuk Bin Tujuan (bin_to) ---
+    public function binTujuan(): BelongsTo
+    {
+        // Asumsi 'bin_to' menyimpan ID dari WarehouseBin
+        return $this->belongsTo(WarehouseBin::class, 'bin_to');
     }
 }
