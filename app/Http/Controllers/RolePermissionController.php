@@ -6,15 +6,18 @@ use App\Models\Role;
 use App\Models\Permission;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class RolePermissionController extends Controller
 {
     public function index()
     {
+        // Ambil semua role dengan jumlah user dan permission yang dimilikinya
         $roles = Role::withCount('users')
             ->with(['permissions' => function($query) {
-                $query->select('permissions.id', 'permission_name', 'module', 'action');
+                // Pilih kolom yang diperlukan
+                $query->select('permissions.id', 'permission_name', 'module', 'action', 'description');
             }])
             ->get()
             ->map(function($role) {
@@ -23,6 +26,7 @@ class RolePermissionController extends Controller
                     'name' => $role->role_name,
                     'description' => $role->description,
                     'userCount' => $role->users_count,
+                    // Kita akan kirim semua permission yang dimiliki role
                     'permissions' => $role->permissions->map(function($permission) {
                         return [
                             'id' => $permission->id,
@@ -30,15 +34,48 @@ class RolePermissionController extends Controller
                             'action' => $permission->action,
                             'permission_name' => $permission->permission_name
                         ];
-                    })
+                    })->pluck('permission_name')->toArray(), // Hanya kirim array permission_name
                 ];
             });
 
+        // Ambil SEMUA permission, kelompokkan berdasarkan modul, dan format agar mudah dibaca di frontend
         $allPermissions = Permission::select('id', 'permission_name', 'module', 'action', 'description')
             ->orderBy('module')
             ->orderBy('action')
             ->get()
-            ->groupBy('module');
+            ->groupBy('module')
+            ->map(function($permissions, $module) {
+                // Konversi nama modul menjadi lebih mudah dibaca
+                $moduleName = Str::title(str_replace(['_', '-'], ' ', $module));
+                
+                // Tambahkan ikon/emoji jika perlu (sesuaikan di frontend)
+                $emoji = match ($module) {
+                    'incoming' => '📥',
+                    'qc' => '🔍',
+                    'qc_status' => '🏷️',
+                    'putaway' => '📦',
+                    'bin-to-bin' => '🔄',
+                    'reservation' => '📋',
+                    'picking' => '🛒',
+                    'return' => '↩️',
+                    'central_data' => '⚙️',
+                    default => '📄',
+                };
+                
+                return [
+                    'module_key' => $module,
+                    'module_name' => "{$emoji} {$moduleName}",
+                    'permissions' => $permissions->map(function($permission) {
+                        return [
+                            'id' => $permission->id,
+                            'name' => $permission->permission_name,
+                            // Buat action name yang lebih mudah dibaca
+                            'display_name' => Str::title(str_replace(['_', '-'], ' ', $permission->action)),
+                            'description' => $permission->description ?? '',
+                        ];
+                    })
+                ];
+            })->values(); // Pastikan array menjadi list (bukan associative array)
 
         return Inertia::render('RolePermission', [
             'roles' => $roles,
@@ -95,23 +132,23 @@ class RolePermissionController extends Controller
     {
         $validated = $request->validate([
             'permissions' => 'required|array',
-            'permissions.*.module' => 'required|string',
-            'permissions.*.action' => 'required|string',
+            // PERBAIKAN: Ganti 'permissions.*.permission_name' menjadi 'permissions.*.name'
+            'permissions.*.name' => 'required|string', 
             'permissions.*.allowed' => 'required|boolean'
         ]);
 
         $role = Role::findOrFail($roleId);
 
-        // Ambil semua permission yang allowed = true
-        $allowedPermissions = collect($validated['permissions'])
+        // Ambil semua permission_name yang allowed = true
+        $allowedPermissionNames = collect($validated['permissions'])
             ->filter(fn($p) => $p['allowed'])
-            ->map(function($p) {
-                return "{$p['module']}.{$p['action']}";
-            })
-            ->toArray();
+            // PERBAIKAN: Pluck menggunakan kunci 'name'
+            ->pluck('name') 
+            ->toArray(); // Array berisi ['incoming.view', 'putaway.create', dst.]
 
         // Ambil ID permissions dari database
-        $permissionIds = Permission::whereIn('permission_name', $allowedPermissions)
+        // Gunakan 'permission_name' untuk mencari di tabel permissions
+        $permissionIds = Permission::whereIn('permission_name', $allowedPermissionNames)
             ->pluck('id')
             ->toArray();
 

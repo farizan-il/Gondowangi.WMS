@@ -50,6 +50,11 @@
           
 
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="filteredTasks.length === 0">
+              <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                Tidak ada Picking Task yang ditemukan untuk status {{ filterStatus === 'ALL' ? 'apapun' : filterStatus }}.
+              </td>
+            </tr>
             <tr v-for="task in filteredTasks" :key="task.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ task.toNumber }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer" @click="viewReservation(task.noReservasi)">
@@ -76,20 +81,12 @@
                 </div>
               </td>
             </tr>
-
-            <tr v-if="filteredTasks.length === 0">
-              <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
-                Tidak ada Picking Task yang ditemukan untuk status {{ filterStatus === 'ALL' ? 'apapun' : filterStatus }}.
-              </td>
-            </tr>
-            <tr v-for="task in filteredTasks" :key="task.id" class="hover:bg-gray-50">
-                          </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Modal Detail Picking Task -->
+    <!-- Modal Detail Picking Task (Work Modal) -->
     <div v-if="showPickingModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
       <div class="bg-white rounded-lg max-w-7xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6">
@@ -130,11 +127,11 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <div class="text-2xl font-bold text-blue-600">{{ getTotalItemsCount }}</div>
-                <div class="text-sm text-blue-700">Total Items</div>
+                <div class="text-sm text-blue-700">Total Alokasi Batch</div>
               </div>
               <div class="text-center">
                 <div class="text-2xl font-bold text-green-600">{{ getPickedItemsCount }}</div>
-                <div class="text-sm text-green-700">Picked</div>
+                <div class="text-sm text-green-700">Picked Complete</div>
               </div>
               <div class="text-center">
                 <div class="text-2xl font-bold text-orange-600">{{ getShortPickItemsCount }}</div>
@@ -156,17 +153,19 @@
             </div>
           </div>
 
-          <!-- Items Table -->
+          <!-- Items Table (Sekarang menampilkan detail Batch Alokasi) -->
           <div class="border border-gray-200 rounded-lg overflow-hidden">
             <div class="overflow-x-auto">
+              <!-- PERUBAHAN UTAMA DI SINI -->
               <table class="min-w-full divide-y divide-gray-200" style="min-width: 1400px;">
                 <thead class="bg-gray-50">
                   <tr>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">No</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Kode Item</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Nama Material</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Lot/Serial</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Diminta</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[120px]">Kode Item / Nama Material</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[120px]">Lot/Batch</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[150px]">Source Bin</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Exp Date</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Dialokasikan</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Picked</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">UoM</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Status</th>
@@ -176,19 +175,46 @@
                 <tbody class="divide-y divide-gray-200 bg-white">
                   <tr v-for="(item, index) in selectedTask?.items || []" :key="index" :class="item.status === 'Picked' ? 'bg-green-50' : item.status === 'Short-Pick' ? 'bg-orange-50' : ''">
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ index + 1 }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.kodeItem }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.namaMaterial }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.lotSerial }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.qtyDiminta }}</td>
-                    <td class="px-3 py-2 whitespace-nowrap">
-                      <input v-model="item.qtyPicked" type="number" :max="item.qtyDiminta" class="w-20 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" @input="updateItemStatus(item)">
+                    
+                    <!-- Kode Item / Nama Material -->
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {{ item.kodeItem }} <br>
+                      <span class="text-xs text-gray-600 font-normal">{{ item.namaMaterial }}</span>
                     </td>
+                    
+                    <!-- Lot/Batch -->
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.lotSerial }}</td>
+                    
+                    <!-- Source Bin / WH -->
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                      {{ item.sourceBin }}
+                    </td>
+                    
+                    <!-- Exp Date -->
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                      {{ item.expDate ? new Date(item.expDate).toLocaleDateString('id-ID') : '-' }}
+                    </td>
+                    
+                    <!-- Qty Dialokasikan -->
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">{{ item.qtyDiminta }}</td>
+                    
+                    <!-- Qty Picked (Input) -->
+                    <td class="px-3 py-2 whitespace-nowrap">
+                      <!-- Max sekarang adalah qtyDialokasikan -->
+                      <input v-model.number="item.qtyPicked" type="number" :max="item.qtyDiminta" class="w-20 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" @input="updateItemStatus(item)">
+                    </td>
+                    
+                    <!-- UoM -->
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.uom }}</td>
+                    
+                    <!-- Status -->
                     <td class="px-3 py-2 whitespace-nowrap">
                       <span :class="getItemStatusClass(item.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                         {{ item.status }}
                       </span>
                     </td>
+                    
+                    <!-- Aksi -->
                     <td class="px-3 py-2 whitespace-nowrap">
                       <button 
                         @click="startItemQRScan(item, index)" 
@@ -211,7 +237,7 @@
           <!-- Footer Modal -->
           <div class="flex justify-between items-center mt-6 pt-6 border-t border-gray-200">
             <div class="text-sm text-gray-600">
-              Progress: {{ getCompletedItemsCount }}/{{ selectedTask?.items?.length || 0 }} items completed
+              Progress: {{ getCompletedItemsCount }}/{{ selectedTask?.items?.length || 0 }} batch allocations completed
             </div>
             <div class="flex space-x-3">
               <button @click="closePickingModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
@@ -225,13 +251,13 @@
         </div>
       </div>
     </div>
-
-    <!-- Modal QR Scanner dengan Camera -->
+    
+    <!-- Modal QR Scanner dengan Camera (Perlu update logic scan) -->
     <div v-if="showQRScannerModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
       <div class="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">QR Scanner - Item #{{ currentItemIndex + 1 }}</h3>
+            <h3 class="text-lg font-semibold text-gray-900">QR Scanner - Batch Item #{{ currentItemIndex + 1 }}</h3>
             <button @click="closeQRScanner" class="text-gray-400 hover:text-gray-600">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -243,8 +269,9 @@
           <div v-if="currentScanItem" class="bg-gray-50 p-3 rounded-lg mb-4">
             <div class="text-sm">
               <div class="font-medium text-gray-900">{{ currentScanItem.kodeItem }} - {{ currentScanItem.namaMaterial }}</div>
-              <div class="text-gray-600">Lot: {{ currentScanItem.lotSerial }} | Qty: {{ currentScanItem.qtyDiminta }} {{ currentScanItem.uom }}</div>
-              <div class="text-gray-600">{{ currentScanItem.sourceBin }} → {{ currentScanItem.destBin }}</div>
+              <!-- Qty Diminta -> Qty Dialokasikan -->
+              <div class="text-gray-600">Batch: {{ currentScanItem.lotSerial }} | Qty Alokasi: {{ currentScanItem.qtyDiminta }} {{ currentScanItem.uom }}</div>
+              <div class="text-gray-600">Source: {{ currentScanItem.sourceBin }} ({{ currentScanItem.sourceWarehouse }})</div>
             </div>
           </div>
           
@@ -305,8 +332,8 @@
             
             <!-- Manual Qty Input (when scanning box) -->
             <div v-if="scanStep === 3" class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Qty yang Dipick:</label>
-              <input v-model="manualQty" type="number" :max="currentScanItem?.qtyDiminta" placeholder="Masukkan quantity..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+              <label class="block text-sm font-medium text-gray-700">Qty yang Dipick (Max: {{ currentScanItem?.qtyDiminta || 0 }} {{ currentScanItem?.uom || '' }}):</label>
+              <input v-model.number="manualQty" type="number" :max="currentScanItem?.qtyDiminta" placeholder="Masukkan quantity..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
             </div>
             
             <div class="flex space-x-3">
@@ -322,9 +349,9 @@
       </div>
     </div>
 
-    <!-- Modal Summary Detail -->
+    <!-- Modal Summary Detail (Tidak diubah) -->
     <div v-if="showSummaryModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-      <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg max-w-7xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-lg font-semibold text-gray-900">Summary Detail - {{ selectedSummaryTask?.toNumber }}</h3>
@@ -339,11 +366,11 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg">
               <div class="text-2xl font-bold text-blue-600">{{ getSummaryTotalItems }}</div>
-              <div class="text-sm text-blue-700">Total Items</div>
+              <div class="text-sm text-blue-700">Total Alokasi Batch</div>
             </div>
             <div class="bg-green-50 p-4 rounded-lg">
               <div class="text-2xl font-bold text-green-600">{{ getSummaryPickedItems }}</div>
-              <div class="text-sm text-green-700">Items Picked</div>
+              <div class="text-sm text-green-700">Batch Picked Complete</div>
             </div>
             <div class="bg-orange-50 p-4 rounded-lg">
               <div class="text-2xl font-bold text-orange-600">{{ getSummaryShortPickItems }}</div>
@@ -355,10 +382,10 @@
             </div>
           </div>
 
-          <!-- Detailed breakdown -->
+          <!-- Detailed breakdown (Sekarang menampilkan detail Batch Alokasi) -->
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <h4 class="text-sm font-medium text-gray-900">Detail Items</h4>
+              <h4 class="text-sm font-medium text-gray-900">Detail Alokasi Batch</h4>
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
@@ -366,17 +393,19 @@
                   <tr>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Diminta</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch/Lot</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Alokasi</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Picked</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Achievement</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source Bin</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                   <tr v-for="(item, index) in selectedSummaryTask?.items || []" :key="index" :class="getItemRowClass(item.status)">
                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ item.kodeItem }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.namaMaterial }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.lotSerial }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.qtyDiminta }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.qtyPicked || 0 }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
@@ -386,7 +415,7 @@
                       </span>
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-900">
-                      {{ getItemAchievement(item) }}
+                      {{ item.sourceBin }}
                     </td>
                   </tr>
                 </tbody>
@@ -436,17 +465,14 @@ let scanInterval = null
 
 // Dummy QR data untuk simulasi
 const dummyQRData = {
+    // QR format: ITEM_CODE|LOT/BATCH|QTY|EXP_DATE|STATUS
     box: {
-        'FOH-001': 'SHP001|FOH-001|LOT001|50|2025-12-31|ACTIVE',
-        'FOH-002': 'SHP002|FOH-002|LOT002|100|2025-12-31|ACTIVE',
-        'FOH-003': 'SHP003|FOH-003|LOT003|75|2025-12-31|ACTIVE',
-        'PM-001': 'SHP004|PM-001|BATCH001|1000|2025-12-31|ACTIVE',
-        'PM-002': 'SHP005|PM-002|BATCH002|1000|2025-12-31|ACTIVE',
-        'RM-001': 'SHP006|RM-001|BATCH002|25|2025-12-31|ACTIVE',
-        'RM-002': 'SHP007|RM-002|BATCH003|10|2025-12-31|ACTIVE'
+        'SHP001': 'SHP001|LOT001|50|2025-12-31|ACTIVE',
+        'SHP002': 'SHP002|LOT002|100|2025-12-31|ACTIVE',
+        '20008': '20008|BATCH-A|100|2024-10-01|ACTIVE',
+        '20009': '20009|BATCH-B|1100|2024-12-31|ACTIVE',
     },
-    bins: ['A-01-01', 'A-01-02', 'A-01-03', 'B-02-01', 'B-02-02', 'C-03-01', 'C-03-02',
-        'STAGING-001', 'PROD-LINE-A', 'KITCHEN-A']
+    bins: ['A-01-01', 'A-01-02', 'STAGING-001']
 }
 
 // Fetch picking list from the backend
@@ -461,14 +487,8 @@ const fetchPickingList = async () => {
 }
 
 // Computed properties
-const filteredTasks = computed(() => {
-    if (filterStatus.value === 'ALL') {
-        return pickingTasks.value
-    }
-    return pickingTasks.value.filter(task => task.status === filterStatus.value)
-})
-
 const getTotalItemsCount = computed(() => {
+    // Menghitung jumlah record alokasi batch
     if (!selectedTask.value?.items) return 0
     return selectedTask.value.items.length
 })
@@ -484,8 +504,9 @@ const getShortPickItemsCount = computed(() => {
 })
 
 const getPendingItemsCount = computed(() => {
+    // Reserved atau status lain yang belum selesai dipick
     if (!selectedTask.value?.items) return 0
-    return selectedTask.value.items.filter(item => item.status === 'Pending').length
+    return selectedTask.value.items.filter(item => item.status === 'Reserved' || item.status === 'In Progress').length
 })
 
 const getCompletedItemsCount = computed(() => {
@@ -502,16 +523,17 @@ const getPickingProgress = computed(() => {
 
 const canFinishPicking = computed(() => {
     if (!selectedTask.value?.items) return false
-    return selectedTask.value.items.every(item => item.qtyPicked > 0)
+    // Memastikan semua item alokasi batch sudah dipick (status Picked atau Short-Pick)
+    return selectedTask.value.items.every(item => item.status === 'Picked' || item.status === 'Short-Pick')
 })
 
 const getScanStepText = computed(() => {
     const steps = [
         '',
-        'Scan QR Box untuk validasi item',
-        'Scan QR Source Bin untuk validasi lokasi',
+        'Scan QR Box/Material untuk validasi kode dan batch',
+        'Scan QR Source Bin untuk validasi lokasi pengambilan',
         'Input quantity yang dipick',
-        'Scan QR Dest Bin (opsional)'
+        'Scan QR Dest Bin (Staging Area) untuk validasi transfer'
     ]
     return steps[scanStep.value]
 })
@@ -534,10 +556,10 @@ const getSummaryShortPickItems = computed(() => {
 
 const getSummaryPendingItems = computed(() => {
     if (!selectedSummaryTask.value?.items) return 0
-    return selectedSummaryTask.value.items.filter(item => item.status === 'Pending').length
+    return selectedSummaryTask.value.items.filter(item => item.status === 'Reserved' || item.status === 'In Progress').length
 })
 
-// Camera Methods
+// Camera Methods (Logika tidak diubah, tetap simulasi)
 const startCamera = async () => {
     try {
         cameraStatus.value = 'Mengaktifkan kamera...'
@@ -597,13 +619,8 @@ const toggleCamera = () => {
 }
 
 const startScanning = () => {
-    // Simulate QR code scanning
-    // In production, you would use a library like jsQR or @zxing/library
     scanInterval = setInterval(() => {
         if (!isScanning.value || !videoElement.value) return
-        
-        // This is where you would implement actual QR code detection
-        // For now, it's just a placeholder for the scanning loop
     }, 100)
 }
 
@@ -613,8 +630,11 @@ const simulateScan = () => {
     let simulatedQR = ''
     
     switch (scanStep.value) {
-        case 1: // Simulate Box QR
+        case 1: // Simulate Box QR (Item Code | Batch)
+            // Coba ambil dari data dummy yang cocok dengan kode item saat ini
             simulatedQR = dummyQRData.box[currentScanItem.value.kodeItem]
+                ? `${currentScanItem.value.kodeItem}|${currentScanItem.value.lotSerial}|100|2025-12-31|ACTIVE`
+                : `${currentScanItem.value.kodeItem}|${currentScanItem.value.lotSerial}|50|2025-12-31|ACTIVE`
             break
         case 2: // Simulate Source Bin
             simulatedQR = currentScanItem.value.sourceBin
@@ -640,8 +660,16 @@ const simulateScan = () => {
 }
 
 // Methods
+const filteredTasks = computed(() => {
+    if (filterStatus.value === 'ALL') {
+        return pickingTasks.value
+    }
+    return pickingTasks.value.filter(task => task.status === filterStatus.value || (filterStatus.value === 'Pending' && task.status === 'Reserved'))
+})
+
 const getStatusClass = (status) => {
     const classes = {
+        'Reserved': 'bg-gray-100 text-gray-800',
         'Pending': 'bg-gray-100 text-gray-800',
         'In Progress': 'bg-yellow-100 text-yellow-800',
         'Completed': 'bg-green-100 text-green-800',
@@ -652,37 +680,44 @@ const getStatusClass = (status) => {
 
 const getItemStatusClass = (status) => {
     const classes = {
-        'Pending': 'bg-gray-100 text-gray-800',
-        'Picked': 'bg-green-100 text-green-800',
-        'Short-Pick': 'bg-orange-100 text-orange-800'
+        'Reserved': 'bg-gray-100 text-gray-700',
+        'Pending': 'bg-gray-100 text-gray-700',
+        'Picked': 'bg-green-100 text-green-700',
+        'Short-Pick': 'bg-orange-100 text-orange-700'
     }
-    return classes[status] || 'bg-gray-100 text-gray-800'
+    return classes[status] || 'bg-gray-100 text-gray-700'
 }
 
 const getItemRowClass = (status) => {
     const classes = {
         'Picked': 'bg-green-50',
         'Short-Pick': 'bg-orange-50',
-        'Pending': 'bg-white'
+        'Reserved': 'bg-white',
+        'Pending': 'bg-white',
     }
     return classes[status] || 'bg-white'
 }
 
 const getItemAchievement = (item) => {
-    if (item.status === 'Pending') return '-'
+    if (item.status === 'Reserved' || item.status === 'Pending') return '-'
     if (item.qtyDiminta === 0) return '0%'
     const percentage = Math.round((item.qtyPicked / item.qtyDiminta) * 100)
     return `${percentage}% (${item.qtyPicked}/${item.qtyDiminta})`
 }
 
 const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('id-ID', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    })
+    if (!dateString) return '-';
+    try {
+        return new Date(dateString).toLocaleString('id-ID', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    } catch {
+        return dateString
+    }
 }
 
 const viewReservation = (noReservasi) => {
@@ -695,11 +730,15 @@ const viewDetail = (task) => {
 }
 
 const startPicking = (task) => {
-    selectedTask.value = task
-    if (task.status === 'Pending') {
+    selectedTask.value = JSON.parse(JSON.stringify(task)) // Deep clone the task
+    // Update status ke In Progress jika masih Reserved/Pending
+    if (task.status === 'Reserved' || task.status === 'Pending') {
         const taskIndex = pickingTasks.value.findIndex(t => t.id === task.id)
         if (taskIndex !== -1) {
+            // Update status di list utama dan task yang dipilih
             pickingTasks.value[taskIndex].status = 'In Progress'
+            selectedTask.value.status = 'In Progress'
+            // NOTE: Di sini perlu ada API call ke backend untuk update status header
         }
     }
     showPickingModal.value = true
@@ -709,6 +748,7 @@ const closePickingModal = () => {
     showPickingModal.value = false
     selectedTask.value = null
     resetScanner()
+    fetchPickingList() // Refresh data setelah menutup modal
 }
 
 const closeSummaryModal = () => {
@@ -719,7 +759,7 @@ const closeSummaryModal = () => {
 const startItemQRScan = (item, index) => {
     if (item.status === 'Picked') return
     
-    currentScanItem.value = item
+    currentScanItem.value = JSON.parse(JSON.stringify(item)) // Deep clone
     currentItemIndex.value = index
     showQRScannerModal.value = true
     resetScanner()
@@ -760,23 +800,24 @@ const processQR = () => {
 }
 
 const validateQRBox = (qrContent) => {
+    // Expected QR Box/Batch format: ITEM_CODE|LOT/BATCH|...
     const qrParts = qrContent.split('|')
     if (qrParts.length < 2) {
-        console.error('Format QR Box tidak valid!')
+        console.error('Format QR Box tidak valid! Harap ikuti format: ITEM_CODE|BATCH_LOT|...')
         return
     }
     
-    const itemCode = qrParts[1]
-    const lotNo = qrParts[2]
+    const itemCode = qrParts[0] // Asumsi item code di index 0
+    const lotNo = qrParts[1]    // Asumsi lot/batch di index 1
     
     if (itemCode !== currentScanItem.value.kodeItem || lotNo !== currentScanItem.value.lotSerial) {
-        console.error(`Item tidak sesuai!\nHarus: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}\nDi-scan: ${itemCode} - ${lotNo}`)
+        console.error(`Item/Batch tidak sesuai!\nHarus: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}\nDi-scan: ${itemCode} - ${lotNo}`)
         return
     }
     
     scanStep.value = 2
     qrInput.value = ''
-    console.log(`✓ Item valid: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.namaMaterial}`)
+    console.log(`✓ Item valid: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}`)
 }
 
 const validateSourceBin = (binCode) => {
@@ -789,32 +830,41 @@ const validateSourceBin = (binCode) => {
     
     scanStep.value = 3
     qrInput.value = ''
-    manualQty.value = currentScanItem.value.qtyDiminta.toString()
+    // Isi manualQty dengan Qty Dialokasikan sebagai default
+    manualQty.value = currentScanItem.value.qtyDiminta
     console.log(`✓ Source Bin valid: ${binCode}`)
 }
 
 const confirmQuantity = () => {
-    if (!manualQty.value || parseInt(manualQty.value) <= 0) {
+    const qtyPicked = parseFloat(manualQty.value)
+    if (isNaN(qtyPicked) || qtyPicked <= 0) {
         console.error('Silakan input quantity yang valid!')
         return
     }
     
-    const qtyPicked = parseInt(manualQty.value)
     const qtyDiminta = currentScanItem.value.qtyDiminta
     
     if (qtyPicked > qtyDiminta) {
-        console.error(`Quantity melebihi yang diminta!\nDiminta: ${qtyDiminta}\nInput: ${qtyPicked}`)
+        console.error(`Quantity melebihi yang dialokasikan!\nDialokasikan: ${qtyDiminta}\nInput: ${qtyPicked}`)
         return
     }
     
+    // Update data di modal (currentScanItem adalah deep clone)
     currentScanItem.value.qtyPicked = qtyPicked
     
     if (qtyPicked === qtyDiminta) {
         currentScanItem.value.status = 'Picked'
-        console.log(`✓ Item berhasil dipick complete: ${qtyPicked}/${qtyDiminta}`)
+        console.log(`✓ Batch berhasil dipick complete: ${qtyPicked}/${qtyDiminta}`)
     } else {
         currentScanItem.value.status = 'Short-Pick'
         console.warn(`⚠ Short-pick detected: ${qtyPicked}/${qtyDiminta}`)
+    }
+    
+    // Update item di selectedTask utama
+    const taskItem = selectedTask.value.items.find(item => item.id === currentScanItem.value.id)
+    if (taskItem) {
+        taskItem.qtyPicked = currentScanItem.value.qtyPicked
+        taskItem.status = currentScanItem.value.status
     }
     
     if (currentScanItem.value.destBin && currentScanItem.value.destBin !== '-') {
@@ -838,12 +888,15 @@ const validateDestBin = (binCode) => {
 }
 
 const finishCurrentItem = () => {
-    console.log(`Item ${currentScanItem.value.kodeItem} berhasil diselesaikan!`)
+    console.log(`Batch ${currentScanItem.value.lotSerial} untuk ${currentScanItem.value.kodeItem} berhasil diselesaikan!`)
     closeQRScanner()
     
-    const remainingItems = selectedTask.value.items.filter(item => item.status === 'Pending')
+    // Trigger re-calculation of progress
+    // updateItemStatus(selectedTask.value.items[currentItemIndex.value]);
+    
+    const remainingItems = selectedTask.value.items.filter(item => item.status === 'Reserved' || item.status === 'In Progress')
     if (remainingItems.length === 0) {
-        console.log('Semua item sudah dipick! Silakan klik "Selesai Picking"')
+        console.log('Semua alokasi batch sudah dipick! Silakan klik "Selesai Picking"')
     }
 }
 
@@ -854,9 +907,11 @@ const prevScanStep = () => {
     }
 }
 
+// Hanya update status di tabel utama jika ada perubahan QTY manual
 const updateItemStatus = (item) => {
     if (!item.qtyPicked || item.qtyPicked <= 0) {
-        item.status = 'Pending'
+        item.status = 'Reserved' // Kembali ke status reserved/pending
+        item.qtyPicked = 0
         return
     }
     
@@ -871,33 +926,41 @@ const updateItemStatus = (item) => {
 const finishPicking = async () => {
     if (!selectedTask.value) return
 
+    // Pastikan semua alokasi sudah diselesaikan (Picked/Short-Pick)
+    if (!canFinishPicking.value) {
+        console.error('Mohon selesaikan semua alokasi batch sebelum menyelesaikan picking task.')
+        return
+    }
+
     const pickedItems = selectedTask.value.items.map(item => ({
-        stock_id: item.stock_id,
+        // PENTING: Kirim ID dari record RESERVATION (alokasi batch)
+        reservation_id: item.id, 
         picked_quantity: item.qtyPicked,
     }))
 
     try {
-        // FIX: Menggunakan fungsi route() untuk POST request
         const response = await axios.post(route('transaction.picking-list.store'), {
-            reservation_id: selectedTask.value.id,
+            // Kirim ID dari record RESERVATION REQUEST (Header)
+            reservation_request_id: selectedTask.value.id, 
             items: pickedItems,
         })
 
         if (response.status === 200) {
-            console.log('Picking successful.')
+            console.log('Picking successful. Status task di-update.')
             closePickingModal()
-            fetchPickingList()
+            // fetchPickingList() // Akan dipanggil saat closePickingModal
         }
     } catch (error) {
         console.error('Error finishing picking:', error)
-        console.error('Failed to finish picking.')
+        console.error('Gagal menyelesaikan picking. Silakan cek konsol untuk detail error.')
     }
 }
 
 const printPickingList = (task) => {
     const printWindow = window.open('', '_blank')
     
-    const totalItems = task.items.length
+    // Perhitungan Summary didasarkan pada jumlah item ALOKASI BATCH (task.items.length)
+    const totalAllocations = task.items.length
     const pickedItems = task.items.filter(item => item.status === 'Picked').length
     const shortPickItems = task.items.filter(item => item.status === 'Short-Pick').length
     
@@ -947,24 +1010,27 @@ const printPickingList = (task) => {
                 </div>
 
                 <div class="summary">
-                    <strong>Summary:</strong> Total ${totalItems} items | Picked: ${pickedItems} | Short-pick: ${shortPickItems} | Pending: ${totalItems - pickedItems - shortPickItems}
+                    <strong>Summary:</strong> Total ${totalAllocations} Batch Alokasi | Picked: ${pickedItems} | Short-pick: ${shortPickItems} | Pending: ${totalAllocations - pickedItems - shortPickItems}
                 </div>
                 
                 <table class="items-table">
-                    <tr>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">No</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 12%;">Code Item</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 25%;">Material Description</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">SN</th>
-                        <th colspan="2" style="text-align: center; width: 20%;">Bin Location</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 8%;">Quantity</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">UoM</th>
-                        <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Resv. Qty</th>
-                    </tr>
-                    <tr>
-                        <th style="text-align: center; width: 10%;">Source Bin Location</th>
-                        <th style="text-align: center; width: 10%;">Dest. Bin Location</th>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">No</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Code Item</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 25%;">Material Description</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Batch/Lot</th>
+                            <th colspan="2" style="text-align: center; width: 20%;">Bin Location</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 8%;">Qty Alokasi</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 5%;">UoM</th>
+                            <th rowspan="2" style="vertical-align: middle; text-align: center; width: 10%;">Qty Picked</th>
+                        </tr>
+                        <tr>
+                            <th style="text-align: center; width: 10%;">Source Bin Location</th>
+                            <th style="text-align: center; width: 10%;">Dest. Bin Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     ${task.items.map((item, index) => `
                         <tr class="${item.status === 'Picked' ? 'picked' : item.status === 'Short-Pick' ? 'short-pick' : ''}" style="height: 40px;">
                             <td style="text-align: center; vertical-align: middle;">${index + 1}</td>
@@ -978,6 +1044,7 @@ const printPickingList = (task) => {
                             <td style="text-align: center; vertical-align: middle;">${item.qtyPicked || ''}</td>
                         </tr>
                     `).join('')}
+                    </tbody>
                 </table>
                 
                 <div class="signature">

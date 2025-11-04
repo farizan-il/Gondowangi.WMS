@@ -144,7 +144,7 @@
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Quantity Received</label>
-                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ formatInteger(item.qtyReceived) }} {{ item.uom }}</div>
+                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ formatInteger(selectedItem?.qtyReceived) }} {{ selectedItem?.uom }}</div>
                 </div>
 
                 <div>

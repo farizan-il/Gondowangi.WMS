@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryStock;
 use App\Models\Reservation;
 use App\Models\ReservationRequest;
-use App\Models\Material; // Import model Material (tetap diperlukan untuk metadata dan ID material)
+use App\Models\ReservationRequestItem; 
+use App\Models\Material;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +46,31 @@ class ReservationController extends Controller
         ];
     }
 
+    /**
+     * Helper function untuk mapping detail batch reservasi.
+     */
+    private function mapBatchDetailToCamelCase($res)
+    {
+        $resArray = is_object($res) ? $res->toArray() : $res;
+        
+        // Asumsi relasi material dimuat pada model Reservation
+        $materialCode = $res->material->kode_item ?? 'N/A';
+        $materialName = $res->material->nama_material ?? 'N/A';
+
+        return [
+            'materialId' => $resArray['material_id'] ?? null,
+            'materialCode' => $materialCode,
+            'materialName' => $materialName,
+            'qtyReserved' => (float) ($resArray['qty_reserved'] ?? 0),
+            'batchLot' => $resArray['batch_lot'] ?? null,
+            'warehouseId' => $resArray['warehouse_id'] ?? null,
+            'binId' => $resArray['bin_id'] ?? null,
+            'uom' => $resArray['uom'] ?? null,
+            'expiryDate' => $resArray['expiry_date'] ? (new \DateTime($resArray['expiry_date']))->format('Y-m-d') : null,
+            'reservationId' => $resArray['id'] ?? null,
+        ];
+    }
+
     // Helper function untuk mapping data request (header) ke camelCase
     private function mapReservationToCamelCase($req)
     {
@@ -65,14 +91,17 @@ class ReservationController extends Controller
             'approvedBy' => $req->approved_by,
             'approvedAt' => $req->approved_at,
             'rejectionReason' => $req->rejection_reason,
-            // PENTING: Map array items secara rekursif
+            // PENTING: Map array items (permintaan agregat)
             'items' => $req->items->map(fn($item) => $this->mapItemToCamelCase($item)),
+            // BARU: Map detail batch reservasi
+            'batchDetails' => $req->reservations->map(fn($res) => $this->mapBatchDetailToCamelCase($res)),
         ];
     }
     
     public function index()
     {
-        $reservations = ReservationRequest::with('items')
+        // Memuat 'reservations' (detail batch) beserta materialnya
+        $reservations = ReservationRequest::with(['items', 'reservations.material'])
             ->orderBy('created_at', 'desc')
             ->get();
             
@@ -87,7 +116,8 @@ class ReservationController extends Controller
 
     public function getReservationsData() 
     {
-        $reservations = ReservationRequest::with('items')->get();
+        // Memuat 'reservations' (detail batch) beserta materialnya
+        $reservations = ReservationRequest::with(['items', 'reservations.material'])->get();
         
         // Gunakan helper untuk mapping data AJAX
         $mappedReservations = $reservations->map(fn($req) => $this->mapReservationToCamelCase($req));
@@ -178,38 +208,147 @@ class ReservationController extends Controller
 
         return response()->json($materials);
     }
+    
+    // ===================================================================
+    // NEW FUNCTION: Stock Allocation/Reservation Logic
+    // ===================================================================
 
     /**
-     * Show the form for creating a new resource.
+     * Mengalokasikan stok dari InventoryStock dan membuat entri Reservation.
+     * Logika ini menggunakan strategi LIFO-Stock (Least Inventory First Out).
+     *
+     * @param ReservationRequest $request
+     * @param array $validatedItems
+     * @param string $requestType
+     * @throws \Exception
      */
-    public function create()
+    private function allocateStock(ReservationRequest $reservationRequest, array $validatedItems, string $requestType): void
     {
-        //
+        foreach ($validatedItems as $index => $item) {
+            $materialCodeKey = '';
+            $qtyKey = '';
+
+            // Tentukan key kode material dan kuantitas permintaan
+            if ($requestType === 'foh-rs') {
+                $materialCodeKey = 'kodeItem';
+                $qtyKey = 'qty';
+            } elseif ($requestType === 'packaging' || $requestType === 'add') {
+                $materialCodeKey = 'kodePM';
+                $qtyKey = 'jumlahPermintaan';
+            } elseif ($requestType === 'raw-material') {
+                $materialCodeKey = 'kodeBahan';
+                $qtyKey = 'jumlahKebutuhan';
+            }
+
+            $materialCode = $item[$materialCodeKey] ?? null;
+            $requestedQty = (float) ($item[$qtyKey] ?? 0);
+
+            if (!$materialCode || $requestedQty <= 0) {
+                continue; // Skip jika tidak ada kode material atau kuantitas 0
+            }
+            
+            // 1. Dapatkan Material ID
+            $material = Material::where('kode_item', $materialCode)->firstOrFail();
+            
+            // 2. Dapatkan stok yang tersedia (LIFO-Stock: diurutkan berdasarkan kuantitas tersedia terkecil)
+            $availableStocks = InventoryStock::where('material_id', $material->id)
+                ->where('qty_available', '>', 0)
+                ->orderBy('qty_available', 'asc') // Stok paling sedikit diambil dulu
+                ->get();
+            
+            $remainingQtyToReserve = $requestedQty;
+
+            foreach ($availableStocks as $stock) {
+                if ($remainingQtyToReserve <= 0) break;
+
+                $qtyToDeduct = min($remainingQtyToReserve, (float) $stock->qty_available);
+
+                if ($qtyToDeduct > 0) {
+                    // ** Lakukan perhitungan stok di PHP, bukan menggunakan DB::raw() **
+                    $newAvailable = (float) $stock->qty_available - $qtyToDeduct;
+                    $newReserved = (float) $stock->qty_reserved + $qtyToDeduct;
+
+                    // 3. Kurangi qty_available di InventoryStock (Assign nilai numerik)
+                    $stock->qty_available = $newAvailable;
+                    $stock->qty_reserved = $newReserved; // Tambahkan ke reserved
+                    $stock->save();
+                    
+                    // 4. Catat Reservasi di tabel 'reservations'
+                    // Ini mencatat alokasi stok per batch/lot ke request
+                    Reservation::create([
+                        'reservation_no' => $reservationRequest->no_reservasi,
+                        'reservation_request_id' => $reservationRequest->id,
+                        'reservation_type' => $reservationRequest->request_type,
+                        'material_id' => $material->id,
+                        'warehouse_id' => $stock->warehouse_id,
+                        'bin_id' => $stock->bin_id,
+                        'batch_lot' => $stock->batch_lot,
+                        'qty_reserved' => $qtyToDeduct,
+                        'uom' => $stock->uom,
+                        'status' => 'Reserved',
+                        'reservation_date' => now(),
+                        'expiry_date' => $stock->exp_date, 
+                        'created_by' => Auth::id(),
+                    ]);
+
+                    $remainingQtyToReserve -= $qtyToDeduct;
+                }
+            }
+            
+            if ($remainingQtyToReserve > 0) {
+                // Seharusnya tidak terjadi jika validasi stok server-side bekerja
+                throw new \Exception("Gagal mengalokasikan stok penuh untuk material {$materialCode}. Sisa: {$remainingQtyToReserve}");
+            }
+        }
     }
+
+    // ===================================================================
+    // STORE METHOD (Updated)
+    // ===================================================================
 
     public function store(Request $request)
     {
+        // ** PERBAIKAN UTAMA: Menerapkan required_if untuk semua field header yang spesifik per kategori **
         $validated = $request->validate([
             'noReservasi' => 'required|string|unique:reservation_requests,no_reservasi',
             'tanggalPermintaan' => 'required|date',
-            'departemen' => 'nullable|string',
-            'alasanReservasi' => 'nullable|string',
-            'namaProduk' => 'nullable|string',
-            'noBetsFilling' => 'nullable|string',
-            'kodeProduk' => 'nullable|string',
-            'noBets' => 'nullable|string',
-            'besarBets' => 'nullable|numeric',
-            'items' => 'required|array',
+            'request_type' => 'required|string',
+
+            // FOH & RS fields - REQUIRED IF foh-rs
+            'departemen' => 'nullable|required_if:request_type,foh-rs|string',
+            'alasanReservasi' => 'nullable|required_if:request_type,foh-rs|string',
+
+            // Packaging & ADD fields - REQUIRED IF packaging atau add
+            'namaProduk' => 'nullable|required_if:request_type,packaging,add|string',
+            'noBetsFilling' => 'nullable|required_if:request_type,packaging,add|string',
+            
+            // Raw Material fields - REQUIRED IF raw-material
+            'kodeProduk' => 'nullable|required_if:request_type,raw-material|string',
+            'noBets' => 'nullable|required_if:request_type,raw-material|string',
+            'besarBets' => 'nullable|required_if:request_type,raw-material|numeric|min:0.01',
+
+            // Item validation
+            'items' => 'required|array|min:1',
+            // Item codes must be present based on type
             'items.*.kodeItem' => 'nullable|required_if:request_type,foh-rs|string',
             'items.*.kodePM' => 'nullable|required_if:request_type,packaging,add|string',
             'items.*.kodeBahan' => 'nullable|required_if:request_type,raw-material|string',
-            'items.*.qty' => 'nullable|required_if:request_type,foh-rs|numeric|min:0',
-            'items.*.jumlahPermintaan' => 'nullable|required_if:request_type,packaging,add|numeric|min:0',
-            'items.*.jumlahKebutuhan' => 'nullable|required_if:request_type,raw-material|numeric|min:0',
-            'request_type' => 'required|string',
+            // Item quantities must be present and > 0 based on type
+            'items.*.qty' => 'nullable|required_if:request_type,foh-rs|numeric|min:0.01',
+            'items.*.jumlahPermintaan' => 'nullable|required_if:request_type,packaging,add|numeric|min:0.01',
+            'items.*.jumlahKebutuhan' => 'nullable|required_if:request_type,raw-material|numeric|min:0.01',
+            // Field lainnya yang sifatnya opsional/spesifik item
+            'items.*.keterangan' => 'nullable|string',
+            'items.*.uom' => 'nullable|string',
+            'items.*.namaMaterial' => 'nullable|string',
+            'items.*.namaBahan' => 'nullable|string',
+            'items.*.jumlahKirim' => 'nullable|numeric',
+            'items.*.alasanPenambahan' => 'nullable|string',
         ]);
+        // END PERBAIKAN UTAMA
 
         // ** START: VALIDASI STOK SERVER-SIDE (Final Guard) **
+        // Logic ini penting untuk mencegah double submission atau race condition
         $stockErrors = [];
         foreach ($validated['items'] as $index => $item) {
             $materialCodeKey = '';
@@ -235,13 +374,15 @@ class ReservationController extends Controller
                 $material = Material::where('kode_item', $materialCode)->first();
 
                 if (!$material) {
-                    $stockErrors["items.{$index}"] = "Material dengan kode {$materialCode} tidak ditemukan.";
+                    if($materialCode) {
+                        $stockErrors["items.{$index}"] = "Material dengan kode {$materialCode} (item ke-".($index + 1).") tidak ditemukan.";
+                    }
                     continue;
                 }
                 
                 // 2. Hitung total stok tersedia dari InventoryStock
                 $totalAvailableStock = InventoryStock::where('material_id', $material->id)
-                                                     ->sum('qty_available');
+                                                    ->sum('qty_available');
 
                 // 3. Bandingkan
                 if ($requestedQty > $totalAvailableStock) {
@@ -251,6 +392,7 @@ class ReservationController extends Controller
         }
 
         if (!empty($stockErrors)) {
+            // Jika ada error stok, lempar ValidationException
             throw ValidationException::withMessages($stockErrors);
         }
         // ** END: VALIDASI STOK SERVER-SIDE **
@@ -262,14 +404,14 @@ class ReservationController extends Controller
                 'no_reservasi' => $validated['noReservasi'],
                 'request_type' => $validated['request_type'],
                 'tanggal_permintaan' => $validated['tanggalPermintaan'],
-                'status' => 'In Progress',
-                'departemen' => $validated['departemen'],
-                'alasan_reservasi' => $validated['alasanReservasi'],
-                'nama_produk' => $validated['namaProduk'],
-                'no_bets_filling' => $validated['noBetsFilling'],
-                'kode_produk' => $validated['kodeProduk'],
-                'no_bets' => $validated['noBets'],
-                'besar_bets' => $validated['besarBets'],
+                'status' => 'In Progress', 
+                'departemen' => $validated['departemen'] ?? null,
+                'alasan_reservasi' => $validated['alasanReservasi'] ?? null,
+                'nama_produk' => $validated['namaProduk'] ?? null,
+                'no_bets_filling' => $validated['noBetsFilling'] ?? null,
+                'kode_produk' => $validated['kodeProduk'] ?? null,
+                'no_bets' => $validated['noBets'] ?? null,
+                'besar_bets' => $validated['besarBets'] ?? null,
                 'requested_by' => Auth::id(),
             ]);
 
@@ -277,31 +419,22 @@ class ReservationController extends Controller
             $mappedItems = collect($validated['items'])->map(function ($item) {
                 $dbItem = [];
                 foreach ($item as $key => $value) {
-                    // Konversi camelCase ke snake_case
-                    $snakeCaseKey = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $key));
+                    // Abaikan field tambahan dari frontend
+                    if ($key === 'stokAvailable' || $key === 'satuan') continue;
                     
-                    // Override untuk kasus khusus yang diketahui
-                    if ($key === 'kodePM') $snakeCaseKey = 'kode_pm';
-                    if ($key === 'qty') $snakeCaseKey = 'qty';
-                    if ($key === 'uom') $snakeCaseKey = 'uom';
-                    if ($key === 'kodeItem') $snakeCaseKey = 'kode_item';
-                    if ($key === 'namaMaterial') $snakeCaseKey = 'nama_material';
-                    if ($key === 'jumlahPermintaan') $snakeCaseKey = 'jumlah_permintaan';
-                    if ($key === 'kodeBahan') $snakeCaseKey = 'kode_bahan';
-                    if ($key === 'namaBahan') $snakeCaseKey = 'nama_bahan';
-                    if ($key === 'jumlahKebutuhan') $snakeCaseKey = 'jumlah_kebutuhan';
-                    if ($key === 'jumlahKirim') $snakeCaseKey = 'jumlah_kirim';
-                    if ($key === 'alasanPenambahan') $snakeCaseKey = 'alasan_penambahan';
-                    // Abaikan stokAvailable karena tidak ada di DB
-                    if ($key === 'stokAvailable') continue;
-
-
+                    // Konversi camelCase ke snake_case secara manual untuk memastikan keakuratan
+                    $snakeCaseKey = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $key));
                     $dbItem[$snakeCaseKey] = $value;
                 }
                 return $dbItem;
             });
 
+            // Simpan Item Request
             $reservationRequest->items()->createMany($mappedItems->toArray());
+            
+            // ** STOCK DEDUCTION / RESERVATION LOGIC **
+            // PENTING: Panggil fungsi untuk mengurangi stok dan mencatat di tabel 'reservations'
+            $this->allocateStock($reservationRequest, $validated['items'], $validated['request_type']);
 
             DB::commit();
 
@@ -310,58 +443,45 @@ class ReservationController extends Controller
                 ->route('transaction.reservation.index')
                 ->with('flash', [
                     'type' => 'success',
-                    'message' => '✅ Reservation request berhasil dibuat! No: ' . $reservationRequest->no_reservasi,
+                    'message' => '✅ Reservation request berhasil dibuat! Stok telah dialokasikan. No: ' . $reservationRequest->no_reservasi,
                 ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            // Mengubah respons error menjadi redirect Inertia dengan flash message error
+            // Log kesalahan
+            report($e);
+            
+            // ** PERBAIKAN UTAMA: Tampilkan pesan exception yang sebenarnya **
+            $errorMessage = '❌ Gagal membuat reservasi. Kesalahan: ' . $e->getMessage();
+
             return redirect()
                 ->back()
                 ->with('flash', [
                     'type' => 'error',
-                    'message' => '❌ Gagal membuat reservasi. Debug: ' . $e->getMessage()
+                    'message' => $errorMessage, 
                 ])
-                ->withErrors(['submit' => 'Terjadi kesalahan saat menyimpan data.']); 
+                // ** PERBAIKAN PENTING: Masukkan pesan detail ke withErrors agar terbaca oleh Inertia/Vue error handling **
+                ->withErrors(['submit' => $errorMessage]); 
         }
     }
 
-    private function generateReservationNumber()
+    public function create()
     {
-        $date = date('Ymd');
-        $lastReservation = Reservation::whereDate('created_at', today())->latest()->first();
-        $sequence = $lastReservation ? (intval(substr($lastReservation->reservation_number, -4)) + 1) : 1;
-        return "RES/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        //
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         //
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         //

@@ -30,6 +30,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ringkasan Permissions</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah User</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -42,6 +43,12 @@
                             <td class="px-6 py-4">
                                 <div class="text-sm text-gray-600">{{ role.description }}</div>
                             </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                <span v-if="role.permissions && role.permissions.length > 0">
+                                    Total **{{ role.permissions.length }}** permissions di **{{ getModuleCount(role.permissions) }}** modul.
+                                </span>
+                                <span v-else class="text-red-500">Tidak ada Permission</span>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                     {{ role.userCount }} users
@@ -52,7 +59,7 @@
                                     @click="openPermissionModal(role)"
                                     class="text-indigo-600 hover:text-indigo-900 transition-colors"
                                 >
-                                    Edit Permission
+                                    Atur Permission
                                 </button>
                                 <button 
                                     @click="deleteRole(role.id)"
@@ -65,6 +72,8 @@
                     </tbody>
                 </table>
             </div>
+
+            <div v-if="showAddRoleModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);"></div>
 
             <!-- Modal Tambah Role -->
             <div v-if="showAddRoleModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
@@ -121,177 +130,57 @@
 
             <!-- Modal Atur Permission -->
             <div v-if="showPermissionModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-                <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Atur Permission - {{ selectedRole?.name }}</h3>
-                        <button @click="closePermissionModal" class="text-gray-400 hover:text-gray-600 transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Atur Permission - {{ selectedRole?.name }}</h3>
+                <button @click="closePermissionModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <div 
+                    v-for="moduleData in allPermissions" 
+                    :key="moduleData.module_key" 
+                    class="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                >
+                    <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
+                        <h4 class="text-md font-semibold text-gray-800 flex items-center">
+                            <span v-html="moduleData.module_name"></span>
+                        </h4>
+
+                        <label class="flex items-center text-blue-600 font-medium cursor-pointer">
+                            <input
+                                type="checkbox"
+                                :checked="isModuleAllSelected(moduleData.module_key)"
+                                @change="toggleSelectAllModule(moduleData.module_key, $event)"
+                                class="mr-2 rounded border-blue-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                            >
+                            Pilih Semua
+                        </label>
+                        </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <label 
+                            v-for="permission in moduleData.permissions" 
+                            :key="permission.name" 
+                            class="flex items-center text-gray-700 cursor-pointer" 
+                            :title="permission.description"
+                        >
+                            <input 
+                                type="checkbox" 
+                                :checked="hasPermission(permission.name)"
+                                @change="togglePermission(permission.name, $event)"
+                                class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            >
+                            <span class="text-sm">{{ permission.display_name }}</span>
+                        </label>
                     </div>
-
-                    <div class="space-y-6">
-                        <!-- Incoming / Receipt -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">📥</span>
-                                Incoming / Receipt
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                <label v-for="action in ['view', 'create', 'edit', 'delete', 'approve']" :key="`incoming-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('incoming', action)"
-                                        @change="togglePermission('incoming', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ capitalizeFirst(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Quality Control -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">🔍</span>
-                                Quality Control
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <label v-for="action in ['view', 'input_qc_result', 'approve', 'reject']" :key="`qc-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('qc', action)"
-                                        @change="togglePermission('qc', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Label Karantina -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">🏷️</span>
-                                Label Karantina
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <label v-for="action in ['view', 'cetak_label', 'release', 'reject']" :key="`label-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('label_karantina', action)"
-                                        @change="togglePermission('label_karantina', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Putaway & Transfer Order -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">📦</span>
-                                Putaway & Transfer Order
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                <label v-for="action in ['view', 'kerjakan_to', 'cetak_slip']" :key="`putaway-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('putaway', action)"
-                                        @change="togglePermission('putaway', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Reservation -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">📋</span>
-                                Reservation (FOH, RS, RM, Packaging, ADD)
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <label v-for="action in ['view', 'create_request', 'approve_request', 'cetak_form']" :key="`reservation-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('reservation', action)"
-                                        @change="togglePermission('reservation', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Picking -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">🛒</span>
-                                Picking
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                <label v-for="action in ['view', 'kerjakan_picking', 'cetak_picking_list']" :key="`picking-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('picking', action)"
-                                        @change="togglePermission('picking', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Return -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">↩️</span>
-                                Return (Supplier / Production)
-                            </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <label v-for="action in ['view', 'create_return', 'approve_return', 'cetak_slip']" :key="`return-${action}`" class="flex items-center text-gray-700">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="hasPermission('return', action)"
-                                        @change="togglePermission('return', action, $event)"
-                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                    {{ formatActionName(action) }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Central Data -->
-                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                                <span class="mr-2">⚙️</span>
-                                Central Data
-                            </h4>
-                            <div class="space-y-3">
-                                <div v-for="module in ['sku_management', 'supplier_management', 'bin_management', 'user_management', 'role_management']" 
-                                     :key="module" 
-                                     class="border-l-4 border-gray-300 pl-4">
-                                    <h5 class="font-medium text-gray-700 mb-2">{{ formatModuleName(module) }}</h5>
-                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                        <label v-for="action in ['view', 'create', 'edit', 'delete', 'admin']" :key="`${module}-${action}`" class="flex items-center text-sm text-gray-700">
-                                            <input 
-                                                type="checkbox" 
-                                                :checked="hasPermission('central_data', `${module}_${action}`)"
-                                                @change="togglePermission('central_data', `${module}_${action}`, $event)"
-                                                class="mr-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            >
-                                            {{ capitalizeFirst(action) }}
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                </div>
+           
+            </div>
                     <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
                         <button 
                             @click="closePermissionModal"
@@ -314,7 +203,7 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 
 interface Role {
@@ -322,7 +211,25 @@ interface Role {
     name: string
     description: string
     userCount: number
-    permissions: Permission[]
+    permissions: string[]
+}
+
+interface AllPermissionItem {
+    id: number;
+    name: string; // permission_name
+    display_name: string; // Nama yang lebih mudah dibaca
+    description: string;
+}
+
+interface ModulePermission {
+    module_key: string;
+    module_name: string; // Nama modul + emoji
+    permissions: AllPermissionItem[];
+}
+
+interface PermissionState {
+    name: string // permission_name
+    allowed: boolean
 }
 
 interface Permission {
@@ -332,16 +239,9 @@ interface Permission {
     permission_name: string
 }
 
-interface PermissionState {
-    module: string
-    action: string
-    allowed: boolean
-}
-
-// Props
 const props = defineProps<{
     roles: Role[]
-    allPermissions: any
+    allPermissions: ModulePermission[] // Menggunakan interface dinamis
 }>()
 
 // State
@@ -355,6 +255,42 @@ const newRole = reactive({
 })
 
 const currentPermissions = ref<PermissionState[]>([])
+
+const permissionMap = computed<Map<string, PermissionState>>(() => {
+    return new Map(currentPermissions.value.map(p => [p.name, p]));
+});
+
+const isModuleAllSelected = (moduleKey: string): boolean => {
+    const module = props.allPermissions.find(m => m.module_key === moduleKey)
+    if (!module || module.permissions.length === 0) return false
+
+    // Cek apakah setiap permission di modul ini memiliki status 'allowed: true'
+    return module.permissions.every(p => {
+        const state = permissionMap.value.get(p.name)
+        return state && state.allowed
+    })
+}
+
+const toggleSelectAllModule = (moduleKey: string, event: Event) => {
+    const target = event.target as HTMLInputElement
+    const checkAll = target.checked
+    
+    const module = props.allPermissions.find(m => m.module_key === moduleKey)
+    if (!module) return
+
+    module.permissions.forEach(permission => {
+        const permName = permission.name
+        const existingPerm = currentPermissions.value.find(p => p.name === permName)
+
+        if (existingPerm) {
+            existingPerm.allowed = checkAll
+        } else if (checkAll) {
+            // Jika belum ada di state (seharusnya tidak terjadi jika loadRolePermissions sudah benar), 
+            // tambahkan sebagai allowed: true
+            currentPermissions.value.push({ name: permName, allowed: true })
+        }
+    })
+}
 
 // Functions
 const addRole = () => {
@@ -394,46 +330,84 @@ const closePermissionModal = () => {
 }
 
 const loadRolePermissions = (role: Role) => {
-    currentPermissions.value = role.permissions.map(p => ({
-        module: p.module,
-        action: p.action,
-        allowed: true
+    const initialPermissions: PermissionState[] = props.allPermissions
+        .flatMap(module => module.permissions)
+        .map(p => ({
+            name: p.name,
+            allowed: false // Default ke false
+        }))
+    
+    // Override status allowed berdasarkan permission yang dimiliki role
+    const rolePermissionsMap = new Set(role.permissions) // permissions dari role sekarang adalah array of string
+    
+    currentPermissions.value = initialPermissions.map(p => ({
+        ...p,
+        allowed: rolePermissionsMap.has(p.name) // Cek apakah role memiliki permission ini
     }))
 }
 
-const hasPermission = (module: string, action: string): boolean => {
-    return currentPermissions.value.some(p => 
-        p.module === module && 
-        p.action === action && 
-        p.allowed
-    )
+const hasPermission = (permissionName: string): boolean => {
+    const perm = permissionMap.value.get(permissionName)
+    return perm?.allowed ?? false
 }
 
-const togglePermission = (module: string, action: string, event: Event) => {
+const togglePermission = (permissionName: string, event: Event) => {
     const target = event.target as HTMLInputElement
     const allowed = target.checked
     
-    const existingIndex = currentPermissions.value.findIndex(
-        p => p.module === module && p.action === action
-    )
+    const existingPerm = currentPermissions.value.find(p => p.name === permissionName)
     
-    if (existingIndex >= 0) {
-        currentPermissions.value[existingIndex].allowed = allowed
+    if (existingPerm) {
+        existingPerm.allowed = allowed;
     } else {
-        currentPermissions.value.push({ module, action, allowed })
+        currentPermissions.value.push({ name: permissionName, allowed: allowed });
     }
+}
+
+const getPermissionName = (module: string, action: string): string => {
+    // Menangani kasus khusus Central Data yang memiliki prefix terpisah di DB
+    if (module === 'central_data') {
+        // Contoh: central_data.role_management_view
+        return `central_data.${action}`; 
+    } 
+    // Menangani Master Data (sku_management, supplier_management, dll.)
+    if (module.endsWith('_management')) {
+        return `central_data.${module}_${action}`; 
+    }
+
+    // Default: format module.action (incoming.view, putaway.create, dll.)
+    return `${module}.${action}`;
 }
 
 const savePermissions = () => {
     if (!selectedRole.value) return
     
+    // TIDAK PERLU lagi filter yang allowed: true, karena di Controller sudah di-filter
     router.put(`/role-permission/${selectedRole.value.id}/permissions`, {
         permissions: currentPermissions.value
     }, {
         onSuccess: () => {
             closePermissionModal()
+            // Penting: Refresh halaman setelah sukses agar tabel utama terupdate
+            router.reload({ only: ['roles'] }); 
+        },
+        onError: (errors) => {
+             console.error("Gagal menyimpan permissions:", errors);
+             alert("Terjadi kesalahan saat menyimpan permissions. Cek console untuk detail.");
         }
     })
+}
+
+const getModuleCount = (permissions: string[]): number => {
+    const uniqueModules = new Set<string>()
+    props.allPermissions.forEach(moduleData => {
+        const modulePermissions = new Set(moduleData.permissions.map(p => p.name))
+        const hasPermissionInModule = permissions.some(p => modulePermissions.has(p))
+        if (hasPermissionInModule) {
+            uniqueModules.add(moduleData.module_key)
+        }
+    })
+    return uniqueModules.size
 }
 
 // Helper functions
@@ -455,3 +429,9 @@ const formatModuleName = (module: string): string => {
         .join(' ')
 }
 </script>
+
+<style scoped>
+.border-l-4 {
+    border-left-width: 4px;
+}
+</style>

@@ -227,7 +227,8 @@
 
                 <!-- FOH: Alasan Reservasi -->
                 <div v-if="selectedCategory === 'foh-rs'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Reservasi</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Reservasi <span
+                      class="text-red-500">*</span></label>
                   <textarea v-model="formData.alasanReservasi" rows="2"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
                     placeholder="Jelaskan alasan reservasi..."></textarea>
@@ -238,46 +239,54 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- FOH & RS: Departemen -->
                 <div v-if="selectedCategory === 'foh-rs'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Departemen <span
+                      class="text-red-500">*</span></label>
                   <select v-model="formData.departemen"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                     <option value="">Pilih Departemen</option>
                     <option value="Marketing">Marketing</option>
                     <option value="Produksi">Produksi</option>
+                    <option value="IT">IT</option>
+                    <option value="HRD">HRD</option>
                   </select>
                 </div>
 
                 <!-- Packaging & ADD: Nama Produk -->
                 <div v-if="selectedCategory === 'packaging' || selectedCategory === 'add'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk <span
+                      class="text-red-500">*</span></label>
                   <input v-model="formData.namaProduk" type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
 
                 <!-- Raw Material: Kode Produk -->
                 <div v-if="selectedCategory === 'raw-material'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Kode Produk</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Kode Produk <span
+                      class="text-red-500">*</span></label>
                   <input v-model="formData.kodeProduk" type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
 
                 <!-- Packaging & ADD: No Bets Filling -->
                 <div v-if="selectedCategory === 'packaging' || selectedCategory === 'add'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">No Bets Filling / Mixing</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">No Bets Filling / Mixing <span
+                      class="text-red-500">*</span></label>
                   <input v-model="formData.noBetsFilling" type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
 
                 <!-- Raw Material: No Bets -->
                 <div v-if="selectedCategory === 'raw-material'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">No Bets Ekstrak / Mixing</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">No Bets Ekstrak / Mixing <span
+                      class="text-red-500">*</span></label>
                   <input v-model="formData.noBets" type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
 
                 <!-- Raw Material: Besar Bets -->
                 <div v-if="selectedCategory === 'raw-material'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Besar Bets (Kg)</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Besar Bets (Kg) <span
+                      class="text-red-500">*</span></label>
                   <input v-model="formData.besarBets" type="number"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
@@ -568,157 +577,172 @@
           </div>
         </div>
       </div>
+      <!-- Modal Detail Request (TIDAK BERUBAH) -->
+      <div v-if="showDetailModal && selectedRequest"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+              <h3 class="text-xl font-bold text-gray-800">
+                Detail Reservasi: {{ selectedRequest.noReservasi }}
+              </h3>
+              <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 p-4 rounded-lg">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Kategori Request</p>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getCategoryClass(selectedRequest.type)">
+                  {{ getCategoryName(selectedRequest.type) }}
+                </span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Tanggal Permintaan</p>
+                <p class="font-medium text-gray-800">{{ formatDateTime(selectedRequest.tanggalPermintaan) }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-gray-600">Status</p>
+                <span :class="getStatusClass(selectedRequest.status)" class="px-3 py-1 text-xs font-semibold rounded-full">
+                  {{ selectedRequest.status }}
+                </span>
+              </div>
+
+              <template v-if="selectedRequest.type === 'foh-rs'">
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">Departemen</p>
+                  <p class="text-gray-800">{{ selectedRequest.departemen }}</p>
+                </div>
+                <div class="space-y-1 md:col-span-2">
+                  <p class="text-sm font-medium text-gray-600">Alasan Reservasi</p>
+                  <p class="text-gray-800">{{ selectedRequest.alasanReservasi || '-' }}</p>
+                </div>
+              </template>
+
+              <template v-else-if="selectedRequest.type === 'packaging' || selectedRequest.type === 'add'">
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">Nama Produk</p>
+                  <p class="text-gray-800">{{ selectedRequest.namaProduk }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">No Bets Filling/Mixing</p>
+                  <p class="text-gray-800">{{ selectedRequest.noBetsFilling }}</p>
+                </div>
+              </template>
+
+              <template v-else-if="selectedRequest.type === 'raw-material'">
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">Kode Produk</p>
+                  <p class="text-gray-800">{{ selectedRequest.kodeProduk }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">No Bets Ekstrak/Mixing</p>
+                  <p class="text-gray-800">{{ selectedRequest.noBets }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-gray-600">Besar Bets (Kg)</p>
+                  <p class="text-gray-800">{{ selectedRequest.besarBets }} Kg</p>
+                </div>
+              </template>
+            </div>
+
+            <h4 class="text-lg font-semibold text-gray-800 mb-4">Daftar Item yang Diminta</h4>
+
+            <div v-if="!selectedRequest.items || selectedRequest.items.length === 0"
+              class="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
+              Tidak ada detail item yang tercatat.
+            </div>
+
+            <div v-else class="overflow-x-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-16">No</th>
+                    <template v-if="selectedRequest.type === 'foh-rs'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Item</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Keterangan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">UoM</th>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'raw-material'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Bahan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Bahan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kebutuhan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kirim</th>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'packaging'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'add'">
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Alasan Tambahan</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
+                    </template>
+
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  <!-- Gunakan selectedRequest.items yang sudah dijamin camelCase oleh Controller -->
+                  <tr v-for="(item, index) in selectedRequest.items" :key="index">
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ index + 1 }}</td>
+                    <template v-if="selectedRequest.type === 'foh-rs'">
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeItem }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.keterangan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.qty }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.uom }}</td>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'packaging'">
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'raw-material'">
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeBahan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaBahan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKebutuhan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKirim }}</td>
+                    </template>
+                    <template v-else-if="selectedRequest.type === 'add'">
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.alasanPenambahan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
+                    </template>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+              <button @click="closeDetailModal"
+                class="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Modal Detail Request (TIDAK BERUBAH) -->
-    <div v-if="showDetailModal && selectedRequest"
+    <!-- Modal Konfirmasi (ganti alert/confirm) -->
+    <div v-if="showConfirmationModal"
       class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
       style="background-color: rgba(43, 51, 63, 0.67);">
-      <div class="bg-white rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <h3 class="text-xl font-bold text-gray-800">
-              Detail Reservasi: {{ selectedRequest.noReservasi }}
-            </h3>
-            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600 transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 p-4 rounded-lg">
-            <div class="space-y-1">
-              <p class="text-sm font-medium text-gray-600">Kategori Request</p>
-              <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getCategoryClass(selectedRequest.type)">
-                {{ getCategoryName(selectedRequest.type) }}
-              </span>
-            </div>
-            <div class="space-y-1">
-              <p class="text-sm font-medium text-gray-600">Tanggal Permintaan</p>
-              <p class="font-medium text-gray-800">{{ formatDateTime(selectedRequest.tanggalPermintaan) }}</p>
-            </div>
-            <div class="space-y-1">
-              <p class="text-sm font-medium text-gray-600">Status</p>
-              <span :class="getStatusClass(selectedRequest.status)" class="px-3 py-1 text-xs font-semibold rounded-full">
-                {{ selectedRequest.status }}
-              </span>
-            </div>
-
-            <template v-if="selectedRequest.type === 'foh-rs'">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">Departemen</p>
-                <p class="text-gray-800">{{ selectedRequest.departemen }}</p>
-              </div>
-              <div class="space-y-1 md:col-span-2">
-                <p class="text-sm font-medium text-gray-600">Alasan Reservasi</p>
-                <p class="text-gray-800">{{ selectedRequest.alasanReservasi || '-' }}</p>
-              </div>
-            </template>
-
-            <template v-else-if="selectedRequest.type === 'packaging' || selectedRequest.type === 'add'">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">Nama Produk</p>
-                <p class="text-gray-800">{{ selectedRequest.namaProduk }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">No Bets Filling/Mixing</p>
-                <p class="text-gray-800">{{ selectedRequest.noBetsFilling }}</p>
-              </div>
-            </template>
-
-            <template v-else-if="selectedRequest.type === 'raw-material'">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">Kode Produk</p>
-                <p class="text-gray-800">{{ selectedRequest.kodeProduk }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">No Bets Ekstrak/Mixing</p>
-                <p class="text-gray-800">{{ selectedRequest.noBets }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-600">Besar Bets (Kg)</p>
-                <p class="text-gray-800">{{ selectedRequest.besarBets }} Kg</p>
-              </div>
-            </template>
-          </div>
-
-          <h4 class="text-lg font-semibold text-gray-800 mb-4">Daftar Item yang Diminta</h4>
-
-          <div v-if="!selectedRequest.items || selectedRequest.items.length === 0"
-            class="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
-            Tidak ada detail item yang tercatat.
-          </div>
-
-          <div v-else class="overflow-x-auto border border-gray-200 rounded-lg">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-16">No</th>
-                  <template v-if="selectedRequest.type === 'foh-rs'">
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Item</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Keterangan</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Qty</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">UoM</th>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'raw-material'">
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Bahan</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Bahan</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kebutuhan</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kirim</th>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'packaging'">
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'add'">
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode PM</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Alasan Tambahan</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Permintaan</th>
-                  </template>
-
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200 bg-white">
-                <!-- Gunakan selectedRequest.items yang sudah dijamin camelCase oleh Controller -->
-                <tr v-for="(item, index) in selectedRequest.items" :key="index">
-                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ index + 1 }}</td>
-                  <template v-if="selectedRequest.type === 'foh-rs'">
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeItem }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.keterangan }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.qty }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.uom }}</td>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'packaging'">
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'raw-material'">
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeBahan }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaBahan }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKebutuhan }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKirim }}</td>
-                  </template>
-                  <template v-else-if="selectedRequest.type === 'add'">
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaMaterial }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodePM }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.alasanPenambahan }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahPermintaan }}</td>
-                  </template>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-            <button @click="closeDetailModal"
-              class="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
-              Tutup
-            </button>
-          </div>
+      <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Peringatan Input</h3>
+        <p class="text-sm text-gray-600 mb-6">{{ confirmationMessage }}</p>
+        <div class="flex justify-end space-x-3">
+          <button @click="showConfirmationModal = false"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
+            Oke
+          </button>
         </div>
       </div>
     </div>
@@ -738,6 +762,9 @@ const showFilterPanel = ref(false)
 const searchQuery = ref('')
 const showDetailModal = ref(false);
 const selectedRequest = ref(null);
+const showConfirmationModal = ref(false); // ** NEW: Confirmation Modal for non-alert **
+const confirmationMessage = ref('');
+
 
 // ** NEW STATE for Dynamic Search **
 const materialSuggestions = ref([]);
@@ -852,37 +879,58 @@ const hasStockExceededItems = computed(() => {
       qtyField = 'jumlahKebutuhan';
       break;
     default:
-      return true; // Jika kategori tidak dipilih, anggap tidak valid
+      return false; // Jika kategori tidak dipilih, anggap aman dari kelebihan stok
   }
 
   // Cek setiap item
   return formData.value.items.some(item => isQtyExceeded(item, qtyField));
 });
 
+// ** PERBAIKAN UTAMA DI FRONTEND: Memastikan semua field header wajib diisi **
 const isFormValid = computed(() => {
+  // 1. Cek Kategori, Tanggal, dan Item
   if (!selectedCategory.value || !formData.value.tanggalPermintaan || formData.value.items.length === 0) {
     return false
   }
 
-  // Cek apakah ada item yang melebihi stok
-  if (hasStockExceededItems.value) {
+  // 2. Cek semua item memiliki kode item yang dipilih/terisi (terlepas dari kuantitas)
+  const isItemCodeFilled = formData.value.items.every(item => {
+    switch (selectedCategory.value) {
+      case 'foh-rs':
+        return item.kodeItem && item.qty > 0;
+      case 'packaging':
+      case 'add':
+        return item.kodePM && item.jumlahPermintaan > 0;
+      case 'raw-material':
+        return item.kodeBahan && item.jumlahKebutuhan > 0;
+      default:
+        return false;
+    }
+  });
+
+  if (!isItemCodeFilled) {
     return false;
   }
 
-  // Cek validasi form header
+  // 3. Cek validasi form header spesifik
   switch (selectedCategory.value) {
     case 'foh-rs':
-      return formData.value.departemen && formData.value.alasanReservasi
+      // Memastikan departemen & alasanReservasi terisi (wajib)
+      return !!formData.value.departemen && !!formData.value.alasanReservasi
     case 'packaging':
-      return formData.value.namaProduk && formData.value.noBetsFilling
+      // Memastikan namaProduk & noBetsFilling terisi (wajib)
+      return !!formData.value.namaProduk && !!formData.value.noBetsFilling
     case 'raw-material':
-      return formData.value.kodeProduk && formData.value.noBets && formData.value.besarBets
+      // Memastikan kodeProduk, noBets, & besarBets terisi (wajib)
+      return !!formData.value.kodeProduk && !!formData.value.noBets && formData.value.besarBets > 0
     case 'add':
-      return formData.value.namaProduk && formData.value.noBetsFilling
+      // Memastikan namaProduk & noBetsFilling terisi (wajib)
+      return !!formData.value.namaProduk && !!formData.value.noBetsFilling
     default:
       return false
   }
 })
+// END PERBAIKAN FRONTEND
 
 // Filter computed properties
 const filteredRequests = computed(() => {
@@ -933,7 +981,7 @@ const activeFiltersCount = computed(() => {
   return count
 })
 
-// ** NEW DYNAMIC SEARCH METHODS **
+// ** DYNAMIC SEARCH METHODS (Tidak Berubah Signifikan) **
 
 const startSearch = (index, field) => {
   // Memberi tahu Vue baris mana yang sedang diisi
@@ -1033,7 +1081,7 @@ const getStatusClass = (status) => {
     'Picking': 'bg-yellow-100 text-yellow-700',
     'Done': 'bg-purple-100 text-purple-700'
   }
-  return classes[status] || 'bg-gray-100 text-gray-700'
+  return classes[status] || 'bg-yellow-100 text-yellow-700'
 }
 
 const getDisplayText = (request) => {
@@ -1149,14 +1197,16 @@ const removeItem = (index) => {
 const submitRequest = async () => {
 
   if (!isFormValid.value) {
-    console.error('Mohon lengkapi semua field yang diperlukan dan pastikan data item terisi dengan benar (termasuk validasi stok).');
+    confirmationMessage.value = 'Mohon lengkapi semua field yang diperlukan (termasuk Tanggal Permintaan, minimal satu Item, dan semua field header wajib) sebelum melanjutkan.';
+    showConfirmationModal.value = true;
     return;
   }
-  
+
   // Jika ada item yang melebihi stok, hentikan dan beri peringatan
   if (hasStockExceededItems.value) {
-      console.error('❌ Tidak dapat mengirim permintaan: Beberapa item melebihi stok yang tersedia.');
-      return;
+    confirmationMessage.value = 'Tidak dapat mengirim permintaan: Beberapa item melebihi stok yang tersedia. Harap perbaiki kuantitas permintaan.';
+    showConfirmationModal.value = true;
+    return;
   }
 
 
@@ -1184,15 +1234,15 @@ const submitRequest = async () => {
       // Tampilkan error dari backend (termasuk validasi stok)
       for (const field in errors) {
         if (Object.prototype.hasOwnProperty.call(errors, field)) {
-           // Handle error khusus dari backend (misalnya validasi stok)
-           if (field === 'stock_error' || field.startsWith('items')) {
-               errorMessage += `• ${errors[field].join(', ')}\n`;
-           } else {
-               errorMessage += `• ${errors[field][0]}\n`;
-           }
+          // Hanya ambil error pertama untuk setiap field untuk ringkasan
+          const errorMsg = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
+          errorMessage += `• ${errorMsg}\n`;
+
         }
       }
-      console.error(errorMessage);
+      // Tampilkan error di custom modal
+      confirmationMessage.value = errorMessage;
+      showConfirmationModal.value = true;
     }
   });
 }
@@ -1214,7 +1264,8 @@ const printForm = (request) => {
 
   if (!requestToPrint.items || !Array.isArray(requestToPrint.items)) {
     console.error("Tidak dapat mencetak: Data item tidak valid atau kosong.");
-    // Ganti alert/confirm dengan logging karena tidak diperbolehkan
+    confirmationMessage.value = "Tidak dapat mencetak: Data item tidak valid atau kosong.";
+    showConfirmationModal.value = true;
     return;
   }
 
@@ -1394,6 +1445,8 @@ const printForm = (request) => {
       break
     default:
       console.error("Tipe request tidak dikenal: ", requestToPrint.type);
+      confirmationMessage.value = `Tipe request tidak dikenal: ${requestToPrint.type}`;
+      showConfirmationModal.value = true;
       return; // Hentikan jika tipe tidak dikenal
   }
 
@@ -1453,16 +1506,6 @@ const printForm = (request) => {
     printWindow.print()
     printWindow.close()
   }, 500)
-}
-
-const approveRequest = (request) => {
-  console.log(`Menyetujui request ${request.noReservasi}. Implementasi logik API diperlukan di sini.`);
-  // Logik yang sebenarnya harus menggunakan Inertia.post atau axios.post ke endpoint API
-}
-
-const rejectRequest = (request) => {
-  console.log(`Menolak request ${request.noReservasi}. Implementasi logik API diperlukan di sini.`);
-  // Logik yang sebenarnya harus menggunakan Inertia.post atau axios.post ke endpoint API
 }
 
 // Lifecycle
