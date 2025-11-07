@@ -25,6 +25,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
+
+
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:incoming.view')
@@ -172,6 +174,9 @@ Route::middleware('auth')->group(function () {
                 // ->middleware('permission:putaway.execute')
                 ->name('scan');
         });
+
+        Route::post('/reservation/parse-materials', [ReservationController::class, 'parseMaterials'])
+            ->name('reservation.parse-materials');
             
         // API endpoints untuk PutAway
         Route::get('/putaway-transfer/qc-released', [PutawayTransferController::class, 'getQcReleasedMaterials'])

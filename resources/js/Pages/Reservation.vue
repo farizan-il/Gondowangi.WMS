@@ -120,6 +120,7 @@
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal
                     Permintaan</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No Bets Filling/Mixing</th>
                   <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Detail
                     Info</th>
                   <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status
@@ -144,6 +145,8 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{
                     formatDateTime(request.tanggalPermintaan) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">763473</td>
+
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ getDisplayText(request) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span :class="getStatusClass(request.status)"
@@ -291,6 +294,37 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
                 </div>
               </div>
+
+              <div v-if="selectedCategory === 'packaging'" class="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Import dari Production Order (PDF) 
+                  <span v-if="selectedCategory === 'raw-material'">(Hanya mengambil bahan dengan UoM Kg)</span>
+                  <span v-else-if="selectedCategory === 'packaging'">(Hanya mengambil bahan selain UoM Kg)</span>
+                </label>
+                
+                <div class="flex items-center gap-3">
+                  <input type="file" @change="handleFileUpload" accept=".pdf, .xlsx, .xls"
+                      class="block w-full text-sm text-gray-700
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-blue-500 file:text-white
+                          hover:file:bg-blue-600" />
+                  
+                  <button @click="uploadFileAndParse" :disabled="!uploadedFile"
+                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400">
+                      Proses Import
+                  </button>
+                  
+                  <button @click="debugFileParse" :disabled="!uploadedFile"
+                      class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400">
+                      DEBUG DD
+                  </button>
+              </div>
+                <p v-if="uploadStatus" class="mt-2 text-sm" :class="uploadStatus.type === 'error' ? 'text-red-600' : 'text-green-600'">
+                    {{ uploadStatus.message }}
+                </p>
+            </div>
 
               <!-- Items Table -->
               <div class="border-t border-gray-200 pt-6">
@@ -762,8 +796,10 @@ const showFilterPanel = ref(false)
 const searchQuery = ref('')
 const showDetailModal = ref(false);
 const selectedRequest = ref(null);
-const showConfirmationModal = ref(false); // ** NEW: Confirmation Modal for non-alert **
+const showConfirmationModal = ref(false);
 const confirmationMessage = ref('');
+const uploadedFile = ref(null); 
+const uploadStatus = ref(null);
 
 
 // ** NEW STATE for Dynamic Search **
@@ -804,6 +840,141 @@ const formData = ref({
   // Items array
   items: []
 })
+
+const handleFileUpload = (event) => {
+    // Hanya ambil file pertama dari input
+    const file = event.target.files ? event.target.files[0] : null;
+    uploadedFile.value = file;
+    uploadStatus.value = file ? { type: 'info', message: `File terpilih: ${file.name}` } : null;
+};
+
+const debugFileParse = async () => {
+    if (!uploadedFile.value) {
+        alert('Pilih file terlebih dahulu untuk debugging.');
+        return;
+    }
+
+    // Buat FormData seperti pada fungsi upload normal
+    const data = new FormData();
+    data.append('file', uploadedFile.value);
+
+    // Kirim file ke endpoint debugging di Controller
+    // Menggunakan fetch biasa dan window.open untuk mengirim request yang memicu dd()
+    
+    // Perlu cara yang lebih baik untuk mengirim FormData melalui POST dan membuka dd()
+    // Karena method ini kompleks, kita akan mengimplementasikan DD LANGSUNG di Controller, 
+    // tetapi menggunakan route yang berbeda. Kita butuh cara agar file-nya bisa dipost.
+    
+    // Solusi tercepat: Kita akan menggunakan teknik 'Inertia.visit' dengan method GET
+    // untuk memicu dd() saat file sudah diunggah.
+    
+    // Karena file besar, POST harus dilakukan. Kita akan pakai solusi di Controller saja.
+    
+    // --- Solusi Controller DD (Lihat Langkah 2) ---
+    alert("Tester debug ambil data di pdf, pukkkk lah");
+    
+    // Kita akan gunakan debug point #2 dan #3 di Controller.
+    // Lanjutkan ke Controller.
+};
+
+const uploadFileAndParse = async () => {
+    // 1. Cek File Terpilih
+    if (!uploadedFile.value) {
+        uploadStatus.value = { type: 'error', message: '❌ Harap pilih file PDF terlebih dahulu.' };
+        return;
+    }
+
+    // 2. Cek Kategori Yang Sesuai (Raw Material atau Packaging)
+    if (selectedCategory.value !== 'raw-material' && selectedCategory.value !== 'packaging') {
+        uploadStatus.value = { type: 'error', message: '❌ Mohon pilih kategori "Request Raw Material" atau "Request Packaging Material" di bagian atas form.' };
+        return;
+    }
+
+    // Persiapan sebelum kirim
+    formData.value.items = []; // Bersihkan tabel item lama
+    uploadStatus.value = { type: 'info', message: 'Sedang memproses file, mohon tunggu...' };
+
+    const data = new FormData();
+    
+    // 🔥 PERBAIKAN KRITIS: KIRIM FILE DAN REQUEST_TYPE
+    data.append('file', uploadedFile.value); // Mengirim file itu sendiri (Perbaikan terakhir)
+    data.append('request_type', selectedCategory.value); // Mengirim kategori yang dibutuhkan oleh validasi Controller (Perbaikan sebelumnya)
+
+    try {
+        // Kirim request ke endpoint parsing
+        const response = await axios.post(route('transaction.reservation.parse-materials'), data, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        // 1. Ambil data material yang berhasil diparsing
+        const materials = response.data.materials || [];
+        const notFoundMaterials = response.data.notFoundMaterials || [];
+
+        // Isi form data items
+        if (materials.length > 0) {
+            // Mapping items berdasarkan kategori yang dipilih
+            formData.value.items = materials.map(m => {
+                if (selectedCategory.value === 'raw-material') {
+                     return {
+                        kodeBahan: m.kodeBahan,
+                        namaBahan: m.namaBahan,
+                        jumlahKebutuhan: m.jumlahKebutuhan,
+                        jumlahKirim: null,
+                        satuan: m.satuan,
+                        stokAvailable: m.stokAvailable,
+                     }
+                } else if (selectedCategory.value === 'packaging') {
+                    return {
+                        kodePM: m.kodePM,
+                        namaMaterial: m.namaMaterial,
+                        jumlahPermintaan: m.jumlahPermintaan,
+                        satuan: m.satuan,
+                        stokAvailable: m.stokAvailable,
+                    }
+                }
+                return {}; // Default jika tidak ada
+            });
+            uploadStatus.value = { type: 'success', message: `✅ Berhasil mengimpor ${materials.length} material.` };
+        } else {
+            uploadStatus.value = { type: 'error', message: `❌ Tidak ada material yang ditemukan dalam dokumen untuk kategori ${selectedCategory.value}.` };
+        }
+
+        // Tampilkan peringatan jika ada material yang tidak ditemukan/stok kurang
+        if (notFoundMaterials.length > 0) {
+            // Gunakan message dari backend karena sudah berisi detail stok/not found
+            const list = notFoundMaterials.map(m => `• **${m.kode}** (${m.satuan}): ${m.message}`).join('\n');
+            confirmationMessage.value = `⚠️ Ditemukan masalah pada material berikut:\n\n${list}`;
+            showConfirmationModal.value = true;
+        }
+
+    } catch (error) {
+        console.error('Error saat parse file:', error);
+        
+        // Membaca pesan error dari backend
+        const statusText = error.response?.statusText || 'Kesalahan Server';
+        
+        // Coba ambil pesan dari body respons
+        let backendMessage = error.response?.data?.message || `Gagal memproses. (${statusText})`;
+        
+        // Ambil pesan validasi Laravel jika ada
+        if (error.response?.data?.errors) {
+             const errors = error.response.data.errors;
+             // Gabungkan semua pesan error validasi menjadi satu string
+             backendMessage = Object.values(errors).map(e => e[0]).join('; ');
+        }
+        
+        uploadStatus.value = { 
+            type: 'error', 
+            message: `❌ Gagal memproses (${statusText}): ${backendMessage}`
+        };
+    } finally {
+        // Reset file input setelah selesai
+        uploadedFile.value = null;
+        document.querySelector('input[type="file"]').value = '';
+    }
+};
 
 const props = defineProps({
   // Tambahkan prop untuk data awal
@@ -1130,6 +1301,8 @@ const closeModal = () => {
 }
 
 const resetForm = () => {
+  uploadedFile.value = null;
+  uploadStatus.value = null;
   selectedCategory.value = ''
   formData.value = {
     noReservasi: '',

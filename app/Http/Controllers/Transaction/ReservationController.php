@@ -14,30 +14,31 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Traits\ActivityLogger;
 use Illuminate\Validation\ValidationException;
+use Spatie\PdfToText\Pdf;
+use Illuminate\Support\Facades\Log;
+use Spatie\PdfToText\Exceptions\PdfNotFound; 
+use Spatie\PdfToText\Exceptions\CouldNotExtractText;
+use Smalot\PdfParser\Parser;
+
 
 class ReservationController extends Controller
 {
     use ActivityLogger;
 
-    // Helper function untuk mapping data item (detail) ke camelCase
     private function mapItemToCamelCase($item)
     {
         $itemArray = is_object($item) ? $item->toArray() : $item;
-        
-        // Pemetaan eksplisit untuk memastikan semua kunci item detail sesuai dengan front-end (camelCase)
         return [
             // FOH & RS
             'kodeItem' => $itemArray['kode_item'] ?? null,
             'keterangan' => $itemArray['keterangan'] ?? null,
             'qty' => $itemArray['qty'] ?? null,
             'uom' => $itemArray['uom'] ?? null,
-
             // Packaging / ADD
             'namaMaterial' => $itemArray['nama_material'] ?? null,
             'kodePM' => $itemArray['kode_pm'] ?? null,
             'jumlahPermintaan' => $itemArray['jumlah_permintaan'] ?? null,
             'alasanPenambahan' => $itemArray['alasan_penambahan'] ?? null,
-
             // Raw Material
             'kodeBahan' => $itemArray['kode_bahan'] ?? null,
             'namaBahan' => $itemArray['nama_bahan'] ?? null,
@@ -45,15 +46,10 @@ class ReservationController extends Controller
             'jumlahKirim' => $itemArray['jumlah_kirim'] ?? null,
         ];
     }
-
-    /**
-     * Helper function untuk mapping detail batch reservasi.
-     */
+    
     private function mapBatchDetailToCamelCase($res)
     {
         $resArray = is_object($res) ? $res->toArray() : $res;
-        
-        // Asumsi relasi material dimuat pada model Reservation
         $materialCode = $res->material->kode_item ?? 'N/A';
         $materialName = $res->material->nama_material ?? 'N/A';
 
@@ -70,14 +66,13 @@ class ReservationController extends Controller
             'reservationId' => $resArray['id'] ?? null,
         ];
     }
-
-    // Helper function untuk mapping data request (header) ke camelCase
+    
     private function mapReservationToCamelCase($req)
     {
         return [
             'id' => $req->id,
             'noReservasi' => $req->no_reservasi,
-            'type' => strtolower($req->request_type), // FIX UTAMA: paksa type menjadi huruf kecil
+            'type' => strtolower($req->request_type), 
             'tanggalPermintaan' => $req->tanggal_permintaan,
             'status' => $req->status,
             'departemen' => $req->departemen,
@@ -91,11 +86,293 @@ class ReservationController extends Controller
             'approvedBy' => $req->approved_by,
             'approvedAt' => $req->approved_at,
             'rejectionReason' => $req->rejection_reason,
-            // PENTING: Map array items (permintaan agregat)
             'items' => $req->items->map(fn($item) => $this->mapItemToCamelCase($item)),
-            // BARU: Map detail batch reservasi
             'batchDetails' => $req->reservations->map(fn($res) => $this->mapBatchDetailToCamelCase($res)),
         ];
+    }
+
+    // ===================================================================
+    // PARSING AND STOCK LOGIC
+    // ===================================================================
+
+    private function parseProductionOrderContent(string $pdfText)
+{
+    // --- Langkah 1: Isolasi Bagian Bill of Material ---
+    $startKeyword = "Products to Consume"; 
+    $startPos = strpos($pdfText, $startKeyword);
+    
+    if ($startPos === false) {
+        return []; // Jika header tidak ditemukan, kembalikan array kosong
+    }
+
+    // Ambil semua teks setelah keyword Bill of Material
+    $BoMSection = substr($pdfText, $startPos);
+    
+    $allMaterialsFromPdf = [];
+    
+    // 🔥 PERBAIKAN REGEX UTAMA: Menggunakan preg_match_all untuk mencari pola di seluruh blok teks.
+    // Pola: [KODE] [NAMA (non-greedy)] [KUANTITAS] [UOM]
+    // Modifier 's' (DOTALL) memungkinkan '.' mencocokkan newline, sangat penting untuk Smalot.
+    $globalPattern = '/(\d{5,6})\s+(.+?)\s+(\d+[,.]\d+)\s*(Kg|Rol|Pcs)/is'; 
+
+    // Mencoba mencocokkan semua pola sekaligus
+    if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
+        
+        foreach ($matches as $m) {
+            // $m[1] = Kode, $m[2] = Nama, $m[3] = Qty, $m[4] = UoM
+            $code = trim($m[1]);
+            $name = trim($m[2]);
+            $qty = (float) str_replace(',', '.', $m[3]); 
+            $uom = trim($m[4]);
+
+            $allMaterialsFromPdf[] = [
+                'code' => $code,
+                'name' => $name, 
+                'qty' => $qty,
+                'uom' => $uom
+            ];
+        }
+    }
+    
+    // --- Langkah 2: Agregasi Kuantitas (Tetap sama) ---
+    // Agregasi material yang memiliki kode dan UOM yang sama (jika muncul lebih dari sekali di PO)
+    $aggregatedMaterials = [];
+    foreach ($allMaterialsFromPdf as $material) {
+        $key = $material['code'] . '_' . $material['uom']; 
+        
+        if (!isset($aggregatedMaterials[$key])) {
+            $aggregatedMaterials[$key] = $material;
+        } else {
+            $aggregatedMaterials[$key]['qty'] += $material['qty'];
+        }
+    }
+
+    return array_values($aggregatedMaterials);
+}
+
+    /**
+     * Mencari material di master data dan menghitung stok tersedia.
+     */
+    private function getMaterialAndStock($materialCode, $materialCategory, $uom)
+    {
+        // Logika DB lookup harus ada di sini (tetap sama)
+        $material = Material::where('kode_item', $materialCode)
+                            ->where('kategori', $materialCategory)
+                            ->where('satuan', 'LIKE', $uom) 
+                            ->first();
+
+        if (!$material) {
+            $material = Material::where('kode_item', $materialCode)
+                                ->where('kategori', $materialCategory)
+                                ->first();
+            if (!$material) {
+                return null;
+            }
+        }
+
+        $totalAvailableStock = InventoryStock::where('material_id', $material->id)->sum('qty_available');
+
+        return [
+            'kodeBahan' => $material->kode_item,
+            'namaBahan' => $material->nama_material, 
+            'kodePM' => $material->kode_item,
+            'namaMaterial' => $material->nama_material,
+            'satuan' => $material->satuan, 
+            'stokAvailable' => (float) $totalAvailableStock,
+        ];
+    }
+    
+    // ===================================================================
+    // ENDPOINT: parseMaterials
+    // ===================================================================
+
+    public function parseMaterials(Request $request)
+    {
+        // 1. VALIDASI DATA FORM (Hanya PDF dan kategori harus terisi)
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf|max:10240', 
+                'request_type' => 'required|string|in:raw-material,packaging', 
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => '❌ Gagal Validasi: Periksa file atau tipe request.', 'errors' => $e->errors()], 422);
+        }
+
+        $file = $request->file('file');
+        $requestType = $request->input('request_type');
+        $allParsedMaterials = [];
+        
+        // Hapus: $pathToPdftotext (Karena tidak lagi menggunakan Spatie)
+
+        try {
+            // --- 2. FASE EKSEKUSI PURE PHP PARSER (SMALOT) ---
+            if ($file->extension() === 'pdf') {
+                
+                // 🔥 KODE SMALOT UNTUK MENGGANTIKAN SPATIE/pdftotext
+                $parser = new Parser();
+                $pdf = $parser->parseFile($file->getPathname());
+                $pdfText = $pdf->getText(); 
+                // ---------------------------------------------------
+                
+                // PARSING LOGIC
+                $allParsedMaterials = $this->parseProductionOrderContent($pdfText);
+                
+                if (empty($allParsedMaterials)) {
+                     throw new \Exception("Tidak ada material Raw/Packaging yang berhasil diekstrak. Cek Regex."); 
+                }
+            } else {
+                throw new \Exception("Tipe file selain PDF saat ini belum didukung untuk parsing otomatis.");
+            }
+            
+            // --- 3. FASE FILTERING DAN DB LOOKUP ---
+            $resultMaterials = [];
+            $notFoundMaterials = [];
+            $materialCategoryWMS = ($requestType === 'raw-material') ? 'Raw Material' : 'Packaging Material';
+
+            foreach ($allParsedMaterials as $parsedItem) {
+                // ... (Logika filtering, DB lookup, dan penentuan $resultMaterials / $notFoundMaterials) ...
+                
+                $materialCode = $parsedItem['code'] ?? null;
+                $materialName = $parsedItem['name'] ?? null;
+                $requestedQty = (float) ($parsedItem['qty'] ?? 0);
+                $uom = strtolower($parsedItem['uom'] ?? '');
+                
+                if (!$materialCode || $requestedQty <= 0) continue; 
+
+                $isRawMaterial = ($uom === 'kg');
+                if (($requestType === 'raw-material' && !$isRawMaterial) || ($requestType === 'packaging' && $isRawMaterial)) {
+                    continue; 
+                }
+
+                $materialData = $this->getMaterialAndStock($materialCode, $materialCategoryWMS, $uom);
+                
+                if ($materialData) {
+                    $item = $materialData;
+                    $item['satuan'] = $materialData['satuan']; 
+
+                    if ($requestType === 'raw-material') {
+                         $item['jumlahKebutuhan'] = $requestedQty;
+                         $item['jumlahKirim'] = null;
+                    } elseif ($requestType === 'packaging') {
+                         $item['jumlahPermintaan'] = $requestedQty;
+                    }
+                    
+                    $resultMaterials[] = $item; 
+
+                    if ($materialData['stokAvailable'] < $requestedQty) {
+                        $notFoundMaterials[] = [
+                            'kode' => $materialCode,
+                            'nama' => $materialData['namaBahan'] ?? $materialData['namaMaterial'],
+                            'satuan' => $item['satuan'],
+                            // 'message' => "Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})"
+                            'message' => "Material tersebut tidak tersedia di inventory WMS dalam jumlah yang cukup. Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})"
+                        ];
+                    }
+                } else {
+                    $notFoundMaterials[] = [
+                        'kode' => $materialCode,
+                        'nama' => $materialName,
+                        'satuan' => $uom,
+                        'message' => 'Tidak ditemukan di master inventory WMS.'
+                    ];
+                    
+                    $item = ['satuan' => $uom, 'stokAvailable' => 0];
+                    
+                    if ($requestType === 'raw-material') {
+                        $item['kodeBahan'] = $materialCode;
+                        $item['namaBahan'] = $materialName; 
+                        $item['jumlahKebutuhan'] = $requestedQty;
+                    } elseif ($requestType === 'packaging') {
+                        $item['kodePM'] = $materialCode;
+                        $item['namaMaterial'] = $materialName;
+                        $item['jumlahPermintaan'] = $requestedQty;
+                    }
+                    $resultMaterials[] = $item;
+                }
+            }
+
+            // 4. RESPON SUKSES
+            return response()->json([
+                'materials' => $resultMaterials,
+                'notFoundMaterials' => $notFoundMaterials,
+                'message' => '✅ File berhasil diproses.'
+            ]);
+
+        } 
+        catch (\Exception $e) {
+            // TANGKAP SEMUA ERROR RUNTIME LAINNYA
+            Log::error('RESERVATION PARSE FATAL ERROR:', [
+                'error_message' => $e->getMessage(),
+                'stack_trace' => $e->getTraceAsString(),
+                'request_type' => $requestType,
+            ]);
+            
+            // Kirim pesan error yang tertangkap di log ke frontend
+            return response()->json([
+                'message' => '❌ Gagal Eksekusi/Parsing: ' . $e->getMessage() 
+            ], 422); 
+        }
+    }
+
+    private function mockParseProductionOrder($file)
+    {
+        // Menggunakan data dari Bill Of Material yang ada di file Production Order
+        $rawMaterialsFromPdf = [
+            // Material dengan kode item dan quantity (Ambil dari Bill Of Material)
+            ['code' => '23431', 'name' => 'Sachet NATUR Shampoo Argan Oil 8 ML - R23', 'qty' => 0.8000, 'uom' => 'Rol'],
+            ['code' => '22671', 'name' => 'OPP Tape 2"x90 Yard Warna', 'qty' => 3.6000, 'uom' => 'Pcs'],
+            ['code' => '23207', 'name' => 'Masterbox Natur Hair Recovery 3 varian', 'qty' => 180.3005, 'uom' => 'Pcs'],
+            ['code' => '23431', 'name' => 'Sachet NATUR Shampoo Argan Oil 8 ML - R23', 'qty' => 7.2000, 'uom' => 'Rol'],
+            ['code' => '14338', 'name' => 'Argan Oil', 'qty' => 0.1500, 'uom' => 'Kg'],
+            ['code' => '14289', 'name' => 'Citric acid', 'qty' => 0.1800, 'uom' => 'Kg'],
+            ['code' => '14337', 'name' => 'Hair Fantasy', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '60026', 'name' => 'DI Alpha Toc Acetate', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '60016', 'name' => 'Olyvem', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '14100', 'name' => 'Allantoin', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '60022', 'name' => 'EDTA (Tetrasodium EDTA)', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '60003', 'name' => 'Garam', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '14034', 'name' => 'L-Glutamic Acid', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '14033', 'name' => 'L-Lysine', 'qty' => 0.3000, 'uom' => 'Kg'],
+            ['code' => '14190', 'name' => 'Celquad SC 240 C', 'qty' => 0.4500, 'uom' => 'Kg'],
+            ['code' => '14239', 'name' => 'Zinc Gluconate', 'qty' => 0.6000, 'uom' => 'Kg'],
+            ['code' => '60014', 'name' => 'Dex', 'qty' => 0.6000, 'uom' => 'Kg'],
+            ['code' => '14209', 'name' => 'Fresh Ocean', 'qty' => 1.2000, 'uom' => 'Kg'],
+            ['code' => '14237', 'name' => 'Salimid 115', 'qty' => 1.2000, 'uom' => 'Kg'],
+            ['code' => '14268', 'name' => 'Aloe Vera GE (ekstrak jadi)', 'qty' => 1.5000, 'uom' => 'Kg'],
+            ['code' => '14210', 'name' => 'Eliane', 'qty' => 1.5000, 'uom' => 'Kg'],
+            ['code' => '60017', 'name' => 'Phenoxetol', 'qty' => 1.8000, 'uom' => 'Kg'],
+            ['code' => '14226', 'name' => 'Xiameter PMX 1501', 'qty' => 3.0000, 'uom' => 'Kg'],
+            ['code' => '14335', 'name' => 'Amodimethicone', 'qty' => 4.5000, 'uom' => 'Kg'],
+            ['code' => '60002', 'name' => 'Cs 2000', 'qty' => 15.0000, 'uom' => 'Kg'],
+            ['code' => '60006', 'name' => 'Ms 1000', 'qty' => 52.5001, 'uom' => 'Kg'],
+            ['code' => '14291', 'name' => 'Ekstrak C - new', 'qty' => 167.5205, 'uom' => 'Kg'],
+            ['code' => '60012', 'name' => 'Tk 2000', 'qty' => 4.8000, 'uom' => 'Kg'],
+            ['code' => '60001', 'name' => 'Cs 1000', 'qty' => 12.0000, 'uom' => 'Kg'],
+            ['code' => '60011', 'name' => 'Tk 1000', 'qty' => 14.1000, 'uom' => 'Kg'],
+            
+            // Tambahkan satu material yang DIJAMIN TIDAK ADA di WMS (untuk tes notFound)
+            ['code' => 'XX9999', 'name' => 'Material Fiktif', 'qty' => 10.0000, 'uom' => 'Kg'],
+        ];
+
+        // Aggregasi kuantitas untuk material yang sama
+        $aggregatedMaterials = [];
+        foreach ($rawMaterialsFromPdf as $material) {
+            $key = $material['code'] . '_' . $material['uom'];
+            if (!isset($aggregatedMaterials[$key])) {
+                $aggregatedMaterials[$key] = $material;
+            } else {
+                $aggregatedMaterials[$key]['qty'] += $material['qty'];
+            }
+        }
+
+        // Filter hanya Raw Material (asumsi PM memiliki UoM Pcs/Rol, RM memiliki UoM Kg)
+        // Dalam implementasi nyata, lakukan filter berdasarkan master data.
+        $filteredRawMaterials = array_filter(array_values($aggregatedMaterials), function($material) {
+            // Asumsi: Raw Material memiliki UoM Kg
+            return strtolower($material['uom']) === 'kg'; 
+        });
+        
+        return $filteredRawMaterials;
     }
     
     public function index()
@@ -464,26 +741,5 @@ class ReservationController extends Controller
                 // ** PERBAIKAN PENTING: Masukkan pesan detail ke withErrors agar terbaca oleh Inertia/Vue error handling **
                 ->withErrors(['submit' => $errorMessage]); 
         }
-    }
-
-    public function create()
-    {
-        //
-    }
-    public function show(string $id)
-    {
-        //
-    }
-    public function edit(string $id)
-    {
-        //
-    }
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-    public function destroy(string $id)
-    {
-        //
     }
 }
