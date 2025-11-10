@@ -27,6 +27,9 @@ class IncomingGoodsItem extends Model
         'label_coa_tidak_sesuai',
         'pabrik_pembuat',
         'status_qc',
+        'is_halal',
+        'is_non_halal',
+        'bin_target',
         'qr_code',
         'keterangan',
     ];
@@ -53,5 +56,11 @@ class IncomingGoodsItem extends Model
     public function material()
     {
         return $this->belongsTo(Material::class);
+    }
+
+    public function qcChecklist()
+    {
+        // Relasi ke tabel QCChecklist
+        return $this->hasOne(QCChecklist::class, 'incoming_item_id');
     }
 }

@@ -106,9 +106,9 @@ class GoodsReceiptController extends Controller
 
     public function store(Request $request)
     {
+        // dd($request->all());
         $validated = $request->validate([
             'noPo' => 'required|string|max:255',
-            // 'noPo' => 'required|exists:purchase_orders,id',
             'noSuratJalan' => 'required|string|max:255',
             'supplier' => 'required|exists:suppliers,id',
             'noKendaraan' => 'required|string|max:50',
@@ -119,8 +119,8 @@ class GoodsReceiptController extends Controller
             'items.*.kodeItem' => 'required|exists:materials,id',
             'items.*.batchLot' => 'required|string|max:255',
             'items.*.expDate' => 'nullable|date',
-            'items.*.qtyWadah' => 'required|numeric|min:0',
-            'items.*.qtyUnit' => 'required|numeric|min:0',
+            'items.*.qtyWadah' => 'required|numeric|min:1',
+            'items.*.qtyUnit' => 'required|numeric|min:1',
             'items.*.binTarget' => 'required|string|max:255',
             'items.*.isHalal' => 'nullable|boolean',
             'items.*.isNonHalal' => 'nullable|boolean',
@@ -160,13 +160,16 @@ class GoodsReceiptController extends Controller
             // Create incoming items
             foreach ($validated['items'] as $itemData) {
                 $material = Material::find($itemData['kodeItem']);
+
+                // HITUNG TOTAL QTY DARI QTY_WADAH * QTY_UNIT
+                $totalQtyReceived = (float) $itemData['qtyWadah'] * (float) $itemData['qtyUnit'];
                 
                 // Generate QR code
                 $qrCode = $this->generateQRCode(
                     $incomingNumber,
                     $material->kode_item,
                     $itemData['batchLot'],
-                    $itemData['qtyUnit'],
+                    $totalQtyReceived, // Kirim TOTAL QTY ke QR Code
                     $itemData['expDate'] ?? ''
                 );
 
@@ -199,11 +202,11 @@ class GoodsReceiptController extends Controller
 
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [
-                    'description' => "Material {$material->nama_material} diterima.",
+                    'description' => "Material {$material->nama_material} diterima. Wadah: {$itemData['qtyWadah']}, Unit/Wadah: {$itemData['qtyUnit']}",
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
-                    'qty_after' => $itemData['qtyUnit'],
+                    'qty_after' => $totalQtyReceived, // Log Total Qty
                     'reference_document' => $incoming->no_surat_jalan,
                 ]);
             }

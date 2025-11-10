@@ -26,19 +26,25 @@ class QualityControlController extends Controller
     use ActivityLogger;
     public function index()
     {
-        // Get items that need QC (status_qc = 'To QC')
+        // Get items that need QC or have completed QC
         $itemsToQC = IncomingGoodsItem::with([
             'incomingGood',
             'incomingGood.purchaseOrder',
             'incomingGood.supplier',
-            'material'
+            'material',
+            // PENTING: Memuat relasi QC Checklist dan Detailnya
+            'qcChecklist', 
+            'qcChecklist.qcChecklistDetail' 
         ])
-        ->where('status_qc', 'To QC')
-        ->orWhere('status_qc', 'PASS')
-        ->orWhere('status_qc', 'REJECT')
+        ->whereIn('status_qc', ['To QC', 'PASS', 'REJECT']) // Menggunakan whereIn lebih baik
         ->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($item) {
+            // Ambil catatan QC, jika ada
+            $catatanQc = $item->qcChecklist && $item->qcChecklist->qcChecklistDetail
+                        ? $item->qcChecklist->qcChecklistDetail->catatan_qc 
+                        : null; // <-- Variabel baru untuk catatan QC
+
             return [
                 'id' => $item->id,
                 'shipmentNumber' => $item->incomingGood->incoming_number,
@@ -57,6 +63,8 @@ class QualityControlController extends Controller
                 'kategori' => $item->incomingGood->kategori,
                 'qrCode' => $item->qr_code,
                 'tanggalTerima' => $item->incomingGood->tanggal_terima ?? now()->toDateTimeString(),
+                // PENTING: Tambahkan catatan QC ke array data yang dikirim ke View
+                'catatanQC' => $catatanQc,
             ];
         });
 

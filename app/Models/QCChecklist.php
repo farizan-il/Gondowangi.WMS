@@ -61,9 +61,9 @@ class QCChecklist extends Model
         return $this->belongsTo(User::class, 'qc_by');
     }
 
-    public function detail()
+    public function qcChecklistDetail()
     {
-        return $this->hasOne(QCChecklistDetail::class);
+        return $this->hasOne(QCChecklistDetail::class, 'qc_checklist_id');
     }
 
     public function photos()
