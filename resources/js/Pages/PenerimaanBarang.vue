@@ -55,9 +55,8 @@
                     <button @click="printFinanceSlip(shipment)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">Cetak
                       Finance</button>
-                    <button @click="showQRModal(shipment)" :disabled="shipment.status === 'Selesai'"
-                      :class="shipment.status === 'Selesai' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'"
-                      class="px-2 py-1 rounded text-xs">
+                    <button @click="showQRModal(shipment)" 
+                      class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs">
                       Cetak Label QR
                     </button>
                   </div>
@@ -236,9 +235,8 @@
                 class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
                 Cetak Finance
               </button>
-              <button @click="showQRModal(selectedShipment)" :disabled="!isPrintQREnabled"
-                :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
-                class="px-4 py-2 text-white rounded-md">
+              <button @click="showQRModal(selectedShipment)" 
+                class="bg-gray-400  px-4 py-2 text-white rounded-md">
                 Cetak Label QR
               </button>
             </div>
@@ -590,9 +588,8 @@
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
                             Download QR
                           </button>
-                          <button @click="printSingleQR(item)" :disabled="!isPrintQREnabled"
-                            :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
-                            class="text-white px-3 py-1 rounded text-sm">
+                          <button @click="printSingleQR(item)"
+                            class="bg-gray-400  text-white px-3 py-1 rounded text-sm">
                             Cetak QR
                           </button>
                         </div>
@@ -621,9 +618,8 @@
                   Tutup
                 </button>
 
-                <button @click="printAllQR" :disabled="!isPrintQREnabled"
-                  :class="isPrintQREnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
-                  class="px-4 py-2 text-white rounded-md">
+                <button @click="printAllQR" 
+                  class="bg-gray-400  px-4 py-2 text-white rounded-md">
                   Cetak Semua QR
                 </button>
               </div>
@@ -943,17 +939,6 @@ const formatDate = (dateString) => {
     minute: '2-digit'
   })
 }
-
-const isPrintQREnabled = computed(() => {
-  // Tombol Cetak QR (Karantina) hanya aktif jika shipment belum Selesai.
-  // Status 'Selesai' berarti QC sudah tuntas dan label Karantina tidak relevan lagi.
-  if (selectedShipment.value) {
-    return selectedShipment.value.status !== 'Selesai';
-  }
-  // Jika modal tidak terbuka, defaultnya adalah false (atau true jika merujuk ke tabel)
-  // Untuk konteks modal, kita cek status selectedShipment.
-  return false; // Jika tidak ada shipment yang dipilih
-});
 
 const formatDateOnly = (dateString) => {
   if (!dateString) return '-';

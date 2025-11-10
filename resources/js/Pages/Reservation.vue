@@ -316,10 +316,10 @@
                       Proses Import
                   </button>
                   
-                  <button @click="debugFileParse" :disabled="!uploadedFile"
+                  <!-- <button @click="debugFileParse" :disabled="!uploadedFile"
                       class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400">
                       DEBUG DD
-                  </button>
+                  </button> -->
               </div>
                 <p v-if="uploadStatus" class="mt-2 text-sm" :class="uploadStatus.type === 'error' ? 'text-red-600' : 'text-green-600'">
                     {{ uploadStatus.message }}
