@@ -78,4 +78,9 @@ class InventoryStock extends Model
             ->whereColumn('batch_lot', 'batch_lot')
             ->orderByDesc('movement_date');
     }
+
+    public function incomingGood(): BelongsTo 
+    {
+        return $this->belongsTo(IncomingGood::class, 'gr_id');
+    }
 }

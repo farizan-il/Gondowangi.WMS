@@ -30,10 +30,9 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item (Kode &
                   Nama)</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Received
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status QC
-                </th>
+                <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Datang</th> -->
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Diambil</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status QC</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
@@ -45,12 +44,18 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.noSuratJalan }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.supplier }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 text-sm text-gray-900">
                   <div class="font-medium">{{ item.kodeItem }}</div>
                   <div class="text-xs text-gray-500">{{ item.namaMaterial }}</div>
                 </td>
+                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ formatInteger(item.qtyDatangTotal) }} {{ item.uom }} 
+                </td> -->
+
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ formatInteger(item.qtyReceived) }} {{ item.uom }}
+                  <span class="font-bold text-blue-700">
+                    {{ formatInteger(getDisplayQtyReceived(item)) }} {{ item.uom }}
+                  </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span :class="getQCStatusClass(item.statusQC)"
@@ -65,10 +70,11 @@
                       Periksa QC
                     </button>
 
-                    <button v-if="item.statusQC === 'PASS'" @click="printGRSlip(item)"
+                    <!-- <button v-if="item.statusQC === 'PASS'" @click="printGRSlip(item)"
                       class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
                       Cetak GR Slip
-                    </button>
+                    </button> -->
+
                     <button v-if="item.statusQC === 'PASS'" @click="printReleaseQRLabel(item)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
                       Cetak Label QR (RELEASED)
@@ -78,11 +84,12 @@
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
                       Cetak Slip Return
                     </button>
-                    
+
                     <button v-if="item.statusQC === 'REJECT'" @click="printRejectQRLabel(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
                       Cetak Label QR (REJECT)
                     </button>
+
                   </div>
                 </td>
               </tr>
@@ -144,7 +151,8 @@
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Quantity Received</label>
-                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ formatInteger(selectedItem?.qtyReceived) }} {{ selectedItem?.uom }}</div>
+                  <div class="mt-1 text-sm text-gray-900 font-medium">{{ formatInteger(selectedItem?.qtyReceived) }}
+                    {{ selectedItem?.uom }}</div>
                 </div>
 
                 <div>
@@ -272,30 +280,18 @@
 
             <!-- Form Quantity Info -->
             <div class="border-t border-gray-200 pt-6 mb-6">
-              <h4 class="text-md font-medium text-gray-900 mb-4">Informasi Quantity</h4>
+              <h4 class="text-md font-medium text-gray-900 mb-4">Pengambilan Sampel QC</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Box Utuh</label>
-                  <input v-model="qcForm.jumlahBoxUtuh" type="number" @input="calculateTotal"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                </div>
 
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Qty Box Utuh</label>
-                  <input v-model="qcForm.qtyBoxUtuh" type="number" @input="calculateTotal"
+                <div class="col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Qty Sampel Diambil ({{ qcForm.uom }}) *
+                  </label>
+                  <input v-model="qcForm.qtySample" type="number" min="0" :max="qcForm.totalIncoming"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Box Tidak Utuh</label>
-                  <input v-model="qcForm.jumlahBoxTidakUtuh" type="number" @input="calculateTotal"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Qty Box Tidak Utuh</label>
-                  <input v-model="qcForm.qtyBoxTidakUtuh" type="number" @input="calculateTotal"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+                  <p class="text-xs text-red-500 mt-1" v-if="qcForm.qtySample > qcForm.totalIncoming">
+                    Qty Sampel tidak boleh melebihi Total Incoming ({{ qcForm.totalIncoming }} {{ qcForm.uom }})
+                  </p>
                 </div>
 
                 <div>
@@ -514,10 +510,7 @@ const qcForm = ref({
   reference: '',
   supplier: '',
   kategori: '',
-  jumlahBoxUtuh: '',
-  qtyBoxUtuh: '',
-  jumlahBoxTidakUtuh: 0,
-  qtyBoxTidakUtuh: 0,
+  qtySample: 0,
   totalIncoming: '',
   uom: '',
   noKendaraan: '',
@@ -530,18 +523,30 @@ const qcForm = ref({
 
 // Computed
 const isQCFormValid = computed(() => {
+  // Validasi QTY Sample harus diisi dan tidak melebihi total incoming
+  const qtySample = parseFloat(qcForm.value.qtySample) || 0;
+  const totalIncoming = parseFloat(qcForm.value.totalIncoming) || 0;
+
   return qcForm.value.hasilQC &&
     qcForm.value.kategori &&
-    qcForm.value.jumlahBoxUtuh !== '' &&
-    qcForm.value.qtyBoxUtuh !== ''
+    (qtySample >= 0 && qtySample <= totalIncoming); // Qty Sample harus valid
 })
 
 const formatInteger = (value: number | string | null | undefined): number | string => {
-    if (value === null || value === undefined || value === '') {
-        return '';
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  // Mengubah ke float lalu membulatkan ke integer terdekat
+  return Math.round(parseFloat(value as string));
+}
+
+const getDisplayQtyReceived = (item: any): number => {
+    // Jika status masih "To QC", Qty Diambil (Sample) seharusnya 0
+    if (item.statusQC === 'To QC') {
+        return 0;
     }
-    // Mengubah ke float lalu membulatkan ke integer terdekat
-    return Math.round(parseFloat(value as string));
+    // Jika sudah PASS/REJECT, tampilkan Qty Sample yang sudah diambil (data dari backend)
+    return item.qcSampleQty ?? 0;
 }
 
 const scannerStatusClass = computed(() => {
@@ -551,28 +556,28 @@ const scannerStatusClass = computed(() => {
 })
 
 const generateQRDataURL = async (qrContent: string): Promise<string> => {
-  try {
-    const url = await QRCode.toDataURL(qrContent, {
-      width: 150, // Sesuaikan ukuran cetak
-      margin: 1,
-      errorCorrectionLevel: 'M',
-    });
-    return url;
-  } catch (err) {
-    console.error("Gagal generate QR Data URL:", err);
-    return ""; // Mengembalikan string kosong jika gagal
-  }
+  try {
+    const url = await QRCode.toDataURL(qrContent, {
+      width: 150, // Sesuaikan ukuran cetak
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+    return url;
+  } catch (err) {
+    console.error("Gagal generate QR Data URL:", err);
+    return ""; // Mengembalikan string kosong jika gagal
+  }
 };
 
 const formatDateOnlyPrint = (dateString: string | Date | null) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  // Format menjadi D/M/YYYY (cth: 1/2/2025)
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric'
-  }).replace(/\./g, '/'); // Ganti titik menjadi slash jika lokal menggunakan titik
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  // Format menjadi D/M/YYYY (cth: 1/2/2025)
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric'
+  }).replace(/\./g, '/'); // Ganti titik menjadi slash jika lokal menggunakan titik
 }
 
 const isProcessing = ref(false);
@@ -614,10 +619,7 @@ const openQCModal = () => {
     reference: '',
     supplier: selectedItem.value.supplier,
     kategori: selectedItem.value.kategori,
-    jumlahBoxUtuh: '',
-    qtyBoxUtuh: '',
-    jumlahBoxTidakUtuh: 0,
-    qtyBoxTidakUtuh: 0,
+    qtySample: 0,
     totalIncoming: Math.floor(selectedItem.value.qtyReceived),
     uom: selectedItem.value.uom,
     noKendaraan: selectedItem.value.noKendaraan,
@@ -631,6 +633,7 @@ const openQCModal = () => {
   showDetailModal.value = false
   showQCModal.value = true
 }
+
 
 const closeQCModal = () => {
   showQCModal.value = false
@@ -655,10 +658,7 @@ const resetQCForm = () => {
     reference: '',
     supplier: '',
     kategori: '',
-    jumlahBoxUtuh: '',
-    qtyBoxUtuh: '',
-    jumlahBoxTidakUtuh: 0,
-    qtyBoxTidakUtuh: 0,
+    qtySample: 0,
     totalIncoming: '',
     uom: '',
     noKendaraan: '',
@@ -683,25 +683,15 @@ const handlePhotoUpload = (event) => {
 
 const submitQC = () => {
   if (!isQCFormValid.value) {
-    alert('Mohon lengkapi semua field yang diperlukan')
+    alert('Mohon lengkapi semua field yang diperlukan dengan benar')
     return
   }
-
-  // Debug: Log data sebelum dikirim
-  console.log('Submitting QC with data:', {
-    incoming_item_id: qcForm.value.incoming_item_id,
-    kategori: qcForm.value.kategori,
-    hasil_qc: qcForm.value.hasilQC
-  })
 
   const formData = new FormData()
   formData.append('incoming_item_id', qcForm.value.incoming_item_id)
   formData.append('reference', qcForm.value.reference || '')
   formData.append('kategori', qcForm.value.kategori)
-  formData.append('jumlah_box_utuh', qcForm.value.jumlahBoxUtuh)
-  formData.append('qty_box_utuh', qcForm.value.qtyBoxUtuh)
-  formData.append('jumlah_box_tidak_utuh', qcForm.value.jumlahBoxTidakUtuh || 0)
-  formData.append('qty_box_tidak_utuh', qcForm.value.qtyBoxTidakUtuh || 0)
+  formData.append('qty_sample', qcForm.value.qtySample || 0)
   formData.append('defect_count', qcForm.value.defectCount || 0)
   formData.append('catatan_qc', qcForm.value.catatanQC || '')
   formData.append('hasil_qc', qcForm.value.hasilQC)
@@ -1313,12 +1303,12 @@ const printGRSlip = (item) => {
 // START: Fungsi yang Diperbarui dan Ditambahkan
 
 const printReturnSlip = (item) => {
-    // Memastikan item.catatanQC digunakan, jika tidak ada, tampilkan pesan default.
-    const catatanReject = item.catatanQC || 'Tidak ada catatan reject spesifik yang tersedia.';
-    
-    const printWindow = window.open('', '_blank')
+  // Memastikan item.catatanQC digunakan, jika tidak ada, tampilkan pesan default.
+  const catatanReject = item.catatanQC || 'Tidak ada catatan reject spesifik yang tersedia.';
 
-    printWindow.document.write(`
+  const printWindow = window.open('', '_blank')
+
+  printWindow.document.write(`
         <html>
         <head>
             <title>Return Slip - ${item.kodeItem}</title>
@@ -1382,29 +1372,29 @@ const printReturnSlip = (item) => {
         </html>
     `)
 
-    printWindow.document.close()
-    printWindow.focus()
-    setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
 }
 
 const generateLabelHTML = (isRejected: boolean, item: any, qrDataURL: string) => {
-    // Menggunakan data yang sudah disiapkan atau default dari contoh Anda
-    const noLot = item.noLot || item.batchLot || 'BATCH09024';
-    const expDatePrint = formatDateOnlyPrint(item.expDate || '5/11/2025');
-    const tanggalTerimaPrint = formatDateOnlyPrint(item.tanggalTerima || item.incomingGood?.tanggal_terima || '3/11/2025');
-    
-    const jmlBarangDisplay = `${item.qtyReceived || '1000.00'} ${item.uom || 'PCS'}`; 
-    const wadahInfo = item.wadahInfo || 'Qty Box & Isi per Box'; 
-    const itemCodeAndName = `[${item.kodeItem || '20121'}] ${item.namaMaterial || 'Botol PSC TTO 140 ml'}`; 
-    const createdBy = usePage().props.auth?.user?.name || 'Logistik';
-    
-    // Penentuan Status dan Warna
-    const statusText = isRejected ? 'R E J E C T' : 'R E L E A S E D';
-    const borderColor = isRejected ? 'red' : 'green';
-    const textColor = isRejected ? 'red' : 'green';
-    const statusBgColor = isRejected ? '#ffe6e6' : 'white'; 
-    
-    return `
+  // Menggunakan data yang sudah disiapkan atau default dari contoh Anda
+  const noLot = item.noLot || item.batchLot || 'BATCH09024';
+  const expDatePrint = formatDateOnlyPrint(item.expDate || '5/11/2025');
+  const tanggalTerimaPrint = formatDateOnlyPrint(item.tanggalTerima || item.incomingGood?.tanggal_terima || '3/11/2025');
+
+  const jmlBarangDisplay = `${item.qtyReceived || '1000.00'} ${item.uom || 'PCS'}`;
+  const wadahInfo = item.wadahInfo || 'Qty Box & Isi per Box';
+  const itemCodeAndName = `[${item.kodeItem || '20121'}] ${item.namaMaterial || 'Botol PSC TTO 140 ml'}`;
+  const createdBy = usePage().props.auth?.user?.name || 'Logistik';
+
+  // Penentuan Status dan Warna
+  const statusText = isRejected ? 'R E J E C T' : 'R E L E A S E D';
+  const borderColor = isRejected ? 'red' : 'green';
+  const textColor = isRejected ? 'red' : 'green';
+  const statusBgColor = isRejected ? '#ffe6e6' : 'white';
+
+  return `
         <html>
         <head>
             <title>Label ${statusText} - ${item.kodeItem}</title>
@@ -1571,38 +1561,38 @@ const generateLabelHTML = (isRejected: boolean, item: any, qrDataURL: string) =>
 
 // Fungsi yang dipanggil oleh tombol "Cetak Label QR (RELEASED)"
 const printReleaseQRLabel = async (item) => {
-    const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
-    const qrDataURL = await generateQRDataURL(qrContent);
+  const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
+  const qrDataURL = await generateQRDataURL(qrContent);
 
-    if (!qrDataURL) {
-        alert("Gagal membuat QR Code untuk dicetak.");
-        return;
-    }
+  if (!qrDataURL) {
+    alert("Gagal membuat QR Code untuk dicetak.");
+    return;
+  }
 
-    const htmlContent = generateLabelHTML(false, item, qrDataURL); 
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
+  const htmlContent = generateLabelHTML(false, item, qrDataURL);
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
 };
 
 // Fungsi yang dipanggil oleh tombol "Cetak Label QR (REJECT)"
 const printRejectQRLabel = async (item) => {
-    const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|REJECT|${item.qtyReceived}|${item.expDate}`;
-    const qrDataURL = await generateQRDataURL(qrContent);
+  const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|REJECT|${item.qtyReceived}|${item.expDate}`;
+  const qrDataURL = await generateQRDataURL(qrContent);
 
-    if (!qrDataURL) {
-        alert("Gagal membuat QR Code untuk dicetak.");
-        return;
-    }
+  if (!qrDataURL) {
+    alert("Gagal membuat QR Code untuk dicetak.");
+    return;
+  }
 
-    const htmlContent = generateLabelHTML(true, item, qrDataURL); 
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
+  const htmlContent = generateLabelHTML(true, item, qrDataURL);
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
 };
 
 // Mengganti nama fungsi lama (printQRLabel)

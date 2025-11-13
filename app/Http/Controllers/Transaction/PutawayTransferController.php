@@ -16,7 +16,6 @@ use App\Traits\ActivityLogger;
 class PutawayTransferController extends Controller
 {
     use ActivityLogger;
-    
     public function index()
     {
         $transferOrders = TransferOrder::with([
@@ -45,6 +44,7 @@ class PutawayTransferController extends Controller
                         'id' => $item->id,
                         'itemCode' => $item->material?->kode_item ?? 'N/A',
                         'materialName' => $item->material?->nama_material ?? 'N/A',
+                        'batchLot' => $item->batch_lot,
                         'sourceBin' => $item->sourceBin?->bin_code ?? 'N/A',
                         'destBin' => $item->destinationBin?->bin_code ?? 'N/A',
                         'qty' => $item->qty_planned,

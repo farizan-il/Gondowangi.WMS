@@ -13,10 +13,11 @@ class QCChecklistDetail extends Model
 
     protected $fillable = [
         'qc_checklist_id',
-        'jumlah_box_utuh',
-        'qty_box_utuh',
-        'jumlah_box_tidak_utuh',
-        'qty_box_tidak_utuh',
+        // 'jumlah_box_utuh',
+        // 'qty_box_utuh',
+        // 'jumlah_box_tidak_utuh',
+        // 'qty_box_tidak_utuh',
+        'qty_sample',
         'total_incoming',
         'uom',
         'defect_count',
@@ -27,8 +28,7 @@ class QCChecklistDetail extends Model
     ];
 
     protected $casts = [
-        'qty_box_utuh' => 'decimal:2',
-        'qty_box_tidak_utuh' => 'decimal:2',
+        'qty_sample' => 'decimal:2',
         'total_incoming' => 'decimal:2',
         'defect_count' => 'integer',
         'qc_date' => 'datetime',

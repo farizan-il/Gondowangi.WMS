@@ -247,9 +247,9 @@ class ReservationController extends Controller
                 $materialData = $this->getMaterialAndStock($materialCode, $materialCategoryWMS, $uom);
                 
                 if ($materialData) {
-                    $item = $materialData;
-                    $item['satuan'] = $materialData['satuan']; 
+                    // KODE DITEMUKAN DI MASTER
 
+                    $item = $materialData;
                     if ($requestType === 'raw-material') {
                          $item['jumlahKebutuhan'] = $requestedQty;
                          $item['jumlahKirim'] = null;
@@ -257,17 +257,20 @@ class ReservationController extends Controller
                          $item['jumlahPermintaan'] = $requestedQty;
                     }
                     
-                    $resultMaterials[] = $item; 
-
+                    // Cek ketersediaan stok
                     if ($materialData['stokAvailable'] < $requestedQty) {
                         $notFoundMaterials[] = [
                             'kode' => $materialCode,
                             'nama' => $materialData['namaBahan'] ?? $materialData['namaMaterial'],
                             'satuan' => $item['satuan'],
-                            // 'message' => "Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})"
-                            'message' => "Material tersebut tidak tersedia di inventory WMS dalam jumlah yang cukup. Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})"
+                            'message' => "Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})",
                         ];
+                        // Karena stok kurang, kita tidak akan memasukkannya ke $resultMaterials.
+                        continue;
                     }
+                    
+                    $resultMaterials[] = $item; 
+                    
                 } else {
                     $notFoundMaterials[] = [
                         'kode' => $materialCode,

@@ -13,7 +13,6 @@
         </button>
       </div>
 
-      <!-- Tabel Daftar Penerimaan -->
       <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
@@ -55,8 +54,8 @@
                     <button @click="printFinanceSlip(shipment)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">Cetak
                       Finance</button>
-                    <button @click="showQRModal(shipment)" 
-                      class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs">
+                    <button @click="showQRModal(shipment)"
+                      class="bg-blue-600 text-white hover:bg-blue-700 px-2 py-1 rounded text-xs">
                       Cetak Label QR
                     </button>
                   </div>
@@ -67,13 +66,11 @@
         </div>
       </div>
 
-      <!-- Modal Detail Penerimaan -->
       <div v-if="showDetailModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
         style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div class="p-6">
-            <!-- Header Modal -->
             <div class="flex justify-between items-center mb-6">
               <h3 class="text-lg font-semibold text-gray-900">Detail Penerimaan - {{ selectedShipment?.noSuratJalan }}
               </h3>
@@ -84,7 +81,6 @@
               </button>
             </div>
 
-            <!-- Info Shipment -->
             <div class="bg-gray-50 rounded-lg p-4 mb-6">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 <div>
@@ -125,7 +121,6 @@
               </div>
             </div>
 
-            <!-- Detail Items -->
             <div class="border-t border-gray-200 pt-6">
               <h4 class="text-lg font-medium text-gray-900 mb-4">Detail Material</h4>
 
@@ -221,7 +216,6 @@
               </div>
             </div>
 
-            <!-- Footer Modal -->
             <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
               <button @click="closeDetailModal"
                 class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
@@ -235,9 +229,100 @@
                 class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
                 Cetak Finance
               </button>
-              <button @click="showQRModal(selectedShipment)" 
-                class="bg-gray-400  px-4 py-2 text-white rounded-md">
+              <button @click="showQRModal(selectedShipment)"
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white rounded-md">
                 Cetak Label QR
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showQRCodeModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-semibold text-gray-900">Label QR Code - {{ selectedShipment?.noSuratJalan }}
+              </h3>
+              <button @click="closeQRModal" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="font-medium text-gray-700">No PO:</span>
+                  <span class="ml-2 text-gray-900">{{ selectedShipment?.noPo }}</span>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Supplier:</span>
+                  <span class="ml-2 text-gray-900">{{ selectedShipment?.supplier }}</span>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">No Kendaraan:</span>
+                  <span class="ml-2 text-gray-900">{{ selectedShipment?.noKendaraan }}</span>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Tanggal:</span>
+                  <span class="ml-2 text-gray-900">{{ formatDate(selectedShipment?.tanggalTerima) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h4 class="text-md font-medium text-gray-900">Daftar QR Code per Item:</h4>
+              <div v-if="selectedShipment?.qrCodeLabels && selectedShipment.qrCodeLabels.length > 0" class="space-y-4">
+                <div v-for="(labelData, index) in selectedShipment.qrCodeLabels" :key="index"
+                  class="border border-gray-200 rounded-lg p-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div class="font-medium text-gray-900 mb-2">[{{ labelData.kodeItem }}] - {{ labelData.namaMaterial }}</div>
+                      <div class="text-sm text-gray-600 space-y-1">
+                        <div>Batch: {{ labelData.batchLot }}</div>
+                        <div>Wadah Ke: **{{ labelData.wadahKe }}** / {{ labelData.qtyWadah }}</div>
+                        <div>Qty: {{ labelData.qtyUnit }}</div>
+                        <div>Exp: {{ labelData.expDate }}</div>
+                      </div>
+                      <div class="bg-gray-100 p-2 rounded font-mono text-xs text-gray-800 mt-3">
+                        <strong>QR Content:</strong><br>{{ labelData.qrContent }}
+                      </div>
+                      <div class="flex space-x-2 mt-3">
+                        <button @click="printSingleQR(labelData)"
+                          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                          Cetak QR Wadah {{ labelData.wadahKe }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center">
+                      <div class="bg-white p-4 rounded-lg border-2 border-gray-300 mb-2">
+                        <canvas :data-qr-canvas="index" class="block"></canvas>
+                      </div>
+                      <div class="text-xs text-gray-500 text-center">
+                        Preview QR Code
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center py-8 text-gray-500">
+                Belum ada item untuk shipment ini
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+              <button @click="closeQRModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                Tutup
+              </button>
+
+              <button @click="printAllQR"
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white rounded-md">
+                Cetak Semua QR
               </button>
             </div>
           </div>
@@ -1000,6 +1085,13 @@ const printChecklist = (shipment) => {
     // Create print window with checklist form
     const printWindow = window.open('', '_blank')
 
+    // logika generate nomor form checklist
+    const date = new Date(shipment.tanggalTerima);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const incomingNumber = shipment.incomingNumber || shipment.id;
+    const formChecklistNumber = `GWC-GRCKL-${year}${month}-${incomingNumber}`;
+
     // --- LOGIKA UTAMA: Tentukan Teks Coretan/Normal ---
     const getCheckedOrStriked = (isChecked, text) => {
         // Jika true (dipilih), tampilkan tanda centang (✓)
@@ -1011,17 +1103,40 @@ const printChecklist = (shipment) => {
     };
 
     let itemsHTML = ''
-    shipment.items.forEach((item, index) => {
-        const wadahStart = index + 1
-        const wadahEnd = wadahStart + parseInt(item.qtyWadah || '1') - 1
-        
-        // Logika Kondisi Kemasan: Baik vs Tidak Baik (Sobek/Penyok)
-        // Kita asumsikan kolom Sobek dan Penyok adalah bagian dari "Tidak Baik"
+    let currentWadahStart = 1;
+    let totalWadah = 0;
 
+    shipment.items.forEach((item, index) => {
+        // Pastikan qtyWadah adalah integer yang valid
+        const qtyWadah = parseInt(item.qtyWadah || '0');
+        
+        // 2. LAKUKAN PENJUMLAHAN KUMULATIF
+        totalWadah += qtyWadah;
+
+        // Nomor wadah awal adalah nilai kumulatif sebelumnya
+        const wadahStart = currentWadahStart;
+        
+        // Nomor wadah akhir adalah wadah awal + jumlah wadah - 1
+        const wadahEnd = wadahStart + qtyWadah - 1;
+        
+        // Lanjutkan: Perbarui nilai kumulatif untuk baris berikutnya
+        currentWadahStart = wadahEnd + 1;
+
+        // --- Perhitungan Wadah untuk Tampilan ---
+        let wadahDisplay;
+        if (qtyWadah === 0) {
+            wadahDisplay = 'N/A';
+        } else if (wadahStart === wadahEnd) {
+            wadahDisplay = wadahStart;
+        } else {
+            wadahDisplay = `${wadahStart}-${wadahEnd}`;
+        }
+        
+        // --- HTML Table Row Generation (Tidak berubah) ---
         itemsHTML += `
             <tr>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle; height: 40px;">
-                    ${wadahStart}${wadahEnd !== wadahStart ? `-${wadahEnd}` : ''}
+                    ${wadahDisplay}
                 </td>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
                     ${item.kondisiBaik ? '✓' : ''}
@@ -1346,7 +1461,7 @@ const printChecklist = (shipment) => {
                     </div>
                     
                     <div class="form-number-section">
-                        <div class="form-number-box">( No Form Checklist )</div>
+                        ${formChecklistNumber}
                     </div>
                     
                     <div class="header-title">E-FORM CHECKLIST PENERIMAAN MATERIAL DARI VENDOR</div>
@@ -1412,19 +1527,17 @@ const printChecklist = (shipment) => {
                             <span class="checkbox-inline">${isNonHalalHtml}</span>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="field-label">Bin QRT Tujuan</td> <td class="field-value">${firstItem.binTarget || 'Belum Ditentukan'}</td>
-                    </tr>
+                    
                     <tr>
                         <td class="field-label">Jumlah Wadah</td>
-                        <td class="field-value">${firstItem.qtyWadah ? parseInt(firstItem.qtyWadah) : ''}</td>
+                        <td class="field-value">${totalWadah}</td>
                     </tr>
                     <tr>
                         <td class="field-label">Tgl. Diterima</td>
                         <td class="field-value">
-                            ${formatDateOnly(shipment.tanggalTerima)} &nbsp;&nbsp;&nbsp;
-                            Start : ${formatTime(shipment.tanggalTerima)} WIB &nbsp;&nbsp;&nbsp;
-                            End : _____ WIB
+                            ${formatDateOnly(shipment.tanggalTerima)} &nbsp;&nbsp;&nbsp; -
+                            ${formatTime(shipment.tanggalTerima)} WIB &nbsp;&nbsp;&nbsp;
+                            
                         </td>
                     </tr>
                     <tr>

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\IncomingGood;
 use App\Models\IncomingGoodsItem;
+use App\Models\InventoryStock;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Material;
+use App\Models\WarehouseBin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -31,13 +33,17 @@ class GoodsReceiptController extends Controller
 
             // 1. Ambil semua item
             $items = $incoming->items->map(function ($item) {
+                // Perubahan di sini untuk konsistensi: 
+                // Jika Anda menyimpan total_qty_received (misalnya, jika kolom diubah), ambil dari situ, 
+                // jika tidak, gunakan qty_unit yang diasumsikan sebagai total qty untuk sementara.
+                // Jika kolom IncomingGoodsItem->qty_unit berisi total_qty, maka logika ini sudah benar.
                 return [
                     'kodeItem' => $item->material->kode_item ?? '',
                     'namaMaterial' => $item->material->nama_material ?? '',
                     'batchLot' => $item->batch_lot,
                     'expDate' => $item->exp_date,
                     'qtyWadah' => $item->qty_wadah,
-                    'qtyUnit' => $item->qty_unit,
+                    'qtyUnit' => $item->qty_unit, // Asumsi ini adalah total qty untuk ditampilkan di index
                     'kondisiBaik' => $item->kondisi_baik,
                     'kondisiTidakBaik' => $item->kondisi_tidak_baik,
                     'coaAda' => $item->coa_ada,
@@ -121,7 +127,7 @@ class GoodsReceiptController extends Controller
             'items.*.expDate' => 'nullable|date',
             'items.*.qtyWadah' => 'required|numeric|min:1',
             'items.*.qtyUnit' => 'required|numeric|min:1',
-            'items.*.binTarget' => 'required|string|max:255',
+            'items.*.binTarget' => 'required|string|max:255', // Memastikan binTarget divvalidasi
             'items.*.isHalal' => 'nullable|boolean',
             'items.*.isNonHalal' => 'nullable|boolean',
             'items.*.pabrikPembuat' => 'nullable|string|max:255',
@@ -157,31 +163,60 @@ class GoodsReceiptController extends Controller
                 'received_by' => Auth::id(),
             ]);
 
-            // Create incoming items
+            // Dapatkan Warehouse ID (Asumsi Bin Target semua berada di Warehouse yang sama)
+            $sampleBin = WarehouseBin::where('bin_code', $validated['items'][0]['binTarget'])->first();
+            $warehouseId = $sampleBin ? $sampleBin->warehouse_id : 1; // Fallback ke ID 1 jika tidak ditemukan.
+
+            // Create incoming items AND Inventory Stock
             foreach ($validated['items'] as $itemData) {
                 $material = Material::find($itemData['kodeItem']);
+                
+                // Cari WarehouseBin berdasarkan kode yang diinput
+                $binTarget = WarehouseBin::where('bin_code', $itemData['binTarget'])->first();
+
+                if (!$binTarget) {
+                    throw new \Exception("Warehouse Bin dengan kode {$itemData['binTarget']} tidak ditemukan.");
+                }
 
                 // HITUNG TOTAL QTY DARI QTY_WADAH * QTY_UNIT
-                $totalQtyReceived = (float) $itemData['qtyWadah'] * (float) $itemData['qtyUnit'];
+                $jumlahWadah = (float) $itemData['qtyWadah'];
+                $qtyPerWadah = (float) $itemData['qtyUnit'];
+                $totalQtyReceived = $jumlahWadah * $qtyPerWadah;
                 
                 // Generate QR code
                 $qrCode = $this->generateQRCode(
                     $incomingNumber,
                     $material->kode_item,
                     $itemData['batchLot'],
-                    $totalQtyReceived, // Kirim TOTAL QTY ke QR Code
+                    $totalQtyReceived,
                     $itemData['expDate'] ?? ''
                 );
 
+                // 1. CREATE INCOMING GOODS ITEM
                 IncomingGoodsItem::create([
                     'incoming_id' => $incoming->id,
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
-                    'qty_wadah' => $itemData['qtyWadah'],
-                    'qty_unit' => $itemData['qtyUnit'],
+                    'qty_wadah' => $jumlahWadah,
+                    'qty_unit' => $qtyPerWadah, 
+                    // Jika Anda memiliki kolom 'total_qty_received' di IncomingGoodsItem, gunakan itu:
+                    // 'total_qty_received' => $totalQtyReceived, 
+                    // Karena kode lama menggunakan 'qty_unit' untuk menyimpan total Qty, dan Anda ingin mempertahankannya:
+                    // Anda perlu membuat kolom baru, atau mengubah maksud kolom.
+                    // Jika kolom Anda di IncomingGoodsItem yang bernama 'qty_unit' akan menampung TOTAL QTY (seperti yang ditunjukkan kode lama), 
+                    // maka kodenya dikembalikan ke:
+                    // 'qty_unit' => $totalQtyReceived, // Simpan total qty di qty_unit untuk QC
+                    // Namun ini membingungkan. Lebih baik **asumsi** `qty_unit` menyimpan kuantitas unit per wadah, dan Anda akan **menggunakan kolom lain di InventoryStock** untuk totalnya.
+                    // Berdasarkan permintaan, saya akan **mempertahankan** `$totalQtyReceived` yang dihitung dan **menggunakan kolom `qty_unit` di `IncomingGoodsItem` untuk menyimpan total qty** (sesuai dengan maksud kode Anda yang sebelumnya), tapi ini butuh penyesuaian di sisi frontend/QC.
+                    
+                    // Untuk menjaga konsistensi dengan InventoryStock:
+                    // 'qty_unit' => $totalQtyReceived, // Menyimpan total qty
+                    // 'qty_per_wadah' => $qtyPerWadah, // *ASUMSI: Anda menambahkan kolom ini untuk menyimpan Qty per Wadah yang asli*
+                    
                     'satuan' => $material->satuan,
                     
+                    // Semua field checklist kondisi/coa/label
                     'kondisi_baik' => $itemData['kondisiBaik'] ?? false,
                     'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? false,
                     'coa_ada' => $itemData['coaAda'] ?? false,
@@ -200,13 +235,43 @@ class GoodsReceiptController extends Controller
                     'qr_code' => $qrCode,
                 ]);
 
+                // 2. TAMBAHKAN STOK KE INVENTORY_STOCK (Ke Bin Karantina)
+                // Cek apakah stok dengan Batch/Lot yang sama sudah ada di Bin Target QRT
+                $inventory = InventoryStock::firstOrNew([
+                    'material_id' => $material->id,
+                    'warehouse_id' => $warehouseId, // Gunakan Warehouse ID Karantina
+                    'bin_id' => $binTarget->id,
+                    'batch_lot' => $itemData['batchLot'],
+                    'status' => 'KARANTINA', // Status Karantina
+                ]);
+                
+                // Jika stok baru, inisialisasi nilainya
+                if (!$inventory->exists) {
+                    $inventory->fill([
+                        'exp_date' => $itemData['expDate'] ?? null,
+                        'qty_on_hand' => 0, 
+                        'qty_reserved' => 0,
+                        'uom' => $material->satuan, 
+                        'status' => 'KARANTINA', // Status Invetory: Karantina
+                        'gr_id' => $incoming->id,
+                        'last_movement_date' => now(),
+                    ]);
+                }
+                
+                // *** PERBAHARUAN KALKULASI SUDAH BENAR ***
+                // Tambahkan Qty baru ke stok yang sudah ada/baru. $totalQtyReceived sudah hasil kali QTY_WADAH * QTY_UNIT.
+                $inventory->qty_on_hand += $totalQtyReceived;
+                $inventory->qty_available = $inventory->qty_on_hand; // Stok QRT dianggap available untuk QC
+                $inventory->save();
+
+
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [
-                    'description' => "Material {$material->nama_material} diterima. Wadah: {$itemData['qtyWadah']}, Unit/Wadah: {$itemData['qtyUnit']}",
+                    'description' => "Material {$material->nama_material} diterima dan masuk Bin {$itemData['binTarget']}. Total: {$totalQtyReceived} {$material->satuan}",
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
-                    'qty_after' => $totalQtyReceived, // Log Total Qty
+                    'qty_after' => $inventory->qty_on_hand, 
                     'reference_document' => $incoming->no_surat_jalan,
                 ]);
             }

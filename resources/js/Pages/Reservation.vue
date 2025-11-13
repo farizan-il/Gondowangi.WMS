@@ -315,11 +315,6 @@
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400">
                       Proses Import
                   </button>
-                  
-                  <!-- <button @click="debugFileParse" :disabled="!uploadedFile"
-                      class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400">
-                      DEBUG DD
-                  </button> -->
               </div>
                 <p v-if="uploadStatus" class="mt-2 text-sm" :class="uploadStatus.type === 'error' ? 'text-red-600' : 'text-green-600'">
                     {{ uploadStatus.message }}
@@ -891,17 +886,14 @@ const uploadFileAndParse = async () => {
     }
 
     // Persiapan sebelum kirim
-    formData.value.items = []; // Bersihkan tabel item lama
+    formData.value.items = []; 
     uploadStatus.value = { type: 'info', message: 'Sedang memproses file, mohon tunggu...' };
 
     const data = new FormData();
-    
-    // 🔥 PERBAIKAN KRITIS: KIRIM FILE DAN REQUEST_TYPE
-    data.append('file', uploadedFile.value); // Mengirim file itu sendiri (Perbaikan terakhir)
-    data.append('request_type', selectedCategory.value); // Mengirim kategori yang dibutuhkan oleh validasi Controller (Perbaikan sebelumnya)
+    data.append('file', uploadedFile.value); 
+    data.append('request_type', selectedCategory.value); 
 
     try {
-        // Kirim request ke endpoint parsing
         const response = await axios.post(route('transaction.reservation.parse-materials'), data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -910,42 +902,50 @@ const uploadFileAndParse = async () => {
 
         // 1. Ambil data material yang berhasil diparsing
         const materials = response.data.materials || [];
-        const notFoundMaterials = response.data.notFoundMaterials || [];
+        const notFoundMaterials = response.data.notFoundMaterials || []; // <-- TANGKAP ARRAY PENOLAKAN
 
-        // Isi form data items
+        // Isi form data items (Hanya yang valid/ditemukan)
         if (materials.length > 0) {
-            // Mapping items berdasarkan kategori yang dipilih
             formData.value.items = materials.map(m => {
                 if (selectedCategory.value === 'raw-material') {
-                     return {
+                    return {
+                        // ... mapping field raw material ...
                         kodeBahan: m.kodeBahan,
                         namaBahan: m.namaBahan,
                         jumlahKebutuhan: m.jumlahKebutuhan,
                         jumlahKirim: null,
                         satuan: m.satuan,
                         stokAvailable: m.stokAvailable,
-                     }
+                    };
                 } else if (selectedCategory.value === 'packaging') {
                     return {
+                        // ... mapping field packaging material ...
                         kodePM: m.kodePM,
                         namaMaterial: m.namaMaterial,
                         jumlahPermintaan: m.jumlahPermintaan,
                         satuan: m.satuan,
                         stokAvailable: m.stokAvailable,
-                    }
+                    };
                 }
-                return {}; // Default jika tidak ada
+                return {}; 
             });
             uploadStatus.value = { type: 'success', message: `✅ Berhasil mengimpor ${materials.length} material.` };
         } else {
-            uploadStatus.value = { type: 'error', message: `❌ Tidak ada material yang ditemukan dalam dokumen untuk kategori ${selectedCategory.value}.` };
+             // Jika materials.length > 0, tapi semua ditolak, status tetap sukses/warning. Jika 0, maka error.
+             if (notFoundMaterials.length > 0) {
+                  uploadStatus.value = { type: 'warning', message: `⚠️ ${notFoundMaterials.length} material ditolak/tidak ditemukan. Lihat detail.` };
+             } else {
+                  uploadStatus.value = { type: 'error', message: `❌ Tidak ada material yang ditemukan dalam dokumen.` };
+             }
         }
 
-        // Tampilkan peringatan jika ada material yang tidak ditemukan/stok kurang
+        // 2. Tampilkan peringatan jika ada material yang tidak ditemukan/stok kurang
         if (notFoundMaterials.length > 0) {
-            // Gunakan message dari backend karena sudah berisi detail stok/not found
-            const list = notFoundMaterials.map(m => `• **${m.kode}** (${m.satuan}): ${m.message}`).join('\n');
-            confirmationMessage.value = `⚠️ Ditemukan masalah pada material berikut:\n\n${list}`;
+            // Kita buat daftar notifikasi penolakan yang dikirim dari backend
+            const list = notFoundMaterials.map(m => `• **${m.kode || m.kodePM || m.kodeBahan}**: ${m.message}`).join('\n');
+            
+            // Set pesan konfirmasi kustom
+            confirmationMessage.value = `⚠️ Ditemukan masalah pada material berikut (Item TIDAK dimasukkan ke tabel):\n\n${list}`;
             showConfirmationModal.value = true;
         }
 

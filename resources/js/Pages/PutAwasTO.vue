@@ -27,6 +27,11 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
           </div>
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Search Batch/Lot</label>
+            <input v-model="searchBatch" type="text" placeholder="BCH-001..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Tipe</label>
             <select v-model="filterType"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -48,15 +53,6 @@
               <option value="Completed">Completed</option>
             </select>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Warehouse</label>
-            <select v-model="filterWarehouse"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Semua Gudang</option>
-              <option value="WH-001">WH-001 - Gudang Utama</option>
-              <option value="WH-002">WH-002 - Gudang Karantina</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -72,6 +68,7 @@
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TO Number</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch/Lot</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
@@ -97,6 +94,9 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="font-medium text-gray-900">{{ to.toNumber }}</div>
                   <div v-if="to.reservationNo" class="text-sm text-gray-500">{{ to.reservationNo }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ to.items.length > 0 ? to.items[0].batchLot : 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ formatDate(to.creationDate) }}
@@ -320,13 +320,15 @@
               </svg>
             </button>
           </div>
-
-          <!-- TO Info -->
           <div class="bg-gray-50 rounded-lg p-4 mb-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700">TO Number</label>
                 <p class="text-sm text-gray-900 mt-1">{{ selectedTO?.toNumber }}</p>
+              </div>
+              <div v-if="selectedTO && selectedTO.items.length > 0 && selectedTO.items.every(item => item.batchLot === selectedTO.items[0].batchLot)">
+                <label class="block text-sm font-medium text-gray-700">Batch/Lot Utama</label>
+                <p class="text-sm text-gray-900 mt-1">{{ selectedTO.items[0].batchLot }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700">Transaction Type</label>
@@ -346,7 +348,6 @@
             </div>
           </div>
 
-          <!-- Items Table -->
           <div class="mb-6">
             <h4 class="text-lg font-medium text-gray-900 mb-4">Daftar Item</h4>
             <div class="overflow-x-auto">
@@ -356,6 +357,7 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch/Lot</th> 
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source Bin</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dest Bin</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
@@ -370,6 +372,7 @@
                     <td class="px-4 py-3 text-sm text-gray-900">{{ index + 1 }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.itemCode }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.materialName }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.batchLot }}</td> 
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.sourceBin }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.destBin }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">
@@ -387,30 +390,12 @@
                       </span>
                     </td>
                     <td v-if="selectedTO?.isExecuting" class="px-4 py-3">
-                      <div v-if="item.status !== 'completed'" class="flex gap-2">
-                        <button @click="startScanWizard(item)"
-                          :class="item.boxScanned && item.sourceBinScanned && item.destBinScanned ? 'bg-green-100 text-green-800' : 'bg-blue-600 text-white hover:bg-blue-700'"
-                          class="px-3 py-1 text-xs font-medium rounded">
-                          {{ item.boxScanned && item.sourceBinScanned && item.destBinScanned ? '✓ Selesai' : 'Mulai Scan' }}
-                        </button>
-                        
-                        <div class="flex items-center gap-1">
-                          <span :class="item.boxScanned ? 'bg-green-500' : 'bg-gray-300'"
-                            class="w-2 h-2 rounded-full" title="Box"></span>
-                          <span :class="item.sourceBinScanned ? 'bg-green-500' : 'bg-gray-300'"
-                            class="w-2 h-2 rounded-full" title="Source"></span>
-                          <span :class="item.destBinScanned ? 'bg-green-500' : 'bg-gray-300'"
-                            class="w-2 h-2 rounded-full" title="Dest"></span>
-                        </div>
-                      </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-
-          <!-- Actions -->
           <div class="flex gap-3 justify-end">
             <button @click="closeDetailModal"
               class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
@@ -584,7 +569,6 @@
           </div>
         </div>
       </div>
-
     </div>
   </AppLayout>
 </template>
@@ -596,11 +580,14 @@ import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
 import { Html5Qrcode } from 'html5-qrcode'
 
+const LOCAL_STORAGE_KEY = 'in_progress_transfer_order';
+
 // Interfaces
 interface TOItem {
   id?: number
   itemCode: string
   materialName: string
+  batchLot: string
   sourceBin: string
   destBin: string
   qty: number
@@ -651,6 +638,36 @@ interface BinInfo {
   }>
 }
 
+const saveTOState = (to: TransferOrder) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(to));
+    console.log(`State saved for TO: ${to.toNumber}`);
+  } catch (e) {
+    console.error("Error saving state to localStorage", e);
+  }
+};
+
+const loadTOState = (): TransferOrder | null => {
+  try {
+    const json = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (json) {
+      return JSON.parse(json) as TransferOrder;
+    }
+  } catch (e) {
+    console.error("Error loading state from localStorage", e);
+  }
+  return null;
+};
+
+const clearTOState = () => {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    console.log("State cleared from localStorage.");
+  } catch (e) {
+    console.error("Error clearing state from localStorage", e);
+  }
+};
+
 const page = usePage()
 const transferOrders = ref<TransferOrder[]>((page.props.transferOrders as TransferOrder[]) || [])
 
@@ -658,6 +675,7 @@ const transferOrders = ref<TransferOrder[]>((page.props.transferOrders as Transf
 const qcReleasedMaterials = ref<QCReleasedMaterial[]>([])
 const availableBins = ref<BinInfo[]>([])
 const searchQuery = ref('')
+const searchBatch = ref('')
 const filterType = ref('')
 const filterStatus = ref('')
 const filterWarehouse = ref('')
@@ -692,7 +710,12 @@ const filteredTransferOrders = computed(() => {
     const matchesStatus = !filterStatus.value || to.status === filterStatus.value
     const matchesWarehouse = !filterWarehouse.value || to.warehouse.includes(filterWarehouse.value)
     
-    return matchesSearch && matchesType && matchesStatus && matchesWarehouse
+    // [PERUBAHAN 8: Logika Filtering Batch/Lot]
+    const matchesBatch = !searchBatch.value || to.items.some(item => 
+      item.batchLot && item.batchLot.toLowerCase().includes(searchBatch.value.toLowerCase())
+    )
+    
+    return matchesSearch && matchesBatch && matchesType && matchesStatus && matchesWarehouse
   })
 })
 
@@ -730,24 +753,17 @@ const expectedValue = computed(() => {
 
 // Camera Scanner Methods
 const startCameraScanner = async () => {
-  // [PERBAIKAN] Set isCameraActive ke false di awal. Ini akan menampilkan "Mengaktifkan Kamera..."
   isCameraActive.value = false
   try {
     const element = document.getElementById("qr-reader")
-    console.log("Element found:", element) // DEBUG
-    
     if (!element) {
       console.error("qr-reader element not found!")
       return
     }
     
-    // [PERBAIKAN] Panggil stopCameraScanner() dulu untuk membersihkan instance "zombie"
-    // Ini adalah kunci untuk memperbaiki NotReadableError
     await stopCameraScanner(); 
     html5QrCode.value = new Html5Qrcode("qr-reader")
 
-    // [PERBAIKAN] Menghapus blok 'if' yang terduplikasi
-    
     const config = { 
       fps: 10, 
       qrbox: { width: 250, height: 250 },
@@ -755,51 +771,37 @@ const startCameraScanner = async () => {
     }
 
     await html5QrCode.value.start(
-      { facingMode: "environment" }, // Use back camera
+      { facingMode: "environment" },
       config,
       onScanSuccess,
       onScanError
     )
 
-    // [PERBAIKAN] Set true HANYA setelah kamera berhasil start
     isCameraActive.value = true
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error starting camera:", err)
-    // [PERBAIKAN] Jangan ganti mode otomatis. Biarkan user di mode kamera.
-    // Tampilkan alert error. isCameraActive sudah 'false', jadi placeholder "loading" akan tetap tampil.
-    // useCameraMode.value = false // <--- HAPUS BARIS INI
     alert(`Gagal memulai kamera: ${err.message}. Pastikan tidak ada aplikasi lain yang menggunakan. Coba lagi atau ganti ke mode manual.`);
   }
 }
 
 const stopCameraScanner = async () => {
-  // [PERBAIKAN] Logika ini harus membersihkan instance JIKA ADA,
-  // independen dari 'isCameraActive'
   if (html5QrCode.value) {
     try {
-      // Hanya panggil stop() jika sedang scanning
-      // getState() == 2 adalah 'SCANNING'
       if (typeof html5QrCode.value.getState === 'function' && html5QrCode.value.getState() === 2) {
         await html5QrCode.value.stop();
-        console.log("Camera successfully stopped.");
       }
     } catch (err) {
       console.error("Error attempting to stop camera:", err);
-      // Abaikan error (mungkin sudah ter-stop) dan lanjut cleanup
     } finally {
-      // [PERBAIKAN] Panggil clear() untuk membersihkan UI
-      // dan null-kan ref untuk rilis instance
       try {
-        await html5QrCode.value.clear(); // Membersihkan DOM
+        await html5QrCode.value.clear(); 
       } catch (clearErr) {
-         // clear() mungkin error jika elemen tidak ada, tidak apa-apa
-         console.warn("Error clearing html5QrCode UI:", clearErr);
+        console.warn("Error clearing html5QrCode UI:", clearErr);
       }
-      html5QrCode.value = null; // Hapus instansi
+      html5QrCode.value = null; 
       isCameraActive.value = false;
     }
   }
-  // Pastikan flag ini false
   isCameraActive.value = false;
 }
 
@@ -808,13 +810,9 @@ const onScanSuccess = (decodedText: string, decodedResult: any) => {
   lastScannedValue.value = decodedText
   qrInput.value = decodedText
   
-  // Hentikan getaran atau suara (jika ada)
-  // ...
-
-  // Auto process after successful scan
   setTimeout(() => {
     processWizardStep()
-  }, 500) // Beri jeda sedikit agar user bisa lihat hasil scannya
+  }, 500) 
 }
 
 const onScanError = (errorMessage: string) => {
@@ -824,18 +822,14 @@ const onScanError = (errorMessage: string) => {
 
 const toggleScanMode = async () => {
   if (useCameraMode.value) {
-    // Switch to manual input
     await stopCameraScanner()
     useCameraMode.value = false
     nextTick(() => {
       qrInputRef.value?.focus()
     })
   } else {
-    // Switch to camera scanner
     useCameraMode.value = true
     qrInput.value = ''
-    // [PERBAIKAN] Panggil startCameraScanner di dalam nextTick
-    // agar div#qr-reader sempat di-render oleh v-if="useCameraMode"
     nextTick(async () => {
       await startCameraScanner()
     })
@@ -924,56 +918,76 @@ const viewDetail = (to: TransferOrder) => {
 }
 
 const executeTO = (to: TransferOrder) => {
-  selectedTO.value = {
-    ...to,
-    isExecuting: true,
-    status: 'In Progress', // Update status lokal
-    items: to.items.map(item => ({ 
-      ...item, 
-      status: item.status === 'completed' ? 'completed' : 'in_progress' as const,
-      actualQty: item.actualQty !== undefined ? item.actualQty : item.qty // [PERBAIKAN]
-    }))
+  // 1. Coba muat state dari local storage
+  const savedState = loadTOState();
+
+  if (savedState && savedState.id === to.id) {
+    // 2. Jika ada state tersimpan untuk TO ini, gunakan state tersebut
+    selectedTO.value = savedState;
+    console.log(`Resuming TO ${to.toNumber} from saved session.`);
+  } else {
+    // 3. Jika tidak ada, inisialisasi normal
+    selectedTO.value = {
+      ...to,
+      isExecuting: true,
+      status: 'In Progress', 
+      items: to.items.map(item => ({ 
+        ...item, 
+        status: item.status === 'completed' ? 'completed' : 'pending' as const, 
+        actualQty: item.actualQty !== undefined ? item.actualQty : item.qty 
+      }))
+    };
   }
 
-  showDetailModal.value = true
+  showDetailModal.value = true;
+  
+  // [PERSISTENCE] Simpan status awal (atau resume) ke localStorage
+  if (selectedTO.value) {
+      saveTOState(selectedTO.value);
+  }
 }
 
 const closeDetailModal = () => {
+  // Saat membatalkan atau menutup, cek apakah sedang dieksekusi
+  if (selectedTO.value?.isExecuting && selectedTO.value.status !== 'Completed') {
+    // Save state before closing if executing
+    saveTOState(selectedTO.value); 
+    alert(`Progress TO ${selectedTO.value.toNumber} disimpan secara parsial.`);
+  } else {
+    // Clear state jika TO sudah selesai atau dibatalkan
+    clearTOState(); 
+  }
   selectedTO.value = null
   showDetailModal.value = false
 }
 
 const startScanWizard = async (item: TOItem) => {
-  currentItem.value = item
-  // Reset wizard ke step 1 jika belum selesai
+  currentItem.value = item;
+  
   if (item.boxScanned && item.sourceBinScanned && item.destBinScanned) {
-     alert('Item ini sudah selesai di-scan.');
-     return;
+    alert('Item ini sudah selesai di-scan.');
+    return;
   } else if (item.boxScanned && item.sourceBinScanned) {
-     currentWizardStep.value = 3; // Lanjut ke Dest Bin
+    currentWizardStep.value = 3; 
   } else if (item.boxScanned) {
-     currentWizardStep.value = 2; // Lanjut ke Source Bin
+    currentWizardStep.value = 2; 
   } else {
-     currentWizardStep.value = 1; // Mulai dari Box
+    currentWizardStep.value = 1; 
   }
 
-  qrInput.value = ''
-  lastScannedValue.value = ''
-  showQRModal.value = true
+  qrInput.value = '';
+  lastScannedValue.value = '';
+  showQRModal.value = true;
   
-  // Tunggu modal render sempurna
-  await nextTick()
-  // [CATATAN] Delay 500ms ini mungkin untuk menunggu animasi modal selesai.
-  // Sebaiknya dibiarkan jika modal Anda memiliki transisi.
-  await new Promise(resolve => setTimeout(resolve, 500)) 
+  await nextTick();
+  await new Promise(resolve => setTimeout(resolve, 500)); 
   
   if (useCameraMode.value) {
-    await startCameraScanner()
+    await startCameraScanner();
   } else {
-    // Fokus ke input manual jika tidak pakai kamera
     nextTick(() => {
-      qrInputRef.value?.focus()
-    })
+      qrInputRef.value?.focus();
+    });
   }
 }
 
@@ -984,6 +998,11 @@ const closeQRModal = async () => {
   currentWizardStep.value = 1
   qrInput.value = ''
   lastScannedValue.value = ''
+  
+  // [PERSISTENCE] Simpan state setelah menutup QR modal
+  if (selectedTO.value) {
+      saveTOState(selectedTO.value);
+  }
 }
 
 const processWizardStep = () => {
@@ -995,30 +1014,25 @@ const processWizardStep = () => {
   const item = currentItem.value
   const scannedValue = qrInput.value.trim()
 
-  // [PERBAIKAN] Logika validasi yang lebih baik
   let parsedBinCode = ''
   let isValid = false
   let expected = ''
 
   try {
       const parsedJson = JSON.parse(scannedValue)
-      // Asumsikan kode bin ada di properti 'bin_code'
       if (parsedJson && parsedJson.bin_code) {
         parsedBinCode = String(parsedJson.bin_code).toUpperCase()
       } else {
-         // Jika ada JSON tapi tidak ada bin_code, anggap sebagai string biasa
-         parsedBinCode = scannedValue.toUpperCase()
+          parsedBinCode = scannedValue.toUpperCase()
       }
     } 
     catch (e) {
-      // Jika gagal parse, anggap scannedValue sebagai string kode bin biasa
       parsedBinCode = scannedValue.toUpperCase()
     }
 
   switch (currentWizardStep.value) {
-    case 1: // Scan Box
+    case 1: 
       expected = item.itemCode
-      // Cek apakah hasil scan mengandung item code
       isValid = scannedValue.includes(item.itemCode)
       if (isValid) {
         item.boxScanned = true
@@ -1028,19 +1042,18 @@ const processWizardStep = () => {
       }
       break
 
-    case 2: // Scan Source Bin
+    case 2: 
       expected = item.sourceBin
       isValid = (parsedBinCode === expected.toUpperCase())
       if (isValid) {
         item.sourceBinScanned = true
         currentWizardStep.value = 3
       } else {
-        // Tampilkan pesan error yang lebih informatif
         alert(`Source Bin tidak sesuai! Expected: ${expected}, Scanned Code: ${parsedBinCode || scannedValue}`)
       }
       break
 
-    case 3: // Scan Destination Bin
+    case 3: 
       expected = item.destBin
       isValid = (parsedBinCode === expected.toUpperCase())
       
@@ -1064,60 +1077,60 @@ const processWizardStep = () => {
   qrInput.value = ''
   lastScannedValue.value = ''
 
+  // [PERSISTENCE] Simpan state setelah setiap langkah scan berhasil
+  if (selectedTO.value) {
+      saveTOState(selectedTO.value);
+  }
+
   if (isValid && currentWizardStep.value <= 3 && !useCameraMode.value) {
     nextTick(() => {
       qrInputRef.value?.focus()
     })
   } else if (!isValid && !useCameraMode.value) {
-     nextTick(() => {
+      nextTick(() => {
       qrInputRef.value?.select()
     })
   }
-  // Jika pakai kamera, biarkan scanner berjalan
 }
 
-
 const completeTO = async () => {
-  if (!selectedTO.value || !canCompleteTO.value) {
-    alert('Pastikan semua item sudah di-scan dan qty actual sudah diisi!')
-    return
-  }
-  
-  if (!confirm(`Apakah Anda yakin ingin menyelesaikan TO ${selectedTO.value.toNumber}?`)) {
-    return
-  }
+  if (!selectedTO.value || !canCompleteTO.value) {
+    alert('Pastikan semua item sudah di-scan dan qty actual sudah diisi!')
+    return
+  }
+  
+  if (!confirm(`Apakah Anda yakin ingin menyelesaikan TO ${selectedTO.value.toNumber}?`)) {
+    return
+  }
 
-  try {
-    // Implementasi Inertia.post
-    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, {
-      items: selectedTO.value.items.map(item => ({
-        id: item.id,
-        actualQty: item.actualQty,
-        status: item.status,
+  try {
+    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, {
+      items: selectedTO.value.items.map(item => ({
+        id: item.id,
+        actualQty: item.actualQty,
+        status: item.status,
 
-        // [PERBAIKAN] Tambahkan 3 field ini
-        boxScanned: item.boxScanned,
-        sourceBinScanned: item.sourceBinScanned,
-        destBinScanned: item.destBinScanned
-        // Akhir Perbaikan
-      }))
-    }, {
-      onSuccess: () => {
-        alert('Transfer Order berhasil diselesaikan!')
-        closeDetailModal()
-      },
-      onError: (errors) => {
-        console.error('Error completing TO:', errors)
-        // [PENTING] Ganti alert ini agar menampilkan error validasi dengan benar
-        const errorMessages = Object.values(errors).join('\n');
-        alert('Gagal menyelesaikan TO:\n' + errorMessages);
-      }
-    })
-    
-  } catch (error: any) {
-    console.error('Error completing TO:', error)
-    alert('Gagal menyelesaikan TO: ' + error.message)
-  }
+        boxScanned: item.boxScanned,
+        sourceBinScanned: item.sourceBinScanned,
+        destBinScanned: item.destBinScanned
+      }))
+    }, {
+      onSuccess: () => {
+        alert('Transfer Order berhasil diselesaikan!')
+        clearTOState() // [PENTING] Hapus state setelah sukses
+        closeDetailModal()
+      },
+      onError: (errors) => {
+        console.error('Error completing TO:', errors)
+        const errorMessages = Object.values(errors).join('\n');
+        alert('Gagal menyelesaikan TO:\n' + errorMessages);
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Error completing TO:', error)
+    alert('Gagal menyelesaikan TO: ' + error.message)
+  }
 }
 
 const printTO = (to: TransferOrder) => {
@@ -1150,7 +1163,7 @@ const printTO = (to: TransferOrder) => {
           <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">No</th>
           <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Kode Item</th>
           <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nama Material</th>
-          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Source Bin</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Batch/Lot</th> <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Source Bin</th>
           <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Dest Bin</th>
           <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Qty</th>
           <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">UoM</th>
@@ -1162,7 +1175,7 @@ const printTO = (to: TransferOrder) => {
             <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.itemCode}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.materialName}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">${item.sourceBin}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${item.batchLot}</td> <td style="border: 1px solid #ddd; padding: 8px;">${item.sourceBin}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.destBin}</td>
             <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.actualQty !== undefined ? item.actualQty : item.qty}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.uom}</td>
@@ -1278,8 +1291,34 @@ onMounted(() => {
   console.log('Mounted - Transfer Orders:', transferOrders.value)
 })
 
+onMounted(() => {
+  // Coba muat state TO yang sedang berjalan saat komponen dimuat
+  const pendingTO = loadTOState();
+  if (pendingTO) {
+    // Cari TO yang sesuai di daftar props yang dimuat dari backend
+    const currentTOInList = transferOrders.value.find(to => to.id === pendingTO.id);
+    
+    if (currentTOInList) {
+        // Gabungkan data yang tersimpan dengan data dari server
+        const mergedTO = { 
+            ...currentTOInList, 
+            ...pendingTO,
+            // Pastikan flag eksekusi dan status ter-override dari local storage
+            isExecuting: true, 
+            status: 'In Progress' 
+        };
+
+        selectedTO.value = mergedTO;
+        showDetailModal.value = true;
+        
+        alert(`Melanjutkan Transfer Order: ${pendingTO.toNumber}. Progress yang tersimpan telah dimuat.`);
+    } else {
+        // Jika TO yang tersimpan tidak ditemukan lagi (mungkin sudah diselesaikan di perangkat lain)
+        clearTOState();
+    }
+  }
+})
 onUnmounted(async () => {
-  // Cleanup camera when component unmounts
   await stopCameraScanner()
 })
 </script>

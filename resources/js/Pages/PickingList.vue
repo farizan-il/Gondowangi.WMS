@@ -11,24 +11,32 @@
 
     <!-- Filter Status -->
     <div class="bg-white rounded-lg p-4 shadow">
-      <div class="flex items-center space-x-4">
-        <span class="text-sm font-medium text-gray-700">Filter Status:</span>
-        <div class="flex space-x-2">
-          <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-blue-500 hover:text-white">
-            Semua
-          </button>
-          <button @click="filterStatus = 'Pending'" :class="filterStatus === 'Pending' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-gray-500 hover:text-white">
-            Pending
-          </button>
-          <button @click="filterStatus = 'In Progress'" :class="filterStatus === 'In Progress' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-yellow-500 hover:text-white">
-            In Progress
-          </button>
-          <button @click="filterStatus = 'Completed'" :class="filterStatus === 'Completed' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-green-500 hover:text-white">
-            Completed
-          </button>
-          <button @click="filterStatus = 'Short-Pick'" :class="filterStatus === 'Short-Pick' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-orange-500 hover:text-white">
-            Short-Pick
-          </button>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-end">
+        <div class="md:col-span-3 lg:col-span-3">
+            <span class="text-sm font-medium text-gray-700 block mb-2">Filter Status:</span>
+            <div class="flex flex-wrap gap-2">
+                <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-blue-500 hover:text-white">
+                  Semua
+                </button>
+                <button @click="filterStatus = 'Pending'" :class="filterStatus === 'Pending' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-gray-500 hover:text-white">
+                  Pending
+                </button>
+                <button @click="filterStatus = 'In Progress'" :class="filterStatus === 'In Progress' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-yellow-500 hover:text-white">
+                  In Progress
+                </button>
+                <button @click="filterStatus = 'Completed'" :class="filterStatus === 'Completed' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-green-500 hover:text-white">
+                  Completed
+                </button>
+                <button @click="filterStatus = 'Short-Pick'" :class="filterStatus === 'Short-Pick' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-orange-500 hover:text-white">
+                  Short-Pick
+                </button>
+            </div>
+        </div>
+
+        <div class="md:col-span-1 lg:col-span-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Batch/Lot</label>
+            <input v-model="filterBatch" type="text" placeholder="BCH-123..."
+                class="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
       </div>
     </div>
@@ -41,17 +49,17 @@
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TO Number</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Reservasi</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch/Lot Utama</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requester / Departemen</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
-          
 
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="filteredTasks.length === 0">
-              <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
                 Tidak ada Picking Task yang ditemukan untuk status {{ filterStatus === 'ALL' ? 'apapun' : filterStatus }}.
               </td>
             </tr>
@@ -59,6 +67,9 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ task.toNumber }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer" @click="viewReservation(task.noReservasi)">
                 {{ task.noReservasi }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                 {{ task.items && task.items.length > 0 ? task.items[0].lotSerial : 'N/A' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(task.tanggalDibuat) }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ task.requester }} / {{ task.departemen }}</td>
@@ -72,7 +83,7 @@
                   <button @click="viewDetail(task)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs">
                     Detail
                   </button>
-                  <button v-if="task.status === 'Pending' || task.status === 'In Progress'" @click="startPicking(task)" class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
+                  <button v-if="task.status === 'Pending' || task.status === 'Reserved' || task.status === 'In Progress' || task.status === 'Ready to Pick'" @click="startPicking(task)" class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
                     Kerjakan
                   </button>
                   <button @click="printPickingList(task)" class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
@@ -442,6 +453,7 @@ import axios from 'axios'
 
 // Data reaktif
 const filterStatus = ref('ALL')
+const filterBatch = ref('')
 const pickingTasks = ref([])
 const showPickingModal = ref(false)
 const showQRScannerModal = ref(false)
@@ -661,11 +673,19 @@ const simulateScan = () => {
 
 // Methods
 const filteredTasks = computed(() => {
-    if (filterStatus.value === 'ALL') {
-        return pickingTasks.value
-    }
-    return pickingTasks.value.filter(task => task.status === filterStatus.value || (filterStatus.value === 'Pending' && task.status === 'Reserved'))
-})
+    return pickingTasks.value.filter(task => {
+        // Filter Status
+        const matchesStatus = filterStatus.value === 'ALL' || task.status === filterStatus.value || (filterStatus.value === 'Pending' && (task.status === 'Reserved' || task.status === 'Ready to Pick'));
+        
+        // Filter Batch/Lot
+        const batchQuery = filterBatch.value.toLowerCase().trim();
+        const matchesBatch = !batchQuery || task.items.some(item => 
+            item.lotSerial && item.lotSerial.toLowerCase().includes(batchQuery)
+        );
+
+        return matchesStatus && matchesBatch;
+    });
+});
 
 const getStatusClass = (status) => {
     const classes = {
@@ -729,16 +749,26 @@ const viewDetail = (task) => {
     showSummaryModal.value = true
 }
 
-const startPicking = (task) => {
+const startPicking = async (task) => {
     selectedTask.value = JSON.parse(JSON.stringify(task)) // Deep clone the task
     // Update status ke In Progress jika masih Reserved/Pending
-    if (task.status === 'Reserved' || task.status === 'Pending') {
-        const taskIndex = pickingTasks.value.findIndex(t => t.id === task.id)
-        if (taskIndex !== -1) {
-            // Update status di list utama dan task yang dipilih
-            pickingTasks.value[taskIndex].status = 'In Progress'
-            selectedTask.value.status = 'In Progress'
-            // NOTE: Di sini perlu ada API call ke backend untuk update status header
+    if (task.status === 'Reserved' || task.status === 'Pending' || task.status === 'Ready to Pick') {
+        try {
+            // [TAMBAH API CALL untuk update status header ke In Progress]
+            await axios.post(route('transaction.picking-list.update-status', task.id), {
+                status: 'In Progress'
+            })
+            
+            // Update status di list utama dan task yang dipilih setelah sukses API
+            const taskIndex = pickingTasks.value.findIndex(t => t.id === task.id)
+            if (taskIndex !== -1) {
+                pickingTasks.value[taskIndex].status = 'In Progress'
+                selectedTask.value.status = 'In Progress'
+                console.log(`Status Task ${task.toNumber} diubah menjadi In Progress.`)
+            }
+        } catch (error) {
+            console.error('Gagal update status task:', error)
+            alert('Gagal memulai Picking Task: ' + (error.response?.data?.message || error.message))
         }
     }
     showPickingModal.value = true
@@ -926,33 +956,56 @@ const updateItemStatus = (item) => {
 const finishPicking = async () => {
     if (!selectedTask.value) return
 
-    // Pastikan semua alokasi sudah diselesaikan (Picked/Short-Pick)
     if (!canFinishPicking.value) {
         console.error('Mohon selesaikan semua alokasi batch sebelum menyelesaikan picking task.')
         return
     }
 
+    // Menggunakan item dari selectedTask (yang sudah diupdate oleh scanner/manual input)
     const pickedItems = selectedTask.value.items.map(item => ({
-        // PENTING: Kirim ID dari record RESERVATION (alokasi batch)
         reservation_id: item.id, 
-        picked_quantity: item.qtyPicked,
+        picked_quantity: item.qtyPicked || 0, // Kirim 0 jika Short-Pick/tidak dipick
     }))
 
     try {
         const response = await axios.post(route('transaction.picking-list.store'), {
-            // Kirim ID dari record RESERVATION REQUEST (Header)
             reservation_request_id: selectedTask.value.id, 
             items: pickedItems,
         })
-
-        if (response.status === 200) {
-            console.log('Picking successful. Status task di-update.')
-            closePickingModal()
-            // fetchPickingList() // Akan dipanggil saat closePickingModal
+        
+        let successMessage = 'Picking Task berhasil diselesaikan dan status diperbarui.';
+        if (response.data && response.data.flash && response.data.flash.message) {
+            successMessage = response.data.flash.message;
         }
+        
+        alert(successMessage);
+        closePickingModal(); 
+        
     } catch (error) {
-        console.error('Error finishing picking:', error)
-        console.error('Gagal menyelesaikan picking. Silakan cek konsol untuk detail error.')
+        console.error('Error finishing picking:', error);
+        
+        let errorMessage = 'Terjadi kesalahan jaringan atau server yang tidak diketahui.';
+        
+        if (error.response) {
+            // Status code di luar 2xx, dan ada respons dari server (4xx atau 5xx)
+            if (error.response.data && error.response.data.message) {
+                // Respons standar Laravel/JSON Error
+                errorMessage = error.response.data.message;
+            } else if (error.response.data && error.response.data.errors) {
+                // Respons error validasi (status 422)
+                const validationErrors = Object.values(error.response.data.errors).flat().join('\n');
+                errorMessage = `Gagal Validasi:\n${validationErrors}`;
+            } else {
+                errorMessage = `Error Server (Status ${error.response.status}): ${error.response.statusText}`;
+            }
+        } else if (error.request) {
+            // Permintaan dibuat, tetapi tidak ada respons diterima (misalnya, timeout)
+            errorMessage = 'Tidak ada respons dari server. Periksa koneksi Anda.';
+        } else {
+            // Kesalahan lain (misalnya, kesalahan dalam konfigurasi Axios)
+            errorMessage = error.message || 'Kesalahan tak terduga.';
+        }
+        alert('Gagal menyelesaikan picking: ' + (error.response?.data?.message || 'Terjadi kesalahan pada server.'));
     }
 }
 

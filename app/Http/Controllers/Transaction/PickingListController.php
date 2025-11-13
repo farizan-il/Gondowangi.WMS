@@ -7,9 +7,7 @@ use App\Models\InventoryStock;
 use App\Models\Reservation;
 use App\Models\ReservationRequest;
 use App\Models\StockMovement;
-use App\Models\Material; // Pastikan model Material di-import
-use App\Models\Warehouse; // Pastikan model Warehouse di-import
-use App\Models\WarehouseBin; // Pastikan model WarehouseBin di-import
+use App\Models\WarehouseBin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -19,16 +17,8 @@ use App\Traits\ActivityLogger;
 class PickingListController extends Controller
 {
     use ActivityLogger;
-
-    /**
-     * Helper untuk memetakan detail alokasi per Batch dari tabel 'reservations'.
-     * @param \App\Models\Reservation $reservationDetail
-     * @return array
-     */
     private function mapBatchDetailToCamelCase($reservationDetail) {
-        
         $material = optional($reservationDetail->material);
-        
         // Coba ambil material code dari relasi reservation request item jika ada
         $requestItem = $reservationDetail->reservationRequest->items
             ->firstWhere(function ($item) use ($material) {
@@ -45,10 +35,11 @@ class PickingListController extends Controller
             'materialId' => $reservationDetail->material_id,
             'kodeItem' => $material->kode_item ?? 'N/A',
             'namaMaterial' => $material->nama_material ?? 'N/A',
+
             'lotSerial' => $reservationDetail->batch_lot,
             'sourceBin' => optional($reservationDetail->bin)->bin_code ?? 'BIN MISSING', // Ambil Bin Code dari relasi
             'sourceWarehouse' => optional($reservationDetail->warehouse)->name ?? 'WH MISSING', // Ambil Warehouse Name
-            'destBin' => 'STAGING-001', // Asumsi dest bin adalah Staging, atau ambil dari field lain jika ada
+            // 'destBin' => 'STAGING-001', // Asumsi dest bin adalah Staging, atau ambil dari field lain jika ada
             'qtyDiminta' => (float) $reservationDetail->qty_reserved, // Qty yang DIALOKASIKAN
             'qtyPicked' => (float) $reservationDetail->picked_qty,
             'uom' => $reservationDetail->uom,
@@ -121,101 +112,172 @@ class PickingListController extends Controller
     
     public function store(Request $request)
     {
-        // ... (Logika store untuk menyelesaikan picking, tidak diubah karena fokus pada tampilan detail)
-        // ... (Mengganti reservation_id menjadi reservation_request_id di validasi dan findOrFail)
-
         $validated = $request->validate([
-            // FIX: Ganti ke reservation_request_id (ID Header)
             'reservation_request_id' => 'required|exists:reservation_requests,id', 
             'items' => 'required|array',
-            // FIX: Ganti stock_id menjadi reservation_id (ID alokasi batch)
             'items.*.reservation_id' => 'required|exists:reservations,id',
-            'items.*.picked_quantity' => 'required|numeric|min:1',
+            'items.*.picked_quantity' => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            // FIX: Cari berdasarkan ReservationRequest
             $reservationRequest = ReservationRequest::findOrFail($validated['reservation_request_id']);
 
             $allItemsPicked = true;
             $hasShortPick = false;
+            $movementNumber = $this->generateMovementNumber();
 
             foreach ($validated['items'] as $item) {
-                // 1. Ambil record RESERVATION (alokasi batch)
                 $reservation = Reservation::findOrFail($item['reservation_id']);
+                $pickedQty = (float) $item['picked_quantity'];
                 
-                // 2. Ambil Inventory Stock yang sesuai
+                if ($pickedQty <= 0) {
+                    if ($reservation->status === 'Reserved' || $reservation->status === 'In Progress') {
+                        $allItemsPicked = false;
+                    }
+                    continue; 
+                }
+
+                // 1. Ambil Inventory Stock yang sesuai (Stok Asal)
                 $stock = InventoryStock::where('material_id', $reservation->material_id)
-                                        ->where('batch_lot', $reservation->batch_lot)
-                                        ->where('warehouse_id', $reservation->warehouse_id)
-                                        ->firstOrFail(); 
-
-                $pickedQty = $item['picked_quantity'];
-
+                    ->where('batch_lot', $reservation->batch_lot)
+                    ->where('bin_id', $reservation->bin_id) 
+                    ->firstOrFail(); 
+                
+                // 2. Validasi Qty Picked
                 if ($pickedQty > $reservation->qty_reserved) {
-                    throw new \Exception("Picked quantity ({$pickedQty}) exceeds reserved quantity ({$reservation->qty_reserved}) for batch {$reservation->batch_lot}.");
+                    throw new \Exception("Picked quantity ({$pickedQty}) melebihi reserved quantity ({$reservation->qty_reserved}) untuk material {$stock->material->kode_item} batch {$reservation->batch_lot}.");
+                }
+                if ($pickedQty > $stock->qty_on_hand) {
+                    throw new \Exception("Stok On Hand ({$stock->qty_on_hand}) tidak cukup untuk mempick {$pickedQty} dari material {$stock->material->kode_item} batch {$reservation->batch_lot}.");
                 }
 
-                // Tentukan status item
-                if ($pickedQty < $reservation->qty_reserved) {
-                    $hasShortPick = true;
-                    $reservationStatus = 'Short-Pick';
-                } else {
-                    $reservationStatus = 'Picked';
-                }
-
-                // Update Reservation record
+                // 3. Tentukan Status & Update Reservation
+                $reservationStatus = ($pickedQty < $reservation->qty_reserved) ? 'Short-Pick' : 'Picked';
                 $reservation->update([
-                    'picked_qty' => $pickedQty,
+                    'picked_qty' => $pickedQty, 
                     'status' => $reservationStatus,
+                    'picked_at' => now(),
+                    'picked_by' => Auth::id(),
                 ]);
 
-                // Update InventoryStock (Kurangi Qty Reserved dan Qty On Hand)
+                // 4. Update InventoryStock (Kurangi Qty Reserved, Qty On Hand)
+                // Ini adalah langkah KUNCI untuk mengurangi stok dari sistem.
                 $stock->decrement('qty_on_hand', $pickedQty);
                 $stock->decrement('qty_reserved', $pickedQty); 
-                // Stock Available tidak diubah karena sudah terpotong saat reservasi
+                
+                $stock->updateAvailableQty(); 
+                
+                // Cek jika stok habis di bin asal
+                if ($stock->qty_on_hand <= 0) {
+                    $stock->delete();
+                    $reservation->bin->decrement('current_items');
+                }
+                $movementNumber = $this->generateMovementNumber();
 
-                // 3. Create Stock Movement Record
-                // ... (Logika StockMovement tidak diubah)
-
-                // 4. Log the activity 
-                // ... (Logika ActivityLogger tidak diubah)
+                // 5. Create Stock Movement Record (Keluar dari sistem)
+                // [PERUBAHAN] to_warehouse_id dan to_bin_id di set NULL karena barang LANGSUNG KELUAR
+                StockMovement::create([
+                    'movement_number' => $movementNumber,
+                    'movement_type' => 'OUT', // Keluar dari Inventory
+                    'material_id' => $reservation->material_id,
+                    'batch_lot' => $reservation->batch_lot,
+                    'from_warehouse_id' => $reservation->warehouse_id,
+                    'from_bin_id' => $reservation->bin_id,
+                    'to_warehouse_id' => null, // Dihapus/NULL
+                    'to_bin_id' => null, // Dihapus/NULL
+                    'qty' => $pickedQty,
+                    'uom' => $reservation->uom,
+                    'reference_type' => ReservationRequest::class,
+                    'reference_id' => $reservationRequest->id,
+                    'movement_date' => now(),
+                    'executed_by' => Auth::id(),
+                    'notes' => "Picking OUT dari {$reservation->bin->bin_code} untuk RR #{$reservationRequest->no_reservasi}",
+                ]);
+                
+                // 6. Log activity 
+                $this->logActivity($reservationRequest, 'Complete Picking Item', [
+                    'description' => "Picked {$pickedQty} {$reservation->uom} of {$stock->material->nama_material} (Batch: {$reservation->batch_lot}). Barang dikeluarkan dari inventori.",
+                    'material_id' => $reservation->material_id,
+                    'batch_lot' => $reservation->batch_lot,
+                    'qty_after' => $stock->qty_on_hand,
+                    'bin_from' => $reservation->bin->bin_code,
+                    'bin_to' => 'OUT', // Mengganti STAGING-001 dengan OUT
+                    'reference_document' => $reservationRequest->no_reservasi,
+                ]);
 
                 if ($reservationStatus !== 'Picked') {
                     $allItemsPicked = false;
+                    $hasShortPick = true;
                 }
             }
             
-            // 5. Update ReservationRequest status
-            if ($allItemsPicked) {
-                $reservationRequest->update(['status' => 'Completed']);
-            } elseif ($hasShortPick) {
-                $reservationRequest->update(['status' => 'Short-Pick']);
-            } else {
-                 $reservationRequest->update(['status' => 'In Progress']);
+            // 7. Update ReservationRequest status (Header)
+            $totalAllocations = $reservationRequest->reservations()->count();
+            $completedCount = $reservationRequest->reservations()->whereIn('status', ['Picked', 'Short-Pick'])->count();
+
+            $finalStatus = 'In Progress'; 
+            if ($completedCount === $totalAllocations) {
+                $finalStatus = $hasShortPick ? 'Short-Pick' : 'Completed';
             }
+            
+            $reservationRequest->update(['status' => $finalStatus]);
 
             DB::commit();
             
-            return redirect()
-                ->route('transaction.picking-list') 
-                ->with('flash', ['type' => 'success', 'message' => 'Picking Task berhasil diselesaikan!']);
+            $message = "Picking Task #{$reservationRequest->no_reservasi} berhasil diselesaikan dengan status: {$finalStatus}";
+            
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'flash' => ['type' => 'success', 'message' => $message]
+            ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return redirect()
-                ->back()
-                ->with('flash', ['type' => 'error', 'message' => 'Gagal menyelesaikan picking: ' . $e->getMessage()]);
+            // Kembalikan Error Response JSON (Status 500)
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyelesaikan picking: ' . $e->getMessage(),
+                'error_details' => $e->getTraceAsString()
+            ], 500); 
         }
     }
 
+    public function updateStatus(Request $request, $id) 
+    {
+        $request->validate(['status' => 'required|string']);
+        
+        try {
+            $reservationRequest = ReservationRequest::findOrFail($id);
+            $reservationRequest->update(['status' => $request->status]);
 
+            $this->logActivity($reservationRequest, 'Update Picking Status', [
+                'description' => "Picking Task status diubah menjadi {$request->status} oleh " . Auth::user()->name,
+                'reference_document' => $reservationRequest->no_reservasi,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Status berhasil diubah.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal mengubah status: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Tambahkan (atau pastikan) helper ini ada di Controller Anda:
     private function generateMovementNumber()
     {
         $date = date('Ymd');
-        $lastMovement = StockMovement::whereDate('created_at', today())->latest()->first();
+        
+        $lastMovement = StockMovement::whereDate('movement_date', today())
+            ->lockForUpdate() // KUNCI: Lock baris yang ditemukan
+            ->latest('movement_number')
+            ->first();
+            
         $sequence = $lastMovement ? (intval(substr($lastMovement->movement_number, -4)) + 1) : 1;
+        
+        // Pastikan Movement Number yang digenerate adalah yang tertinggi dari yang sudah ada di database saat ini
         return "MOV/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }
+ 
