@@ -24,7 +24,7 @@ class GoodsReceiptController extends Controller
         $incomingGoods = IncomingGood::with([
             'purchaseOrder',
             'supplier',
-            'items.material',
+            'items.material', // Relasi ke Material sudah dimuat
             'receiver'
         ])
         ->orderBy('created_at', 'desc')
@@ -33,17 +33,14 @@ class GoodsReceiptController extends Controller
 
             // 1. Ambil semua item
             $items = $incoming->items->map(function ($item) {
-                // Perubahan di sini untuk konsistensi: 
-                // Jika Anda menyimpan total_qty_received (misalnya, jika kolom diubah), ambil dari situ, 
-                // jika tidak, gunakan qty_unit yang diasumsikan sebagai total qty untuk sementara.
-                // Jika kolom IncomingGoodsItem->qty_unit berisi total_qty, maka logika ini sudah benar.
                 return [
                     'kodeItem' => $item->material->kode_item ?? '',
                     'namaMaterial' => $item->material->nama_material ?? '',
+                    'satuanMaterial' => $item->material->satuan ?? '', // BARU: Mengambil Satuan dari Material
                     'batchLot' => $item->batch_lot,
                     'expDate' => $item->exp_date,
                     'qtyWadah' => $item->qty_wadah,
-                    'qtyUnit' => $item->qty_unit, // Asumsi ini adalah total qty untuk ditampilkan di index
+                    'qtyUnit' => $item->qty_unit,
                     'kondisiBaik' => $item->kondisi_baik,
                     'kondisiTidakBaik' => $item->kondisi_tidak_baik,
                     'coaAda' => $item->coa_ada,
@@ -62,10 +59,7 @@ class GoodsReceiptController extends Controller
             });
 
             // 2. LOGIKA PENENTUAN STATUS GR BARU
-            // Cek apakah ada item yang statusQC-nya masih 'To QC'
             $isStillToQC = $items->contains(fn($item) => $item['statusQC'] === 'To QC');
-            
-            // Tentukan status akhir untuk ditampilkan
             $finalStatus = $isStillToQC ? 'Proses' : 'Selesai';
             
             return [
@@ -78,7 +72,6 @@ class GoodsReceiptController extends Controller
                 'noKendaraan' => $incoming->no_kendaraan,
                 'namaDriver' => $incoming->nama_driver,
                 'kategori' => $incoming->kategori,
-                // Ganti status lama dengan status otomatis
                 'status' => $finalStatus, 
                 'items' => $items,
             ];
@@ -97,6 +90,7 @@ class GoodsReceiptController extends Controller
                     'id' => $material->id,
                     'code' => $material->kode_item,
                     'name' => $material->nama_material,
+                    'unit' => $material->satuan, // BARU: Menambahkan Satuan ke daftar Material
                     'mfg' => $material->defaultSupplier->nama_supplier ?? '',
                     'qcRequired' => $material->qc_required,
                     'kategori' => $material->kategori,

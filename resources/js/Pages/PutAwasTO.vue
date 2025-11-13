@@ -390,6 +390,22 @@
                       </span>
                     </td>
                     <td v-if="selectedTO?.isExecuting" class="px-4 py-3">
+                      <div v-if="item.status !== 'completed'" class="flex gap-2">
+                        <button @click="startScanWizard(item)"
+                          :class="item.boxScanned && item.sourceBinScanned && item.destBinScanned ? 'bg-green-100 text-green-800' : 'bg-blue-600 text-white hover:bg-blue-700'"
+                          class="px-3 py-1 text-xs font-medium rounded">
+                          {{ item.boxScanned && item.sourceBinScanned && item.destBinScanned ? '✓ Selesai' : 'Mulai Scan' }}
+                        </button>
+                        
+                        <div class="flex items-center gap-1">
+                          <span :class="item.boxScanned ? 'bg-green-500' : 'bg-gray-300'"
+                            class="w-2 h-2 rounded-full" title="Box"></span>
+                          <span :class="item.sourceBinScanned ? 'bg-green-500' : 'bg-gray-300'"
+                            class="w-2 h-2 rounded-full" title="Source"></span>
+                          <span :class="item.destBinScanned ? 'bg-green-500' : 'bg-gray-300'"
+                            class="w-2 h-2 rounded-full" title="Dest"></span>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 </tbody>

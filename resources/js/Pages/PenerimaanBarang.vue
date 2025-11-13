@@ -602,10 +602,16 @@
                 <button @click="closeModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
                   Batal
                 </button>
-                <button @click="saveShipment" :disabled="!isFormValid"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400">
-                  Simpan
-                </button>
+                <button 
+                  @click="saveShipment" 
+                  :disabled="!isFormValid || isSaving" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center">
+                  <svg v-if="isSaving" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ isSaving ? 'Menyimpan...' : 'Simpan' }}
+                </button>
               </div>
             </div>
           </div>
@@ -737,6 +743,7 @@ const supplierSearchQuery = ref('')
 const filteredSuppliers = ref([])
 
 // Data reaktif
+const isSaving = ref(false)
 const showModal = ref(false)
 const showQRCodeModal = ref(false)
 const showDetailModal = ref(false)
@@ -775,6 +782,9 @@ const totalStockByMaterial = computed(() => {
 
     // HANYA hitung jika item sudah dipilih (punya kodeItem)
     if (materialId) {
+      // Cari material di props untuk mendapatkan satuan
+      const materialDetail = props.materials.find(m => m.id === materialId)
+
       // Kalkulasi: (Qty Wadah * Qty Unit)
       const rowStock = qtyWadah * qtyUnit;
 
@@ -785,8 +795,8 @@ const totalStockByMaterial = computed(() => {
         // Inisialisasi total baru
         stockMap[materialId] = {
           totalQty: rowStock,
-          materialName: item.namaMaterial || item.kodeItemDisplay, // Ambil nama/kode untuk tampilan
-          satuan: 'Pcs' // Asumsi satuan adalah Pcs, sesuaikan jika Anda punya properti satuan.
+          materialName: item.namaMaterial || item.kodeItemDisplay,
+          satuan: materialDetail ? materialDetail.unit : 'Pcs' // Mengambil satuan dari material props
         };
       }
     }
@@ -968,39 +978,47 @@ const updateNamaMaterial = (index) => {
 }
 
 const saveShipment = () => {
+  if (isSaving.value) { // <-- CEK FLAG
+      console.log('Penyimpanan sedang dalam proses. Permintaan diabaikan.')
+      return
+  }
+
   if (!isFormValid.value) {
     alert('Mohon lengkapi semua field yang diperlukan')
     return
   }
 
+  isSaving.value = true
+
   // Debug: Log data sebelum dikirim
   console.log('Data yang akan dikirim:', JSON.stringify(newShipment.value, null, 2))
 
   router.post('/transaction/goods-receipt', newShipment.value, {
-    preserveScroll: true,
-    onBefore: () => {
-      console.log('Request dimulai...')
-    },
-    onSuccess: (page) => {
-      console.log('Response sukses:', page)
-      console.log('Flash messages:', page.props.flash)
-      closeModal()
+      preserveScroll: true,
+      onBefore: () => {
+          console.log('Request dimulai...')
+      },
+      onSuccess: (page) => {
+          console.log('Response sukses:', page)
+          console.log('Flash messages:', page.props.flash)
+          closeModal()
 
-      // Reload data setelah sukses
-      router.reload({ only: ['shipments'] })
-      alert('Penerimaan berhasil disimpan')
-    },
-    onError: (errors) => {
-      console.error('Validation errors:', errors)
-      let errorMsg = 'Gagal menyimpan:\n'
-      Object.entries(errors).forEach(([key, value]) => {
-        errorMsg += `${key}: ${value}\n`
-      })
-      alert(errorMsg)
-    },
-    onFinish: () => {
-      console.log('Request selesai')
-    }
+          // Reload data setelah sukses
+          router.reload({ only: ['shipments'] })
+          alert('Penerimaan berhasil disimpan')
+      },
+      onError: (errors) => {
+          console.error('Validation errors:', errors)
+          let errorMsg = 'Gagal menyimpan:\n'
+          Object.entries(errors).forEach(([key, value]) => {
+              errorMsg += `${key}: ${value}\n`
+          })
+          alert(errorMsg)
+      },
+      onFinish: () => {
+          isSaving.value = false // <-- RESET FLAG
+          console.log('Request selesai')
+      }
   })
 }
 
@@ -1090,7 +1108,7 @@ const printChecklist = (shipment) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const incomingNumber = shipment.incomingNumber || shipment.id;
-    const formChecklistNumber = `GWC-GRCKL-${year}${month}-${incomingNumber}`;
+    const formChecklistNumber = `GR-${year}${month}-${incomingNumber}`;
 
     // --- LOGIKA UTAMA: Tentukan Teks Coretan/Normal ---
     const getCheckedOrStriked = (isChecked, text) => {
@@ -1884,15 +1902,8 @@ const printSingleQR = (labelData) => {
     const formattedTglDatang = formatDateOnly(selectedShipment.value.tanggalTerima);
     const formattedExpDate = formatDateOnly(labelData.expDate);
 
-    // Contoh format Qty Wadah (Ini perlu penyesuaian jika data Anda berbeda)
-    // Jika Anda memiliki data struktur box seperti "1000 x 11 + 500 x 1", 
-    // Anda perlu properti khusus di item Anda, atau buat logika di sini.
-    // Untuk demo, saya akan gabungkan qtyUnit dan qtyWadah
-    const qtyBoxDescription = `${labelData.qtyUnit} Pcs`; // Asumsi qtyUnit adalah total
-    // Jika Anda ingin "1000 x 11 + 500 x 1 box", Anda perlu data yang mendukung ini
-    // Contoh placeholder: `1000 x ${labelData.qtyWadah} box`;
-    // Atau jika data Anda seperti ini:
-    // const qtyDetail = labelData.boxDetail ? labelData.boxDetail + ' box' : `${labelData.qtyWadah} box`;
+
+    const qtyBoxDescription = `${labelData.qtyUnit} Pcs`; 
     const qtyBoxDetail = labelData.qtyWadah > 0 ? `${labelData.qtyUnit / labelData.qtyWadah} x ${labelData.qtyWadah} box` : '';
 
 
@@ -2044,7 +2055,7 @@ const printSingleQR = (labelData) => {
                 <div class="label-container">
                     <div class="header">
                         <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" alt="Logo Gondowangi" class="logo-img">
-                        <div class="company-name">GONDOWANGI</div>
+                        
                         <div class="status-box">KARANTINA</div>
                     </div>
                     
@@ -2126,7 +2137,9 @@ const printAllQR = () => {
   const printWindow = window.open('', '_blank');
   const currentUser = usePage().props.auth?.user?.name || 'Admin';
 
-  const LABELS_PER_PAGE = 6;
+  // Ditetapkan menjadi 6 label per halaman (2 kolom x 3 baris)
+  const LABELS_PER_PAGE = 6; 
+
   const LOGO_URL = "https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png";
   let pagesHTML = '';
 
@@ -2136,9 +2149,12 @@ const printAllQR = () => {
 
     pageLabels.forEach((labelData, labelIndex) => {
       const globalIndex = i + labelIndex;
+      // Perhatikan: Dalam skenario cetak semua, canvas QR harus di-render terlebih dahulu
+      // pada dokumen utama sebelum dipanggil di sini.
       const canvas = document.querySelector(`canvas[data-qr-canvas="${globalIndex}"]`);
       let qrDataURL = '';
 
+      // Asumsi QR hanya dicetak untuk wadah pertama
       const isFirstWadah = labelData.wadahKe === 1;
 
       if (isFirstWadah && canvas) {
@@ -2146,80 +2162,79 @@ const printAllQR = () => {
       }
 
       const qrContentHtml = isFirstWadah ?
-        `<img src="${qrDataURL}" class="qr-code-img-multi" alt="QR Code">` :
+        `<img src="${qrDataURL}" class="qr-code" alt="QR Code">` :
         `<div class="qr-placeholder">NO QR</div>`;
 
       const formattedTglDatang = formatDateOnly(selectedShipment.value.tanggalTerima);
       const formattedExpDate = formatDateOnly(labelData.expDate);
 
-      // Asumsi format Qty
       const qtyBoxDescription = `${labelData.qtyUnit} Pcs`;
       const qtyBoxDetail = labelData.qtyWadah > 0 ? `${labelData.qtyUnit / labelData.qtyWadah} x ${labelData.qtyWadah} box` : '';
 
-
       labelsInPageHTML += `
-                <div class="label-wrapper">
-                    <div class="qr-label">
-                        
-                        <div class="header-qr">
-                            <img src="${LOGO_URL}" alt="Logo" class="logo-small">
-                            <span class="company-qr">GONDOWANGI</span>
-                            <span class="status-qr">KARANTINA</span>
-                        </div>
-
-                        <div class="content-qr-multi">
-                            <table class="info-table">
-                                <tr>
-                                    <td class="label-cell">Nama Barang</td>
-                                    <td class="value-cell">: [${labelData.kodeItem}] ${labelData.namaMaterial}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">Kode Barang</td>
-                                    <td class="value-cell">: ${labelData.kodeItem}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">No Lot</td>
-                                    <td class="value-cell">: ${labelData.batchLot}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">Supplier</td>
-                                    <td class="value-cell">: ${labelData.supplier}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">Tgl Datang</td>
-                                    <td class="value-cell">: ${formattedTglDatang}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">Exp. Date</td>
-                                    <td class="value-cell">: ${formattedExpDate}</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-cell">Jmlh Barang</td>
-                                    <td class="value-cell">: ${qtyBoxDescription}</td>
-                                </tr>
-                                ${qtyBoxDetail ? `
-                                <tr>
-                                    <td class="label-cell">Jmlh Detail</td>
-                                    <td class="value-cell">: ${qtyBoxDetail}</td>
-                                </tr>
-                                ` : ''}
-                                <tr>
-                                    <td class="label-cell">Wadah Ke</td>
-                                    <td class="value-cell">: ${labelData.wadahKe} / ${labelData.qtyWadah}</td>
-                                </tr>
-                            </table>
-                            <div class="qr-code-wrapper-multi">
-                                ${qrContentHtml}
-                            </div>
-                        </div>
-                        
-                        <div class="footer-qr-multi">
-                            <span class="left-qr-multi">Logistik</span>
-                            <span class="right-qr-multi">Rev. 02</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+          <div class="label-wrapper">
+              <div class="label-container">
+                  <div class="header">
+                      <img src="${LOGO_URL}" alt="Logo Gondowangi" class="logo-img">
+                      <div class="status-box">KARANTINA</div>
+                  </div>
+                  
+                  <div class="content">
+                      <div class="info-section">
+                          <div class="info-row">
+                              <div class="info-label">Nama Barang</div>
+                              <div class="info-value">: [${labelData.kodeItem}] ${labelData.namaMaterial}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Kode Barang</div>
+                              <div class="info-value">: ${labelData.kodeItem}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">No Lot</div>
+                              <div class="info-value">: ${labelData.batchLot}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Supplier</div>
+                              <div class="info-value">: ${labelData.supplier}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Jmlh Barang</div>
+                              <div class="info-value">: ${qtyBoxDescription}</div>
+                          </div>
+                          ${qtyBoxDetail ? `<div class="info-row">
+                              <div class="info-label">Wadah Detail</div>
+                              <div class="info-value multi-line">: ${qtyBoxDetail}</div>
+                          </div>` : ''}
+                          <div class="info-row">
+                              <div class="info-label">Wadah Ke</div>
+                              <div class="info-value">: ${labelData.wadahKe} / ${labelData.qtyWadah}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Tgl Datang</div>
+                              <div class="info-value">: ${formattedTglDatang}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Exp. Date</div>
+                              <div class="info-value">: ${formattedExpDate}</div>
+                          </div>
+                          <div class="info-row">
+                              <div class="info-label">Dibuat Oleh</div>
+                              <div class="info-value">: ${currentUser}</div>
+                          </div>
+                      </div>
+                      
+                      <div class="qr-section">
+                          ${qrContentHtml}
+                      </div>
+                  </div>
+                  
+                  <div class="footer">
+                      <span class="footer-left">Logistik</span>
+                      <span class="footer-right">Rev. 02</span>
+                  </div>
+              </div>
+          </div>
+      `;
     });
 
     pagesHTML += `
@@ -2234,22 +2249,23 @@ const printAllQR = () => {
         <head>
             <title>Cetak ${allLabels.length} Label QR - ${selectedShipment.value.noSuratJalan}</title>
             <style>
+                /* Pengaturan Halaman A4 untuk cetak 6 label (2x3) */
                 @page {
                     size: A4;
-                    margin: 0.5cm; 
+                    margin: 0.5cm; /* Margin halaman disetel */
                 }
                 
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: 'Arial', sans-serif;
                     margin: 0;
                     padding: 0;
                     background: white;
                 }
                 
                 .print-page {
-                    width: 21cm; 
-                    height: 29.7cm; 
-                    padding: 0.5cm;
+                    width: 20cm; /* Lebar A4 efektif */
+                    height: 28.7cm; /* Tinggi A4 efektif */
+                    margin: 0.5cm auto; 
                     box-sizing: border-box;
                     display: flex;
                     flex-wrap: wrap;
@@ -2257,116 +2273,168 @@ const printAllQR = () => {
                     justify-content: space-between; 
                 }
 
-                /* Layout 2 Kolom x 3 Baris */
+                /* Container untuk setiap label. 
+                   2 kolom (49%) dan 3 baris (33.33% - margin) */
                 .label-wrapper {
-                    width: 49%; 
-                    height: calc(33.33% - 10px); 
-                    padding: 3px; 
+                    width: 9.9cm; /* Hampir 10cm untuk 2 kolom */
+                    height: calc(33.33% - 0.4cm); /* 3 baris di tinggi A4 dikurangi margin */
+                    padding: 0; 
                     box-sizing: border-box;
-                    margin-bottom: 5px; 
+                    margin-bottom: 0.4cm; /* Jarak antar baris */
+                    margin-right: 0.1cm;
+                    margin-left: 0.1cm;
                 }
+                
+                /* ===========================================
+                   GAYA DARI printSingleQR (Diselaraskan)
+                   =========================================== */
 
-                .qr-label {
-                    border: 1px solid #000;
-                    height: 100%;
-                    width: 100%;
+                .label-container {
+                    width: 100%; 
+                    height: 100%; 
+                    border: 2px solid #000;
+                    padding: 5px; /* Padding mirip single QR */
+                    box-sizing: border-box;
+                    background-color: #fff;
                     display: flex;
                     flex-direction: column;
-                    padding: 2px;
-                    font-size: 6px; /* DIKECILKAN: Font Size Dasar */
-                    box-sizing: border-box;
+                    font-size: 10px; /* Font size dinaikkan agar mirip single QR */
                 }
-
-                .header-qr {
+                .header {
                     display: flex;
+                    flex-direction: column;
                     align-items: center;
-                    justify-content: space-between;
-                    border-bottom: 1px solid #000;
-                    padding-bottom: 1px; /* Dikurangi */
-                    margin-bottom: 1px; /* Dikurangi */
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 5px; 
+                    margin-bottom: 5px; 
                 }
-                .logo-small {
-                    height: 14px; /* Logo sedikit lebih kecil */
-                    width: auto;
-                    margin-right: 1px;
+                .logo-img {
+                    width: 130px; /* Ukuran logo dikembalikan ke single QR */
+                    height: auto;
+                    margin-bottom: 5px;
                 }
-                .company-qr { font-weight: bold; font-size: 7px; color: #2d5f3f; flex-grow: 1; }
-                .status-qr { background-color: #000; color: white; padding: 1px 2px; font-weight: bold; font-size: 6px; white-space: nowrap; }
-
-                .content-qr-multi {
+                .status-box {
+                    margin-top: 5px;
+                    border-top: 0.8px solid #000; /* Menggunakan 2px agar tebal seperti border header/footer */
+                    border-bottom: none;
+                    border-left: none;
+                    border-right: none;
+                    padding: 2px 5px;
+                    font-weight: bold;
+                    font-size: 14px; 
+                    padding: 2px;
+                    
+                    color: #000; 
+                    width: 100%;
+                    text-align: center;
+                }
+                .content {
                     display: flex;
                     flex-grow: 1;
-                    padding-top: 1px;
+                    padding-top: 5px;
+                    gap: 10px; /* Jarak dikembalikan ke single QR */
                 }
-
-                /* Styling untuk Tabel Informasi */
-                .info-table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    table-layout: fixed;
-                }
-                .info-table td {
-                    padding: 0px 1px; 
-                    vertical-align: top;
-                    line-height: 1; /* DIKECILKAN: Line Height Paling Rapat */
-                }
-                .label-cell {
-                    width: 60px; 
-                    font-weight: normal;
-                    padding-right: 1px;
-                }
-                .value-cell {
-                    font-weight: bold;
-                    white-space: nowrap; /* UTAMA: Mencegah Line Break */
-                    overflow: hidden;
-                    text-overflow: ellipsis; /* Menampilkan elipsis jika terpotong */
-                }
-                /* Akhir Styling Tabel Informasi */
-
-
-                .qr-code-wrapper-multi {
-                    text-align: center;
-                    width: 50px; /* Ukuran QR sedikit lebih kecil */
-                    height: 50px;
+                .info-section {
+                    flex: 1;
                     display: flex;
-                    justify-content: center;
-                    align-items: flex-start;
-                    margin-left: 1px; /* Dikurangi */
-                    flex-shrink: 0;
-                    padding-top: 1px;
+                    flex-direction: column;
+                    justify-content: space-between;
                 }
-                .qr-code-img-multi {
-                    width: 100%; 
+                .info-row {
+                    display: flex;
+                    margin-bottom: 2px;
+                    align-items: baseline;
+                }
+                .info-label {
+                    width: 80px; /* Lebar label teks dikembalikan ke single QR */
+                    min-width: 80px;
+                    font-weight: normal;
+                    flex-shrink: 0;
+                }
+                .info-value {
+                    flex: 1;
+                    font-weight: bold;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap; 
+                }
+                .info-value.multi-line {
+                    white-space: normal; 
+                }
+
+                .qr-section {
+                    width: 80px; /* Ukuran QR Code dikembalikan ke single QR */
+                    height: 80px; 
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    align-items: flex-end; 
+                    flex-shrink: 0;
+                }
+                .qr-code {
+                    width: 100%;
                     height: 100%;
                     border: 1px solid #ccc;
                 }
-                
-                .qr-placeholder {
+                .qr-placeholder { /* Gaya untuk NO QR */
                     width: 100%;
                     height: 100%;
                     border: 1px dashed #999;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 6px;
+                    font-size: 10px;
                     color: #999;
                     font-weight: bold;
                 }
-
-                .footer-qr-multi {
-                    border-top: 1px solid #000;
-                    padding-top: 2px;
+                
+                .footer {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 6px; /* Footer font size disamakan dengan dasar */
+                    font-size: 10px; /* Font footer dikembalikan ke single QR */
+                    border-top: 2px solid #000;
+                    padding-top: 25px;
+                    margin-top: 5px;
+                }
+                .footer-left {
                     font-style: italic;
-                    margin-top: 1px;
+                }
+                .footer-right {
+                    font-weight: bold;
                 }
                 
+                /* Untuk mode print */
                 @media print {
-                    .print-page { page-break-after: always; }
+                    .print-page { 
+                        page-break-after: always;
+                        width: initial;
+                        height: initial;
+                        padding: 1px;
+                    }
                     .print-page:last-child { page-break-after: avoid; }
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { 
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact;
+                        display: block;
+                        margin: 0;
+                    }
+                    /* Mengganti border tebal di print */
+                    .label-container {
+                        border-top: 0.8px solid #000; 
+                        padding: 2px;
+                    }
+                        
+                    .header {
+                        border-bottom: 0.8px solid #000; 
+                        padding: 2px;
+                        padding-bottom: 0px; 
+                        margin-bottom: 0px; 
+                    }
+                    .footer {
+                        border-top: 0.8px solid #000; 
+                        padding-top: 30px;
+                        margin-top: 3px;
+                    }
                 }
             </style>
         </head>
