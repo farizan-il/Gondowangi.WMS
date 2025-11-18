@@ -428,6 +428,7 @@
                                 <span class="text-gray-500 text-xs truncate ml-2">{{ material.keterangan ||
                                   material.namaMaterial }} (Stok: {{ material.stokAvailable }})</span>
                               </li>
+                              
                             </ul>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
