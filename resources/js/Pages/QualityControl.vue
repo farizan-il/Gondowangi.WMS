@@ -80,10 +80,10 @@
                       Cetak Label QR (RELEASED)
                     </button>
 
-                    <button v-if="item.statusQC === 'REJECT'" @click="printReturnSlip(item)"
+                    <!-- <button v-if="item.statusQC === 'REJECT'" @click="printReturnSlip(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
                       Cetak Slip Return
-                    </button>
+                    </button> -->
 
                     <button v-if="item.statusQC === 'REJECT'" @click="printRejectQRLabel(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
@@ -482,7 +482,7 @@ const props = defineProps({
 const showDetailModal = ref(false)
 const showQCModal = ref(false)
 const showQRScanner = ref(false)
-const selectedItem = ref(null)
+const selectedItem = ref(null) as any
 const manualQRInput = ref('')
 
 // Camera related
@@ -569,16 +569,18 @@ const generateQRDataURL = async (qrContent: string): Promise<string> => {
   }
 };
 
-const formatDateOnlyPrint = (dateString: string | Date | null) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  // Format menjadi D/M/YYYY (cth: 1/2/2025)
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric'
-  }).replace(/\./g, '/'); // Ganti titik menjadi slash jika lokal menggunakan titik
+const formatDateOnly = (dateString: string | Date | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    // Format menjadi D/M/YYYY (cth: 1/2/2025)
+    return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric'
+    }).replace(/\./g, '/');
 }
+
+const LOGO_URL = "https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png";
 
 const isProcessing = ref(false);
 
@@ -593,8 +595,8 @@ const getQCStatusClass = (status) => {
 }
 
 const showItemDetail = (item) => {
-  selectedItem.value = item
-  showDetailModal.value = true
+  selectedItem.value = item
+  showDetailModal.value = true
 }
 
 const closeDetailModal = () => {
@@ -1377,222 +1379,366 @@ const printReturnSlip = (item) => {
   setTimeout(() => { printWindow.print(); printWindow.close() }, 500)
 }
 
-const generateLabelHTML = (isRejected: boolean, item: any, qrDataURL: string) => {
-  // Menggunakan data yang sudah disiapkan atau default dari contoh Anda
-  const noLot = item.noLot || item.batchLot || 'BATCH09024';
-  const expDatePrint = formatDateOnlyPrint(item.expDate || '5/11/2025');
-  const tanggalTerimaPrint = formatDateOnlyPrint(item.tanggalTerima || item.incomingGood?.tanggal_terima || '3/11/2025');
+const generateLabelHTML = (isRejected: boolean, item: any, qrDataURL: string, labelIndex: number, totalLabels: number) => {
+    // Penentuan Status dan Warna
+    const statusText = isRejected ? 'R E J E C T' : 'R E L E A S E D';
+    const borderColor = isRejected ? '#171917' : '#171917';
+    const textColor = isRejected ? 'red' : 'green';
 
-  const jmlBarangDisplay = `${item.qtyReceived || '1000.00'} ${item.uom || 'PCS'}`;
-  const wadahInfo = item.wadahInfo || 'Qty Box & Isi per Box';
-  const itemCodeAndName = `[${item.kodeItem || '20121'}] ${item.namaMaterial || 'Botol PSC TTO 140 ml'}`;
-  const createdBy = usePage().props.auth?.user?.name || 'Logistik';
+    const noLot = item.noLot || item.batchLot || 'N/A';
+    const expDatePrint = formatDateOnly(item.expDate || 'N/A');
+    const tanggalTerimaPrint = formatDateOnly(item.tanggalTerima || 'N/A');
+    const itemCodeAndName = `[${item.kodeItem || 'N/A'}] ${item.namaMaterial || 'N/A'}`;
+    const createdBy = usePage().props.auth?.user?.name || 'Logistik';
 
-  // Penentuan Status dan Warna
-  const statusText = isRejected ? 'R E J E C T' : 'R E L E A S E D';
-  const borderColor = isRejected ? 'red' : 'green';
-  const textColor = isRejected ? 'red' : 'green';
-  const statusBgColor = isRejected ? '#ffe6e6' : 'white';
+    // QTY Per Wadah
+    const qtyUnitPerWadah = item.qtyUnitPerWadah || 0; 
+    const jmlBarangDisplay = `${formatInteger(qtyUnitPerWadah)} ${item.uom || 'PCS'}`;
 
-  return `
-        <html>
-        <head>
-            <title>Label ${statusText} - ${item.kodeItem}</title>
-            <style>
-                @page { size: 10cm 15cm; margin: 0; }
-                
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-size: 9pt; 
-                    height: 100%;
-                }
-                
-                .label-container {
-                    width: 10cm;
-                    height: 15cm;
-                    border: 1px solid #000; 
-                    margin: 0;
-                    padding: 5px; 
-                }
-                
-                .logo-section {
-                    text-align: center;
-                    padding: 5px 0 10px 0;
-                }
-                .logo {
-                    width: 180px; 
-                    height: auto;
-                }
-                
-                .status-box {
-                    text-align: center; /* Di tengah */
-                    border-top: 2px solid ${borderColor}; 
-                    border-bottom: 2px solid ${borderColor}; 
-                    padding: 5px 0; 
-                    font-size: 16pt; 
-                    font-weight: bold;
-                    letter-spacing: 3px; 
-                    color: ${textColor}; 
-                    background-color: ${statusBgColor}; 
-                    margin-bottom: 5px; /* Jarak antara status dan tabel */
-                }
-                
-                .detail-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    border: 1px solid black; 
-                    font-size: 9pt;
-                }
-                
-                .detail-table td {
-                    /* PENTING: Border di setiap sel */
-                    border: 1px solid #000; 
-                    padding: 2px 4px; 
-                    height: 12px; 
-                    vertical-align: middle;
-                }
-                
-                .detail-table .label-col {
-                    width: 20%; 
-                    font-weight: normal;
-                }
-                
-                .detail-table .value-col-left {
-                    width: 50%; 
-                    font-weight: bold;
-                }
+    // Detail Wadah
+    const qtyWadahTotal = item.qtyWadah || 1;
+    const wadahDetail = qtyWadahTotal > 0 ? `${qtyUnitPerWadah} x ${qtyWadahTotal} box` : '';
+    
+    // Konten QR Code (untuk ditampilkan di dalam label)
+    const qrContentHtml = qrDataURL ?
+        `<img src="${qrDataURL}" class="qr-code" alt="QR Code">` :
+        `<div class="qr-placeholder">NO QR</div>`;
 
-                .detail-table .qr-cell {
-                    width: 30%; 
-                    text-align: center;
-                    padding: 5px 2px;
-                }
-                
-                .qr-code-image {
-                    width: 100px;
-                    height: 100px;
-                    display: block;
-                    margin: 0 auto;
-                    border: none; 
-                }
-
-                .signature-area {
-                    margin-top: 5px;
-                    text-align: right;
-                    padding: 0 5px;
-                    font-size: 10pt;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="label-container">
-                <div class="logo-section">
-                    <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" class="logo" alt="Logo Gondowangi">
-                </div>
-                
-                <div class="status-box">${statusText}</div>
-
-                <table class="detail-table">
-                    <tr>
-                        <td class="label-col">Nama Barang</td>
-                        <td class="value-col-left" style="font-size: 11pt;">: ${itemCodeAndName}</td>
-                        <td class="qr-cell" rowspan="6">
-                             <img src="${qrDataURL}" class="qr-code-image" alt="QR Code">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Kode Barang</td>
-                        <td class="value-col-left">: ${item.kodeItem || '20121'}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">No Lot</td>
-                        <td class="value-col-left">: ${noLot}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Supplier</td>
-                        <td class="value-col-left">: ${item.supplier || 'Bahtera Mitra Rajawali, PT'}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Jmlh Barang</td>
-                        <td class="value-col-left">: ${jmlBarangDisplay}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col" style="border-top: none;"></td>
-                        <td class="value-col-left" style="font-size: 8pt; border-top: none;">${wadahInfo}</td>
-                    </tr>
-                    
-                    <tr>
-                        <td class="label-col">Tgl Datang</td>
-                        <td class="value-col-left">: ${tanggalTerimaPrint}</td>
-                        <td style="text-align: right;">QL1001-01</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Exp. Date</td>
-                        <td class="value-col-left">: ${expDatePrint}</td>
-                        <td style="text-align: right;">Rev. 02</td>
-                    </tr>
-                    <tr>
-                        <td class="label-col" colspan="3" style="border-bottom: 1px solid black; border-top: 1px solid black;">Dibuat Oleh</td>
-                    </tr>
-                </table>
-                
-                <div class="signature-area" style="font-weight: bold;">
-                    ${createdBy}
-                </div>
-                <div class="signature-area">
-                    Logistik
-                </div>
-            </div>
-            <script>
-                // Jalankan print setelah DOM dimuat
-                window.onload = function() {
-                    window.print();
-                    setTimeout(() => window.close(), 100);
-                }
-            <\/script>
-        </body>
-        </html>
-    `;
+    return `
+        <div class="label-wrapper">
+            <div class="label-container" style="border-color: ${borderColor};">
+                <div class="header" style="border-bottom-color: ${borderColor};">
+                    <img src="${LOGO_URL}" alt="Logo Gondowangi" class="logo-img">
+                    <div class="status-box" style="color: ${textColor}; border-top-color: ${borderColor};">${statusText}</div>
+                </div>
+                
+                <div class="content">
+                    <div class="info-section">
+                        <div class="info-row">
+                            <div class="info-label">Nama Barang</div>
+                            <div class="info-value" style="font-size: 11px;">: ${itemCodeAndName}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Kode Barang</div>
+                            <div class="info-value">: ${item.kodeItem || 'N/A'}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">No Lot</div>
+                            <div class="info-value">: ${noLot}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Supplier</div>
+                            <div class="info-value">: ${item.supplier || 'N/A'}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Jmlh Barang</div>
+                            <div class="info-value">: ${jmlBarangDisplay}</div>
+                        </div>
+                        ${wadahDetail ? `<div class="info-row">
+                            <div class="info-label">Detail Wadah</div>
+                            <div class="info-value multi-line">: ${wadahDetail}</div>
+                        </div>` : ''}
+                        <div class="info-row">
+                            <div class="info-label">Wadah Ke</div>
+                            <div class="info-value">: ${labelIndex} / ${qtyWadahTotal}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Tgl Datang</div>
+                            <div class="info-value">: ${tanggalTerimaPrint}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Exp. Date</div>
+                            <div class="info-value">: ${expDatePrint}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Dibuat Oleh</div>
+                            <div class="info-value">: ${createdBy}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="qr-section">
+                        ${qrContentHtml}
+                    </div>
+                </div>
+                
+                <div class="footer" style="border-top-color: ${borderColor};">
+                    <span class="footer-left">Logistik</span>
+                    <span class="footer-right">QL1001-01 Rev. 02</span>
+                </div>
+            </div>
+        </div>
+    `;
 };
 
+const createPrintDocument = async (item: any, isRejected: boolean) => {
+    const totalWadah = item.qtyWadah || 1;
+    const labelsPerPage = 6;
+    let pagesHTML = '';
+    const status = isRejected ? 'REJECT' : 'RELEASED';
+    
+    if (totalWadah <= 0) {
+        throw new Error("Jumlah wadah tidak valid untuk dicetak.");
+    }
 
-// Fungsi yang dipanggil oleh tombol "Cetak Label QR (RELEASED)"
+    for (let i = 0; i < totalWadah; i += labelsPerPage) {
+        let labelsInPageHTML = '';
+        const pageLabelsCount = Math.min(labelsPerPage, totalWadah - i);
+
+        for (let j = 0; j < pageLabelsCount; j++) {
+            const currentWadahIndex = i + j + 1; // 1, 2, 3, ...
+            
+            // 1. Generate QR Data URL (menggunakan QTY per wadah untuk kode QR)
+            const qrContent = item.qrCode || `${item.batchLot}|${item.kodeItem}|${status}|${item.qtyUnitPerWadah}|${item.expDate}|${currentWadahIndex}/${totalWadah}`;
+            const qrDataURL = await generateQRDataURL(qrContent);
+
+            // 2. Generate HTML untuk satu label
+            const labelHTML = generateLabelHTML(isRejected, item, qrDataURL, currentWadahIndex, totalWadah);
+            labelsInPageHTML += labelHTML;
+        }
+
+        // Kumpulkan semua label ke dalam satu halaman dengan page break
+        pagesHTML += `
+            <div class="print-page" style="${i > 0 ? 'page-break-before: always;' : ''}">
+                ${labelsInPageHTML}
+            </div>
+        `;
+    }
+
+    // 3. Gabungkan ke dalam dokumen cetak final dengan CSS
+    const borderColor = isRejected ? 'red' : 'green';
+
+    return `
+        <html>
+        <head>
+            <title>Cetak Label QR - ${item.kodeItem} (${totalWadah} Wadah)</title>
+            <style>
+                @page {
+                    size: A4;
+                    margin: 0.5cm;
+                }
+                
+                body {
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background: white;
+                    font-size: 10px;
+                }
+                
+                .print-page {
+                    width: 20cm; 
+                    height: 28.7cm; 
+                    margin: 0.5cm auto; 
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-content: flex-start;
+                    justify-content: space-between; 
+                }
+
+                /* ===========================================
+                    GAYA VISUAL (diselaraskan dengan Penerimaan Barang)
+                    =========================================== */
+
+                .label-wrapper {
+                    width: 9.9cm; /* 2 kolom di A4 */
+                    height: calc(33.33% - 0.4cm); /* 3 baris di A4 */
+                    padding: 0; 
+                    box-sizing: border-box;
+                    margin-bottom: 0.4cm; 
+                    margin-right: 0.1cm;
+                    margin-left: 0.1cm;
+                }
+                
+                .label-container {
+                    width: 100%; 
+                    height: 100%; 
+                    border: 2px solid ${borderColor}; /* Warna border sesuai status */
+                    padding: 5px; 
+                    box-sizing: border-box;
+                    background-color: #fff;
+                    display: flex;
+                    flex-direction: column;
+                    font-size: 10px; 
+                }
+                .header {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    border-bottom: 2px solid ${borderColor};
+                    padding-bottom: 5px; 
+                    margin-bottom: 5px; 
+                }
+                .logo-img {
+                    width: 130px; 
+                    height: auto;
+                    margin-bottom: 5px;
+                }
+                .status-box {
+                    margin-top: 5px;
+                    border-top: 0.8px solid #000; 
+                    border-bottom: none;
+                    border-left: none;
+                    border-right: none;
+                    padding: 2px 5px;
+                    font-weight: bold;
+                    font-size: 14px; 
+                    width: 100%;
+                    text-align: center;
+                }
+                .content {
+                    display: flex;
+                    flex-grow: 1;
+                    padding-top: 5px;
+                    gap: 10px; 
+                }
+                .info-section {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                .info-row {
+                    display: flex;
+                    margin-bottom: 2px;
+                    align-items: baseline;
+                }
+                .info-label {
+                    width: 80px; 
+                    min-width: 80px;
+                    font-weight: normal;
+                    flex-shrink: 0;
+                }
+                .info-value {
+                    flex: 1;
+                    font-weight: bold;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    
+                }
+                .info-value.multi-line {
+                    white-space: normal; 
+                }
+
+                .qr-section {
+                    width: 80px; 
+                    height: 80px; 
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    align-items: flex-end; 
+                    flex-shrink: 0;
+                }
+                .qr-code {
+                    width: 100%;
+                    height: 100%;
+                    border: 1px solid #ccc;
+                }
+                .qr-placeholder { 
+                    width: 100%;
+                    height: 100%;
+                    border: 1px dashed #999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 10px;
+                    color: #999;
+                    font-weight: bold;
+                }
+                
+                .footer {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 10px; 
+                    border-top: 2px solid ${borderColor};
+                    padding-top: 25px;
+                    margin-top: 5px;
+                }
+                .footer-left {
+                    font-style: italic;
+                }
+                .footer-right {
+                    font-weight: bold;
+                }
+                
+                /* Untuk mode print */
+                @media print {
+                    .print-page { 
+                        page-break-after: always;
+                        width: initial;
+                        height: initial;
+                        padding: 1px;
+                        margin: 0 auto;
+                    }
+                    .print-page:last-child { page-break-after: avoid; }
+                    body { 
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact;
+                        display: block;
+                        margin: 0;
+                    }
+                    /* Menyesuaikan border/padding di mode print */
+                    .label-container {
+                        border-top: 0.8px solid #000; 
+                        padding: 2px;
+                    }
+                    .header {
+                        border-bottom: 0.8px solid #000; 
+                        padding: 2px;
+                        padding-bottom: 0px; 
+                        margin-bottom: 0px; 
+                    }
+                    .footer {
+                        border-top: 0.8px solid #000; 
+                        padding-top: 30px;
+                        margin-top: 3px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${pagesHTML}
+        </body>
+        </html>
+    `;
+}
+
 const printReleaseQRLabel = async (item) => {
-  const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|RELEASED|${item.qtyReceived}|${item.expDate}`;
-  const qrDataURL = await generateQRDataURL(qrContent);
+    try {
+        const htmlContent = await createPrintDocument(item, false); // false = RELEASED
+        
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.focus();
+        } else {
+            alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+        }
 
-  if (!qrDataURL) {
-    alert("Gagal membuat QR Code untuk dicetak.");
-    return;
-  }
-
-  const htmlContent = generateLabelHTML(false, item, qrDataURL);
-
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-  printWindow.focus();
+    } catch (error) {
+        console.error("Error saat mencetak label RELEASED:", error);
+        alert(error.message || "Terjadi kesalahan saat mencetak label.");
+    }
 };
 
-// Fungsi yang dipanggil oleh tombol "Cetak Label QR (REJECT)"
 const printRejectQRLabel = async (item) => {
-  const qrContent = item.qrCode || `${item.noLot || item.batchLot}|${item.kodeItem}|REJECT|${item.qtyReceived}|${item.expDate}`;
-  const qrDataURL = await generateQRDataURL(qrContent);
+    try {
+        const htmlContent = await createPrintDocument(item, true); // true = REJECTED
+        
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.focus();
+        } else {
+            alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+        }
 
-  if (!qrDataURL) {
-    alert("Gagal membuat QR Code untuk dicetak.");
-    return;
-  }
-
-  const htmlContent = generateLabelHTML(true, item, qrDataURL);
-
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-  printWindow.focus();
+    } catch (error) {
+        console.error("Error saat mencetak label REJECT:", error);
+        alert(error.message || "Terjadi kesalahan saat mencetak label.");
+    }
 };
 
 // Mengganti nama fungsi lama (printQRLabel)
@@ -1601,6 +1747,7 @@ const printQRLabel = printReleaseQRLabel;
 onUnmounted(() => {
   stopCamera()
 })
+
 onUnmounted(async () => {
   if (html5QrCode.value) {
     try {
@@ -1611,4 +1758,5 @@ onUnmounted(async () => {
     }
   }
 })
+
 </script>

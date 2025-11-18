@@ -375,13 +375,14 @@
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.batchLot }}</td> 
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.sourceBin }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.destBin }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.actualQty || item.qty }}</td>
+                    <!-- <td class="px-4 py-3 text-sm text-gray-900">
                       <div v-if="selectedTO?.isExecuting && item.status !== 'completed'">
                         <input v-model.number="item.actualQty" type="number" :placeholder="item.qty.toString()"
                           class="w-20 px-2 py-1 border border-gray-300 rounded text-center" min="0">
                       </div>
                       <div v-else>{{ item.actualQty || item.qty }}</div>
-                    </td>
+                    </td> -->
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
                     <td class="px-4 py-3">
                       <span :class="getItemStatusClass(item.status)"
@@ -1133,8 +1134,13 @@ const completeTO = async () => {
     }, {
       onSuccess: () => {
         alert('Transfer Order berhasil diselesaikan!')
-        clearTOState() // [PENTING] Hapus state setelah sukses
-        closeDetailModal()
+        // [PERBAIKAN UTAMA 1]: Update status selectedTO secara lokal agar closeDetailModal tidak menyimpan state parsial.
+        if (selectedTO.value) {
+            selectedTO.value.status = 'Completed' 
+            selectedTO.value.isExecuting = false // Opsional, tapi disarankan
+        }
+        clearTOState() // Hapus state setelah sukses
+        closeDetailModal() // Panggil close, yang sekarang tidak akan menyimpan state parsial
       },
       onError: (errors) => {
         console.error('Error completing TO:', errors)

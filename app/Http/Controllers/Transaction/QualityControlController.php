@@ -54,54 +54,37 @@ class QualityControlController extends Controller
             // QTY Diambil hanya dihitung jika status sudah PASS atau REJECT
             $qtyDiambil = 0;
             if (in_array($item['statusQC'], ['PASS', 'REJECT'])) {
-                // Di sini, kita asumsikan 'qty_sample' adalah QTY yang diambil saat QC (sampling)
-                // Dan QTY yang tersisa di Inventory sudah dikurangi.
-                
-                // Mendapatkan QCChecklistDetail untuk menghitung QTY sampel yang diambil.
                 $qcDetail = QCChecklistDetail::whereHas('qcChecklist', function($query) use ($item) {
                     $query->where('incoming_item_id', $item['id']);
                 })->first();
 
-                // Logika: Qty Diambil adalah Qty Sampel (diambil saat QC)
                 $qtyDiambil = $qcDetail ? (float)$qcDetail->qty_sample : 0;
             }
 
             if (!isset($groupedItems[$key])) {
                 // Inisialisasi item baru (mengambil data dari item pertama)
                 $groupedItems[$key] = $item;
-                $groupedItems[$key]['original_ids'] = [$item['id']]; // Simpan semua ID untuk referensi
+                $groupedItems[$key]['original_ids'] = [$item['id']];
                 $groupedItems[$key]['qtyDatangTotal'] = (float)$item['qtyDatangTotal'];
-                
-                // QTY Diambil: 
-                // Jika status "To QC", Qty Diambil harus 0.
-                // Jika status sudah "PASS" atau "REJECT", kita ambil Qty Sampel dari *item saat ini*
                 $groupedItems[$key]['qtyDiambilTotal'] = $qtyDiambil;
-                
-                // Qty Received total adalah QTY sisa yang sudah di Inventory/GR/Return
-                // JIKA status masih To QC, Qty Received = Qty Datang Total.
-                // JIKA status sudah PASS/REJECT, Qty Received adalah Qty yang tersisa di QRT (item.qtyReceived)
-                $groupedItems[$key]['qtyReceived'] = (float)$item['qtyReceived']; 
-
-                // Tentukan status yang ditampilkan: Ambil status "To QC" jika ada.
+                $groupedItems[$key]['qtyReceived'] = (float)$item['qtyReceived'];
                 $groupedItems[$key]['displayStatusQC'] = $item['statusQC'];
-
-                // QTY DATANG: Ini adalah QTY fisik total awal.
                 $groupedItems[$key]['qtyDatangAwal'] = (float)$item['qtyDatangTotal'];
                 
+                // ⭐ Tambahkan Properti Wadah
+                $groupedItems[$key]['qtyWadah'] = (int)$item['qtyWadah']; 
+                $groupedItems[$key]['qtyUnitPerWadah'] = (float)$item['qtyUnitPerWadah'];
+
             } else {
-                // Agregasi Qty Datang Total dari semua Item di grup yang sama
+                // Agregasi
                 $groupedItems[$key]['qtyDatangAwal'] += (float)$item['qtyDatangTotal'];
-                
-                // Agregasi Qty Diambil Total
                 $groupedItems[$key]['qtyDiambilTotal'] += $qtyDiambil;
-
-                // Agregasi Qty Received (Stok yang ada di QRT)
                 $groupedItems[$key]['qtyReceived'] += (float)$item['qtyReceived'];
-
-                // Tambahkan ID
                 $groupedItems[$key]['original_ids'][] = $item['id'];
                 
-                // JIKA salah satu item masih 'To QC', maka status grup adalah 'To QC'
+                // ⭐ Tambahkan Agregasi Qty Wadah (Jika menggunakan IncomingGoodsItem, ini harusnya sama atau diagregasi)
+                $groupedItems[$key]['qtyWadah'] += (int)$item['qtyWadah'];
+
                 if ($item['statusQC'] === 'To QC') {
                     $groupedItems[$key]['displayStatusQC'] = 'To QC';
                 }
@@ -113,20 +96,12 @@ class QualityControlController extends Controller
         
         // Tentukan nilai Qty Diambil dan Status Display akhir
         foreach ($finalItems as &$item) {
-            // Jika ada item dalam grup yang masih To QC, maka Qty Diambilnya 0
             if ($item['displayStatusQC'] === 'To QC') {
                 $item['qtyDiambilTotal'] = 0;
+                $item['qtyReceived'] = $item['qtyDatangAwal']; // Sebelum ada pengambilan sampel
             } else {
-                // Jika sudah ada yang di QC (PASS/REJECT), ambil Qty Diambil Total yang sudah diakumulasi
-            }
-            
-            // Perbarui Qty Received Display: 
-            // Jika To QC, Qty Received adalah total Qty Datang Awal.
-            // Jika sudah QC, Qty Received adalah total Qty stok saat ini (yang sudah diakumulasi).
-            if ($item['displayStatusQC'] === 'To QC') {
-                 $item['qtyReceived'] = $item['qtyDatangAwal']; // Sebelum ada pengambilan sampel
-            } else {
-                // Nilai yang sudah diakumulasi dari inventory stock QRT (setelah dikurangi sampel)
+                // Setelah QC, total QTY Received adalah QTY yang tersisa (stok QRT)
+                // QtyUnitPerWadah tidak perlu dihitung ulang karena seharusnya sama di satu batch/kode item
             }
         }
         
@@ -141,10 +116,10 @@ class QualityControlController extends Controller
             'incomingGood.purchaseOrder',
             'incomingGood.supplier',
             'material',
-            'qcChecklist', 
-            'qcChecklist.qcChecklistDetail' 
+            'qcChecklist',
+            'qcChecklist.qcChecklistDetail'
         ])
-        ->whereIn('status_qc', ['To QC', 'PASS', 'REJECT']) 
+        ->whereIn('status_qc', ['To QC', 'PASS', 'REJECT'])
         ->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($item) {
@@ -153,7 +128,9 @@ class QualityControlController extends Controller
             $inventoryStock = $this->getQuarantineStock($item);
             
             // Qty yang saat ini ada di Bin Karantina (setelah dikurangi sampel)
-            $qtyCurrentStock = $inventoryStock ? $inventoryStock->qty_on_hand : $item->qty_unit;
+            $qtyCurrentStock = $inventoryStock ? $inventoryStock->qty_on_hand : (
+                $item->status_qc === 'To QC' ? (float)($item->qty_wadah * $item->getOriginal('qty_unit')) : 0.0
+            );
 
             // Ambil Qty Sampel (Qty Diambil) dari Detail QC, jika ada.
             $qcDetail = $item->qcChecklist->qcChecklistDetail ?? null;
@@ -162,21 +139,17 @@ class QualityControlController extends Controller
             // Ambil catatan QC, jika ada
             $catatanQc = $qcDetail ? $qcDetail->catatan_qc : null;
             
-            // ⭐ PERUBAHAN UTAMA UNTUK MENGHITUNG QTY DATANG TOTAL (TOTAL AWAL)
-            if ($item->status_qc === 'To QC') {
-                // Jika To QC, qty_unit item IncomingGoodsItem masih memegang nilai total awal (diisi saat GR)
-                // Asumsi: Saat GR, qty_unit diisi dengan QTY TOTAL (qty_wadah * qty_unit per wadah)
-                $qtyDatangTotal = (float)$item->getOriginal('qty_unit'); 
-                
-                // Atau jika Anda ingin menggunakan qty_wadah * qty_unit (asumsi qty_unit adalah QTY per Wadah)
-                $qtyDatangTotal = (float)($item->qty_wadah * $item->getOriginal('qty_unit')); 
-                // Kita gunakan nilai yang tersimpan di Inventory + Sample yang sudah diambil (jika ada pergerakan di luar QC)
-                $qtyDatangTotal = (float)$qtyCurrentStock + $qtySampleTaken;
+            // Ambil Qty Unit Per Wadah (Qty per Box)
+            $qtyUnitPerWadah = (float)$item->getOriginal('qty_unit'); // Nilai asli yang diisi saat GR
 
-            } else {
-                // Jika sudah di QC (PASS/REJECT), Qty Datang Total adalah Qty Sisa + Qty Sampel yang diambil
-                $qtyDatangTotal = (float)$qtyCurrentStock + (float)$qtySampleTaken;
-            }
+            // ⭐ PERUBAHAN UTAMA UNTUK MENGHITUNG QTY DATANG TOTAL (TOTAL AWAL)
+            // Ini adalah QTY TOTAL (unit) saat material datang.
+            $qtyDatangTotal = (float)$item->qty_wadah * $qtyUnitPerWadah;
+
+            // ⭐ QTY WADAH FISIK
+            // Jumlah wadah yang datang.
+            $qtyWadah = (int)$item->qty_wadah;
+
             return [
                 'id' => $item->id,
                 'shipmentNumber' => $item->incomingGood->incoming_number,
@@ -190,12 +163,15 @@ class QualityControlController extends Controller
                 
                 'uom' => $item->satuan,
                 'statusQC' => $item->status_qc,
-                'qtyReceived' => (float)$qtyCurrentStock,
-                'qtyDatangTotal' => (float)$qtyDatangTotal,
+                // Qty Received: QTY Unit yang tersisa di Inventory QRT (setelah dikurangi sample, jika sudah QC)
+                'qtyReceived' => (float)$qtyCurrentStock, 
+                // Qty Datang Total: QTY Unit total sebelum ada QC/Sample
+                'qtyDatangTotal' => (float)$qtyDatangTotal, 
                 'qcSampleQty' => (float)$qtySampleTaken,
 
-                // 'qtyWadah' => (int)$item->qty_wadah, 
-                // 'qtyUnitPerWadah' => (float)$qtyUnitPerWadah,
+                // ⭐ Tambahkan Qty Wadah dan Qty Unit Per Wadah
+                'qtyWadah' => $qtyWadah, 
+                'qtyUnitPerWadah' => $qtyUnitPerWadah,
 
                 'noKendaraan' => $item->incomingGood->no_kendaraan,
                 'namaDriver' => $item->incomingGood->nama_driver,
@@ -205,7 +181,7 @@ class QualityControlController extends Controller
                 'catatanQC' => $catatanQc,
             ];
         })
-        ->toArray(); // Konversi ke array untuk grouping
+        ->toArray();
         
         // Panggil fungsi pengelompokan
         $itemsToQC = $this->groupItemsToQC($itemsToQCCollection);
@@ -684,14 +660,14 @@ class QualityControlController extends Controller
             
             // Cari pergerakan terakhir hari ini, dan kunci baris tersebut (jika ditemukan)
             $lastMovement = StockMovement::whereDate('created_at', $today)
-                                        ->lockForUpdate() 
-                                        ->orderBy('id', 'desc') // Pastikan ambil yang terakhir
-                                        ->first();
+                ->lockForUpdate() 
+                ->orderBy('id', 'desc') // Pastikan ambil yang terakhir
+                ->first();
 
             // Hitung sequence baru
             $sequence = $lastMovement 
-                        ? (intval(substr($lastMovement->movement_number, -4)) + 1) 
-                        : 1;
+                ? (intval(substr($lastMovement->movement_number, -4)) + 1) 
+                : 1;
 
             return $sequence;
         });

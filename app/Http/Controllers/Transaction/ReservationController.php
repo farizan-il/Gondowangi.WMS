@@ -96,59 +96,59 @@ class ReservationController extends Controller
     // ===================================================================
 
     private function parseProductionOrderContent(string $pdfText)
-{
-    // --- Langkah 1: Isolasi Bagian Bill of Material ---
-    $startKeyword = "Products to Consume"; 
-    $startPos = strpos($pdfText, $startKeyword);
-    
-    if ($startPos === false) {
-        return []; // Jika header tidak ditemukan, kembalikan array kosong
-    }
-
-    // Ambil semua teks setelah keyword Bill of Material
-    $BoMSection = substr($pdfText, $startPos);
-    
-    $allMaterialsFromPdf = [];
-    
-    // 🔥 PERBAIKAN REGEX UTAMA: Menggunakan preg_match_all untuk mencari pola di seluruh blok teks.
-    // Pola: [KODE] [NAMA (non-greedy)] [KUANTITAS] [UOM]
-    // Modifier 's' (DOTALL) memungkinkan '.' mencocokkan newline, sangat penting untuk Smalot.
-    $globalPattern = '/(\d{5,6})\s+(.+?)\s+(\d+[,.]\d+)\s*(Kg|Rol|Pcs)/is'; 
-
-    // Mencoba mencocokkan semua pola sekaligus
-    if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
+    {
+        // --- Langkah 1: Isolasi Bagian Bill of Material ---
+        $startKeyword = "Products to Consume"; 
+        $startPos = strpos($pdfText, $startKeyword);
         
-        foreach ($matches as $m) {
-            // $m[1] = Kode, $m[2] = Nama, $m[3] = Qty, $m[4] = UoM
-            $code = trim($m[1]);
-            $name = trim($m[2]);
-            $qty = (float) str_replace(',', '.', $m[3]); 
-            $uom = trim($m[4]);
-
-            $allMaterialsFromPdf[] = [
-                'code' => $code,
-                'name' => $name, 
-                'qty' => $qty,
-                'uom' => $uom
-            ];
+        if ($startPos === false) {
+            return []; // Jika header tidak ditemukan, kembalikan array kosong
         }
-    }
-    
-    // --- Langkah 2: Agregasi Kuantitas (Tetap sama) ---
-    // Agregasi material yang memiliki kode dan UOM yang sama (jika muncul lebih dari sekali di PO)
-    $aggregatedMaterials = [];
-    foreach ($allMaterialsFromPdf as $material) {
-        $key = $material['code'] . '_' . $material['uom']; 
+
+        // Ambil semua teks setelah keyword Bill of Material
+        $BoMSection = substr($pdfText, $startPos);
         
-        if (!isset($aggregatedMaterials[$key])) {
-            $aggregatedMaterials[$key] = $material;
-        } else {
-            $aggregatedMaterials[$key]['qty'] += $material['qty'];
-        }
-    }
+        $allMaterialsFromPdf = [];
+        
+        // 🔥 PERBAIKAN REGEX UTAMA: Menggunakan preg_match_all untuk mencari pola di seluruh blok teks.
+        // Pola: [KODE] [NAMA (non-greedy)] [KUANTITAS] [UOM]
+        // Modifier 's' (DOTALL) memungkinkan '.' mencocokkan newline, sangat penting untuk Smalot.
+        $globalPattern = '/(\d{5,6})\s+(.+?)\s+(\d+[,.]\d+)\s*(Kg|Rol|Pcs)/is'; 
 
-    return array_values($aggregatedMaterials);
-}
+        // Mencoba mencocokkan semua pola sekaligus
+        if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
+            
+            foreach ($matches as $m) {
+                // $m[1] = Kode, $m[2] = Nama, $m[3] = Qty, $m[4] = UoM
+                $code = trim($m[1]);
+                $name = trim($m[2]);
+                $qty = (float) str_replace(',', '.', $m[3]); 
+                $uom = trim($m[4]);
+
+                $allMaterialsFromPdf[] = [
+                    'code' => $code,
+                    'name' => $name, 
+                    'qty' => $qty,
+                    'uom' => $uom
+                ];
+            }
+        }
+        
+        // --- Langkah 2: Agregasi Kuantitas (Tetap sama) ---
+        // Agregasi material yang memiliki kode dan UOM yang sama (jika muncul lebih dari sekali di PO)
+        $aggregatedMaterials = [];
+        foreach ($allMaterialsFromPdf as $material) {
+            $key = $material['code'] . '_' . $material['uom']; 
+            
+            if (!isset($aggregatedMaterials[$key])) {
+                $aggregatedMaterials[$key] = $material;
+            } else {
+                $aggregatedMaterials[$key]['qty'] += $material['qty'];
+            }
+        }
+
+        return array_values($aggregatedMaterials);
+    }
 
     /**
      * Mencari material di master data dan menghitung stok tersedia.
@@ -316,67 +316,6 @@ class ReservationController extends Controller
             ], 422); 
         }
     }
-
-    private function mockParseProductionOrder($file)
-    {
-        // Menggunakan data dari Bill Of Material yang ada di file Production Order
-        $rawMaterialsFromPdf = [
-            // Material dengan kode item dan quantity (Ambil dari Bill Of Material)
-            ['code' => '23431', 'name' => 'Sachet NATUR Shampoo Argan Oil 8 ML - R23', 'qty' => 0.8000, 'uom' => 'Rol'],
-            ['code' => '22671', 'name' => 'OPP Tape 2"x90 Yard Warna', 'qty' => 3.6000, 'uom' => 'Pcs'],
-            ['code' => '23207', 'name' => 'Masterbox Natur Hair Recovery 3 varian', 'qty' => 180.3005, 'uom' => 'Pcs'],
-            ['code' => '23431', 'name' => 'Sachet NATUR Shampoo Argan Oil 8 ML - R23', 'qty' => 7.2000, 'uom' => 'Rol'],
-            ['code' => '14338', 'name' => 'Argan Oil', 'qty' => 0.1500, 'uom' => 'Kg'],
-            ['code' => '14289', 'name' => 'Citric acid', 'qty' => 0.1800, 'uom' => 'Kg'],
-            ['code' => '14337', 'name' => 'Hair Fantasy', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '60026', 'name' => 'DI Alpha Toc Acetate', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '60016', 'name' => 'Olyvem', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '14100', 'name' => 'Allantoin', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '60022', 'name' => 'EDTA (Tetrasodium EDTA)', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '60003', 'name' => 'Garam', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '14034', 'name' => 'L-Glutamic Acid', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '14033', 'name' => 'L-Lysine', 'qty' => 0.3000, 'uom' => 'Kg'],
-            ['code' => '14190', 'name' => 'Celquad SC 240 C', 'qty' => 0.4500, 'uom' => 'Kg'],
-            ['code' => '14239', 'name' => 'Zinc Gluconate', 'qty' => 0.6000, 'uom' => 'Kg'],
-            ['code' => '60014', 'name' => 'Dex', 'qty' => 0.6000, 'uom' => 'Kg'],
-            ['code' => '14209', 'name' => 'Fresh Ocean', 'qty' => 1.2000, 'uom' => 'Kg'],
-            ['code' => '14237', 'name' => 'Salimid 115', 'qty' => 1.2000, 'uom' => 'Kg'],
-            ['code' => '14268', 'name' => 'Aloe Vera GE (ekstrak jadi)', 'qty' => 1.5000, 'uom' => 'Kg'],
-            ['code' => '14210', 'name' => 'Eliane', 'qty' => 1.5000, 'uom' => 'Kg'],
-            ['code' => '60017', 'name' => 'Phenoxetol', 'qty' => 1.8000, 'uom' => 'Kg'],
-            ['code' => '14226', 'name' => 'Xiameter PMX 1501', 'qty' => 3.0000, 'uom' => 'Kg'],
-            ['code' => '14335', 'name' => 'Amodimethicone', 'qty' => 4.5000, 'uom' => 'Kg'],
-            ['code' => '60002', 'name' => 'Cs 2000', 'qty' => 15.0000, 'uom' => 'Kg'],
-            ['code' => '60006', 'name' => 'Ms 1000', 'qty' => 52.5001, 'uom' => 'Kg'],
-            ['code' => '14291', 'name' => 'Ekstrak C - new', 'qty' => 167.5205, 'uom' => 'Kg'],
-            ['code' => '60012', 'name' => 'Tk 2000', 'qty' => 4.8000, 'uom' => 'Kg'],
-            ['code' => '60001', 'name' => 'Cs 1000', 'qty' => 12.0000, 'uom' => 'Kg'],
-            ['code' => '60011', 'name' => 'Tk 1000', 'qty' => 14.1000, 'uom' => 'Kg'],
-            
-            // Tambahkan satu material yang DIJAMIN TIDAK ADA di WMS (untuk tes notFound)
-            ['code' => 'XX9999', 'name' => 'Material Fiktif', 'qty' => 10.0000, 'uom' => 'Kg'],
-        ];
-
-        // Aggregasi kuantitas untuk material yang sama
-        $aggregatedMaterials = [];
-        foreach ($rawMaterialsFromPdf as $material) {
-            $key = $material['code'] . '_' . $material['uom'];
-            if (!isset($aggregatedMaterials[$key])) {
-                $aggregatedMaterials[$key] = $material;
-            } else {
-                $aggregatedMaterials[$key]['qty'] += $material['qty'];
-            }
-        }
-
-        // Filter hanya Raw Material (asumsi PM memiliki UoM Pcs/Rol, RM memiliki UoM Kg)
-        // Dalam implementasi nyata, lakukan filter berdasarkan master data.
-        $filteredRawMaterials = array_filter(array_values($aggregatedMaterials), function($material) {
-            // Asumsi: Raw Material memiliki UoM Kg
-            return strtolower($material['uom']) === 'kg'; 
-        });
-        
-        return $filteredRawMaterials;
-    }
     
     public function index()
     {
@@ -489,98 +428,109 @@ class ReservationController extends Controller
         return response()->json($materials);
     }
     
-    // ===================================================================
-    // NEW FUNCTION: Stock Allocation/Reservation Logic
-    // ===================================================================
-
-    /**
-     * Mengalokasikan stok dari InventoryStock dan membuat entri Reservation.
-     * Logika ini menggunakan strategi LIFO-Stock (Least Inventory First Out).
-     *
-     * @param ReservationRequest $request
-     * @param array $validatedItems
-     * @param string $requestType
-     * @throws \Exception
-     */
     private function allocateStock(ReservationRequest $reservationRequest, array $validatedItems, string $requestType): void
-    {
-        foreach ($validatedItems as $index => $item) {
-            $materialCodeKey = '';
-            $qtyKey = '';
+{
+    foreach ($validatedItems as $index => $item) {
+        $materialCodeKey = '';
+        $qtyKey = '';
 
-            // Tentukan key kode material dan kuantitas permintaan
-            if ($requestType === 'foh-rs') {
-                $materialCodeKey = 'kodeItem';
-                $qtyKey = 'qty';
-            } elseif ($requestType === 'packaging' || $requestType === 'add') {
-                $materialCodeKey = 'kodePM';
-                $qtyKey = 'jumlahPermintaan';
-            } elseif ($requestType === 'raw-material') {
-                $materialCodeKey = 'kodeBahan';
-                $qtyKey = 'jumlahKebutuhan';
-            }
+        // Tentukan key kode material dan kuantitas permintaan
+        if ($requestType === 'foh-rs') {
+            $materialCodeKey = 'kodeItem';
+            $qtyKey = 'qty';
+        } elseif ($requestType === 'packaging' || $requestType === 'add') {
+            $materialCodeKey = 'kodePM';
+            $qtyKey = 'jumlahPermintaan';
+        } elseif ($requestType === 'raw-material') {
+            $materialCodeKey = 'kodeBahan';
+            $qtyKey = 'jumlahKebutuhan';
+        }
 
-            $materialCode = $item[$materialCodeKey] ?? null;
-            $requestedQty = (float) ($item[$qtyKey] ?? 0);
+        $materialCode = $item[$materialCodeKey] ?? null;
+        $requestedQty = (float) ($item[$qtyKey] ?? 0);
 
-            if (!$materialCode || $requestedQty <= 0) {
-                continue; // Skip jika tidak ada kode material atau kuantitas 0
-            }
-            
-            // 1. Dapatkan Material ID
-            $material = Material::where('kode_item', $materialCode)->firstOrFail();
-            
-            // 2. Dapatkan stok yang tersedia (LIFO-Stock: diurutkan berdasarkan kuantitas tersedia terkecil)
-            $availableStocks = InventoryStock::where('material_id', $material->id)
-                ->where('qty_available', '>', 0)
-                ->orderBy('qty_available', 'asc') // Stok paling sedikit diambil dulu
-                ->get();
-            
-            $remainingQtyToReserve = $requestedQty;
+        if (!$materialCode || $requestedQty <= 0) {
+            continue; // Skip jika tidak ada kode material atau kuantitas 0
+        }
+        
+        // 1. Dapatkan Material ID
+        $material = Material::where('kode_item', $materialCode)->firstOrFail();
+        
+        // 2. Dapatkan stok yang tersedia
+        $availableStocksQuery = InventoryStock::where('material_id', $material->id)
+            ->where('qty_available', '>', 0);
+        
+        // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
+        
+        // 2a. Prioritas 1: FEFO (First Expired First Out)
+        //    - Urutkan berdasarkan exp_date ASC (tercepat kedaluwarsa).
+        //    - Stok yang tidak punya exp_date (NULL) ditaruh di paling akhir.
+        $availableStocksQuery->orderByRaw('ISNULL(exp_date) ASC, exp_date ASC');
 
-            foreach ($availableStocks as $stock) {
-                if ($remainingQtyToReserve <= 0) break;
+        // 2b. Prioritas 2: FIFO (First In First Out)
+        //    - Jika exp_date SAMA, urutkan berdasarkan tanggal kedatangan di batch_lot.
+        //    - Asumsi format batch_lot: 14095 (5 char) + 131125 (6 char, dmy) + NP (sisa)
+        //    - (Ini adalah sintaks MySQL. Jika Anda pakai DB lain, sintaksnya mungkin beda)
+        try {
+            // Menggunakan SUBSTRING(batch_lot, 6, 6) untuk mengambil '131125' dari '14095131125NP'
+            // dan STR_TO_DATE untuk mengubahnya menjadi tanggal ('2025-11-13')
+            $availableStocksQuery->orderByRaw("STR_TO_DATE(SUBSTRING(batch_lot, 6, 6), '%d%m%y') ASC");
+        } catch (\Exception $e) {
+            // Fallback jika DB (cth: SQLite saat testing) tidak support STR_TO_DATE
+            // Ini tidak akan mengurutkan FIFO, tapi setidaknya tidak error.
+            Log::warning("Gagal mengurutkan FIFO di database (DB mungkin tidak support STR_TO_DATE): " . $e->getMessage());
+        }
 
-                $qtyToDeduct = min($remainingQtyToReserve, (float) $stock->qty_available);
+        // 2c. Ambil data yang SUDAH TERURUT SEMPURNA dari DB
+        $availableStocks = $availableStocksQuery->get();
+        
+        // ** END: LOGIKA PENGURUTAN BARU **
+        
+        $remainingQtyToReserve = $requestedQty;
 
-                if ($qtyToDeduct > 0) {
-                    // ** Lakukan perhitungan stok di PHP, bukan menggunakan DB::raw() **
-                    $newAvailable = (float) $stock->qty_available - $qtyToDeduct;
-                    $newReserved = (float) $stock->qty_reserved + $qtyToDeduct;
+        foreach ($availableStocks as $stock) {
+            if ($remainingQtyToReserve <= 0) break;
 
-                    // 3. Kurangi qty_available di InventoryStock (Assign nilai numerik)
-                    $stock->qty_available = $newAvailable;
-                    $stock->qty_reserved = $newReserved; // Tambahkan ke reserved
-                    $stock->save();
-                    
-                    // 4. Catat Reservasi di tabel 'reservations'
-                    // Ini mencatat alokasi stok per batch/lot ke request
-                    Reservation::create([
-                        'reservation_no' => $reservationRequest->no_reservasi,
-                        'reservation_request_id' => $reservationRequest->id,
-                        'reservation_type' => $reservationRequest->request_type,
-                        'material_id' => $material->id,
-                        'warehouse_id' => $stock->warehouse_id,
-                        'bin_id' => $stock->bin_id,
-                        'batch_lot' => $stock->batch_lot,
-                        'qty_reserved' => $qtyToDeduct,
-                        'uom' => $stock->uom,
-                        'status' => 'Reserved',
-                        'reservation_date' => now(),
-                        'expiry_date' => $stock->exp_date, 
-                        'created_by' => Auth::id(),
-                    ]);
+            $qtyToDeduct = min($remainingQtyToReserve, (float) $stock->qty_available);
 
-                    $remainingQtyToReserve -= $qtyToDeduct;
-                }
-            }
-            
-            if ($remainingQtyToReserve > 0) {
-                // Seharusnya tidak terjadi jika validasi stok server-side bekerja
-                throw new \Exception("Gagal mengalokasikan stok penuh untuk material {$materialCode}. Sisa: {$remainingQtyToReserve}");
+            if ($qtyToDeduct > 0) {
+                // ** Lakukan perhitungan stok di PHP, bukan menggunakan DB::raw() **
+                $newAvailable = (float) $stock->qty_available - $qtyToDeduct;
+                $newReserved = (float) $stock->qty_reserved + $qtyToDeduct;
+
+                // 3. Kurangi qty_available di InventoryStock (Assign nilai numerik)
+                $stock->qty_available = $newAvailable;
+                $stock->qty_reserved = $newReserved; // Tambahkan ke reserved
+                $stock->save();
+                
+                // 4. Catat Reservasi di tabel 'reservations'
+                // Ini mencatat alokasi stok per batch/lot ke request
+                Reservation::create([
+                    'reservation_no' => $reservationRequest->no_reservasi,
+                    'reservation_request_id' => $reservationRequest->id,
+                    'reservation_type' => $reservationRequest->request_type,
+                    'material_id' => $material->id,
+                    'warehouse_id' => $stock->warehouse_id,
+                    'bin_id' => $stock->bin_id,
+                    'batch_lot' => $stock->batch_lot,
+                    'qty_reserved' => $qtyToDeduct,
+                    'uom' => $stock->uom,
+                    'status' => 'Reserved',
+                    'reservation_date' => now(),
+                    'expiry_date' => $stock->exp_date, 
+                    'created_by' => Auth::id(),
+                ]);
+
+                $remainingQtyToReserve -= $qtyToDeduct;
             }
         }
+        
+        if ($remainingQtyToReserve > 0) {
+            // Seharusnya tidak terjadi jika validasi stok server-side bekerja
+            throw new \Exception("Gagal mengalokasikan stok penuh untuk material {$materialCode}. Sisa: {$remainingQtyToReserve}");
+        }
     }
+}
 
     // ===================================================================
     // STORE METHOD (Updated)
@@ -662,7 +612,7 @@ class ReservationController extends Controller
                 
                 // 2. Hitung total stok tersedia dari InventoryStock
                 $totalAvailableStock = InventoryStock::where('material_id', $material->id)
-                                                    ->sum('qty_available');
+                    ->sum('qty_available');
 
                 // 3. Bandingkan
                 if ($requestedQty > $totalAvailableStock) {

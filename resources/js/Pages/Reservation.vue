@@ -264,7 +264,7 @@
 
                 <!-- Raw Material: Kode Produk -->
                 <div v-if="selectedCategory === 'raw-material'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Kode Produk <span
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk <span
                       class="text-red-500">*</span></label>
                   <input v-model="formData.kodeProduk" type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
@@ -852,18 +852,6 @@ const debugFileParse = async () => {
     // Buat FormData seperti pada fungsi upload normal
     const data = new FormData();
     data.append('file', uploadedFile.value);
-
-    // Kirim file ke endpoint debugging di Controller
-    // Menggunakan fetch biasa dan window.open untuk mengirim request yang memicu dd()
-    
-    // Perlu cara yang lebih baik untuk mengirim FormData melalui POST dan membuka dd()
-    // Karena method ini kompleks, kita akan mengimplementasikan DD LANGSUNG di Controller, 
-    // tetapi menggunakan route yang berbeda. Kita butuh cara agar file-nya bisa dipost.
-    
-    // Solusi tercepat: Kita akan menggunakan teknik 'Inertia.visit' dengan method GET
-    // untuk memicu dd() saat file sudah diunggah.
-    
-    // Karena file besar, POST harus dilakukan. Kita akan pakai solusi di Controller saja.
     
     // --- Solusi Controller DD (Lihat Langkah 2) ---
     alert("Tester debug ambil data di pdf, pukkkk lah");
@@ -1247,7 +1235,7 @@ const getStatusClass = (status) => {
   const classes = {
     'Draft': 'bg-gray-100 text-gray-700',
     'Submitted': 'bg-blue-100 text-blue-700',
-    'Approved': 'bg-green-100 text-green-700',
+    'Completed': 'bg-green-100 text-green-700',
     'Rejected': 'bg-red-100 text-red-700',
     'Picking': 'bg-yellow-100 text-yellow-700',
     'Done': 'bg-purple-100 text-purple-700'

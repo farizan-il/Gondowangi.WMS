@@ -135,7 +135,7 @@
 
           <!-- Summary Progress -->
           <div class="bg-blue-50 rounded-lg p-4 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="text-center">
                 <div class="text-2xl font-bold text-blue-600">{{ getTotalItemsCount }}</div>
                 <div class="text-sm text-blue-700">Total Alokasi Batch</div>
@@ -144,10 +144,10 @@
                 <div class="text-2xl font-bold text-green-600">{{ getPickedItemsCount }}</div>
                 <div class="text-sm text-green-700">Picked Complete</div>
               </div>
-              <div class="text-center">
+              <!-- <div class="text-center">
                 <div class="text-2xl font-bold text-orange-600">{{ getShortPickItemsCount }}</div>
                 <div class="text-sm text-orange-700">Short-Pick</div>
-              </div>
+              </div> -->
               <div class="text-center">
                 <div class="text-2xl font-bold text-gray-600">{{ getPendingItemsCount }}</div>
                 <div class="text-sm text-gray-700">Pending</div>
@@ -171,20 +171,35 @@
               <table class="min-w-full divide-y divide-gray-200" style="min-width: 1400px;">
                 <thead class="bg-gray-50">
                   <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Aksi</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">No</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[120px]">Kode Item / Nama Material</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[120px]">Lot/Batch</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[150px]">Source Bin</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Exp Date</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Dialokasikan</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Picked</th>
+                    <!-- <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Qty Picked</th> -->
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">UoM</th>
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Status</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Aksi</th>
+                    
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
                   <tr v-for="(item, index) in selectedTask?.items || []" :key="index" :class="item.status === 'Picked' ? 'bg-green-50' : item.status === 'Short-Pick' ? 'bg-orange-50' : ''">
+                    <!-- Aksi -->
+                    <td class="px-3 py-2 whitespace-nowrap">
+                      <button 
+                        @click="startItemQRScan(item, index)" 
+                        :disabled="item.status === 'Picked'"
+                        :class="item.status === 'Picked' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'"
+                        class="px-3 py-1 rounded text-xs font-medium transition-colors duration-200"
+                      >
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+                        </svg>
+                        {{ item.status === 'Picked' ? 'Done' : 'Scan QR' }}
+                      </button>
+                    </td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ index + 1 }}</td>
                     
                     <!-- Kode Item / Nama Material -->
@@ -210,10 +225,9 @@
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">{{ item.qtyDiminta }}</td>
                     
                     <!-- Qty Picked (Input) -->
-                    <td class="px-3 py-2 whitespace-nowrap">
-                      <!-- Max sekarang adalah qtyDialokasikan -->
+                    <!-- <td class="px-3 py-2 whitespace-nowrap">
                       <input v-model.number="item.qtyPicked" type="number" :max="item.qtyDiminta" class="w-20 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" @input="updateItemStatus(item)">
-                    </td>
+                    </td> -->
                     
                     <!-- UoM -->
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ item.uom }}</td>
@@ -223,21 +237,6 @@
                       <span :class="getItemStatusClass(item.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                         {{ item.status }}
                       </span>
-                    </td>
-                    
-                    <!-- Aksi -->
-                    <td class="px-3 py-2 whitespace-nowrap">
-                      <button 
-                        @click="startItemQRScan(item, index)" 
-                        :disabled="item.status === 'Picked'"
-                        :class="item.status === 'Picked' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'"
-                        class="px-3 py-1 rounded text-xs font-medium transition-colors duration-200"
-                      >
-                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/>
-                        </svg>
-                        {{ item.status === 'Picked' ? 'Done' : 'Scan QR' }}
-                      </button>
                     </td>
                   </tr>
                 </tbody>
@@ -383,10 +382,10 @@
               <div class="text-2xl font-bold text-green-600">{{ getSummaryPickedItems }}</div>
               <div class="text-sm text-green-700">Batch Picked Complete</div>
             </div>
-            <div class="bg-orange-50 p-4 rounded-lg">
+            <!-- <div class="bg-orange-50 p-4 rounded-lg">
               <div class="text-2xl font-bold text-orange-600">{{ getSummaryShortPickItems }}</div>
               <div class="text-sm text-orange-700">Short-Pick</div>
-            </div>
+            </div> -->
             <div class="bg-gray-50 p-4 rounded-lg">
               <div class="text-2xl font-bold text-gray-600">{{ getSummaryPendingItems }}</div>
               <div class="text-sm text-gray-700">Pending</div>

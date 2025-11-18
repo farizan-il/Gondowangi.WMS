@@ -1,9 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use App\Models\InventoryStock;
-
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -11,7 +9,7 @@ class DashboardController extends Controller
     public function index()
     {
         // Daftar status InventoryStock yang ingin ditampilkan di dashboard
-        $validStatuses = ['KARANTINA', 'RELEASED', 'HOLD', 'REJECT'];
+        $validStatuses = ['KARANTINA', 'RELEASED', 'HOLD', 'REJECTED'];
 
         // 1. Ambil Data Inventory Stock dengan Kriteria Pemantauan
         $materialItems = InventoryStock::query()
@@ -53,16 +51,15 @@ class DashboardController extends Controller
                 $requiresQC = false;
                 $displayStatus = $item->status;
                 
-                // 1. Cek apakah item RELEASED tapi masih di bin karantina (membutuhkan Put Away)
                 if ($item->status === 'RELEASED' && str_starts_with($binCode, 'QRT-')) {
                     $requiresPutAway = true;
-                    $displayStatus = 'Released (Perlu Put Away)';
+                    // Ubah status yang ditampilkan agar jelas di tabel
+                    $displayStatus = 'Released (Perlu Put Away)'; 
                 }
 
                 // 2. Cek apakah item KARANTINA (membutuhkan QC/tindak lanjut)
                 if ($item->status === 'KARANTINA') {
-                    // Item Karantina dianggap memerlukan QC atau tindak lanjut
-                    $requiresQC = true; 
+                    $requiresQC = true;  
                     $displayStatus = 'Karantina (Perlu QC/Tindak Lanjut)';
                 }
                 
@@ -72,7 +69,7 @@ class DashboardController extends Controller
                 }
 
                 // 4. Cek jika item REJECT
-                if ($item->status === 'REJECT') { 
+                if ($item->status === 'REJECT') {  
                     $displayStatus = 'Ditolak (Perlu Tindak Lanjut)';
                 }
 
@@ -87,23 +84,22 @@ class DashboardController extends Controller
                     'qty' => $item->qty_on_hand,
                     'uom' => $item->uom,
                     'expiredDate' => $item->exp_date ? $item->exp_date->toDateString() : 'N/A',
-                    'status' => $displayStatus,
+                    // 💡 PENTING: Menggunakan $displayStatus di sini
+                    'status' => $displayStatus, 
                     'history' => $history,
                     'qr_data' => json_encode([
                         'id' => $item->id,
                         'kode' => $item->material->kode_item,
                         'lot' => $item->batch_lot,
-                        'status' => $displayStatus,
+                        'status' => $item->status, // Status asli (RELEASED/KARANTINA) untuk QR
                     ]),
-                    'qr_type' => $displayStatus,
+                    // 💡 PENTING: Menggunakan status asli (sebelum diubah $displayStatus)
+                    'qr_type' => $item->status, 
                     'requiresPutAway' => $requiresPutAway,
                     'requiresQC' => $requiresQC,
                 ];
             });
         
-        // 2. Hitung Notifikasi Berdasarkan Data Inventory Stock
-        
-        // Hitungan Put Away: Item RELEASED yang masih di bin QRT-*
         $putAwayCount = $materialItems->filter(fn($item) => $item['requiresPutAway'])->count();
 
         // Hitungan QC: Item KARANTINA
@@ -112,14 +108,14 @@ class DashboardController extends Controller
         // Hitungan Expired dan Expiring Soon
         // Hitung ulang di sini untuk akurasi penuh
         $expiredCount = InventoryStock::where('qty_on_hand', '>', 0)
-                                    ->where('exp_date', '<=', now())
-                                    ->whereIn('status', $validStatuses) // Tambahkan filter status
-                                    ->count();
+            ->where('exp_date', '<=', now())
+            ->whereIn('status', $validStatuses) // Tambahkan filter status
+            ->count();
         $expiringSoonCount = InventoryStock::where('qty_on_hand', '>', 0)
-                                    ->where('exp_date', '<=', now()->addDays(30))
-                                    ->where('exp_date', '>', now())
-                                    ->whereIn('status', $validStatuses) // Tambahkan filter status
-                                    ->count();
+            ->where('exp_date', '<=', now()->addDays(30))
+            ->where('exp_date', '>', now())
+            ->whereIn('status', $validStatuses) // Tambahkan filter status
+            ->count();
 
         $alerts = [];
         

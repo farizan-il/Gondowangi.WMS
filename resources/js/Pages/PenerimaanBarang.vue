@@ -281,7 +281,8 @@
                   class="border border-gray-200 rounded-lg p-4">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div class="font-medium text-gray-900 mb-2">[{{ labelData.kodeItem }}] - {{ labelData.namaMaterial }}</div>
+                      <div class="font-medium text-gray-900 mb-2">[{{ labelData.kodeItem }}] - {{ labelData.namaMaterial
+                        }}</div>
                       <div class="text-sm text-gray-600 space-y-1">
                         <div>Batch: {{ labelData.batchLot }}</div>
                         <div>Wadah Ke: **{{ labelData.wadahKe }}** / {{ labelData.qtyWadah }}</div>
@@ -320,8 +321,7 @@
                 Tutup
               </button>
 
-              <button @click="printAllQR"
-                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white rounded-md">
+              <button @click="printAllQR" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white rounded-md">
                 Cetak Semua QR
               </button>
             </div>
@@ -345,20 +345,55 @@
               </button>
             </div>
 
+            <div class="border p-4 mb-6 rounded-lg bg-indigo-50 border-indigo-200">
+              <h4 class="font-bold text-indigo-700 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+                  <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v7a1 1 0 11-2 0V3a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                Opsi 1: Upload Data Penerimaan dari PDF ERP
+              </h4>
+              <div class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-grow">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">File PDF dari ERP</label>
+                  <input @change="handleFileUpload" type="file" accept=".pdf"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 text-sm" />
+                </div>
+                <button @click="processErpPdf" :disabled="!newShipment.erpPdfFile || isProcessingErp"
+                  class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center justify-center transition-colors">
+                  <svg v-if="isProcessingErp" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                  </svg>
+                  {{ isProcessingErp ? 'Memproses...' : 'Proses File ERP' }}
+                </button>
+              </div>
+              <p v-if="newShipment.isErpDataLoaded" class="text-sm text-green-600 mt-2 font-medium">
+                Data dari PDF ERP berhasil dimuat! Mohon cek dan lengkapi rincian di bawah.
+              </p>
+            </div>
+
             <!-- Form Header -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">No PO *</label>
-                <input v-model="newShipment.noPo" type="text" placeholder="Masukkan No PO"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900" />
+                <label class="block text-sm font-medium text-gray-700 mb-1">No Incoming (ERP) <span v-if="newShipment.incomingNumber">(Otomatis)</span></label>
+                <input v-model="newShipment.incomingNumber" type="text" placeholder="Auto dari sistem/ERP" :readonly="!!newShipment.incomingNumber"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 text-gray-900" />
               </div>
-
+              
+              <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">No PO *</label>
+                  <input v-model="newShipment.noPo" type="text" placeholder="Masukkan No PO" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900" />
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">No Surat Jalan *</label>
-                <input v-model="newShipment.noSuratJalan" type="text"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+                <input v-model="newShipment.noSuratJalan" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               </div>
-
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Supplier *
@@ -602,16 +637,17 @@
                 <button @click="closeModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
                   Batal
                 </button>
-                <button 
-                  @click="saveShipment" 
-                  :disabled="!isFormValid || isSaving" 
+                <button @click="saveShipment" :disabled="!isFormValid || isSaving"
                   class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center">
-                  <svg v-if="isSaving" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg v-if="isSaving" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
                   </svg>
                   {{ isSaving ? 'Menyimpan...' : 'Simpan' }}
-                </button>
+                                  </button>
               </div>
             </div>
           </div>
@@ -709,8 +745,7 @@
                   Tutup
                 </button>
 
-                <button @click="printAllQR" 
-                  class="bg-gray-400  px-4 py-2 text-white rounded-md">
+                <button @click="printAllQR" class="bg-gray-400  px-4 py-2 text-white rounded-md">
                   Cetak Semua QR
                 </button>
               </div>
@@ -728,6 +763,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import QRCode from 'qrcode'
+import axios from 'axios'
 
 
 // Props dari backend
@@ -752,14 +788,18 @@ const selectedShipment = ref(null)
 const newShipment = ref({
   noPo: '',
   noSuratJalan: '',
-  supplier: '',
+  supplier: '', // ID Supplier
   noKendaraan: '',
   namaDriver: '',
-  tanggalTerima: '',
+  tanggalTerima: new Date().toISOString().slice(0, 16),
   kategori: '',
   supplierName: '',
+  incomingNumber: '',
+  erpPdfFile: null,
+  isErpDataLoaded: false,
   items: []
 })
+const isProcessingErp = ref(false)
 
 // Computed
 const isFormValid = computed(() => {
@@ -827,6 +867,106 @@ const closeQRModal = () => {
   selectedShipment.value = null
 }
 
+const handleFileUpload = (event) => {
+  newShipment.value.erpPdfFile = event.target.files ? event.target.files[0] : null
+  newShipment.value.isErpDataLoaded = false;
+}
+
+// FUNGSI BARU UNTUK MEMPROSES PDF ERP
+const processErpPdf = async () => {
+  if (!newShipment.value.erpPdfFile) {
+    alert('Mohon pilih file PDF ERP terlebih dahulu.')
+    return
+  }
+
+  isProcessingErp.value = true
+  newShipment.value.isErpDataLoaded = false;
+
+  const formData = new FormData()
+  formData.append('erp_pdf', newShipment.value.erpPdfFile)
+
+  try {
+    const response = await axios.post('/transaction/goods-receipt/parse-erp-pdf', formData, { 
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
+
+    const parsedData = response.data
+
+    // PEMBERSIHAN DATA ITEM LAMA SEBELUM DIMASUKKAN DATA BARU
+    newShipment.value.items = []
+
+    // 1. Isi data header
+    newShipment.value.incomingNumber = parsedData.incoming_number || '' // IN/27577
+    newShipment.value.noSuratJalan = parsedData.no_surat_jalan || '' // DO-25-09791
+    newShipment.value.noPo = parsedData.no_po || '' // P064945
+    newShipment.value.noKendaraan = parsedData.no_truck || '' // ''
+    newShipment.value.namaDriver = parsedData.driver_name || '' // ''
+
+    // 2. Cari dan set Supplier
+    const foundSupplier = props.suppliers.find(s =>
+      s.nama_supplier.toLowerCase().includes(parsedData.supplier_name.toLowerCase()) ||
+      s.kode_supplier.toLowerCase() === parsedData.supplier_code.toLowerCase()
+    )
+
+    if (foundSupplier) {
+      newShipment.value.supplier = foundSupplier.id
+      newShipment.value.supplierName = foundSupplier.nama_supplier
+      supplierSearchQuery.value = foundSupplier.nama_supplier // Update autocomplete field
+    } else {
+      newShipment.value.supplier = ''
+      newShipment.value.supplierName = `*Supplier tidak ditemukan: ${parsedData.supplier_name}`
+      supplierSearchQuery.value = `*Supplier tidak ditemukan: ${parsedData.supplier_name}`
+    }
+
+    // 3. Proses detail item
+    parsedData.items.forEach(itemData => {
+      // Cari Material/SKU
+      const materialDetail = props.materials.find(m => m.code === itemData.kode_material)
+
+      let statusQC = 'Karantina' // Default status
+      if (materialDetail && materialDetail.qcRequired === false) {
+        statusQC = 'Direct Putaway'
+      }
+
+      newShipment.value.items.push({
+        kodeItem: materialDetail ? materialDetail.id : '', // ID Material
+        kodeItemDisplay: itemData.kode_material, // Kode yang ada di PDF ([23515])
+        namaMaterial: materialDetail ? materialDetail.name : itemData.description, // Nama dari master data atau deskripsi PDF
+        batchLot: '', // PDF tidak menyediakan Batch/Lot, biarkan kosong
+        expDate: '', // PDF tidak menyediakan ED, biarkan kosong
+        qtyWadah: itemData.quantity, // Quantity dari PDF dianggap Qty Wadah (1.400,0000)
+        qtyUnit: '1', // Asumsi: jika Qty Wadah = 1.400, maka Qty Unit = 1 (Total = 1.400)
+        pabrikPembuat: materialDetail ? materialDetail.mfg : '',
+        skuSearch: itemData.kode_material,
+        filteredMaterials: [],
+        showSuggestions: false,
+        kondisiBaik: true, // Asumsi default baik
+        kondisiTidakBaik: false,
+        coaAda: false,
+        coaTidakAda: true, // Asumsi default tidak ada
+        labelMfgAda: false,
+        labelMfgTidakAda: true, // Asumsi default tidak ada
+        labelCoaSesuai: false,
+        labelCoaTidakSesuai: true, // Asumsi default tidak sesuai
+        statusQC: statusQC,
+        binTarget: 'QRT-HALAL', // Asumsi default bin karantina
+        isHalal: true, // Asumsi default halal
+        isNonHalal: false,
+      })
+    })
+
+    newShipment.value.isErpDataLoaded = true;
+
+  } catch (error) {
+    console.error('Error processing ERP PDF:', error)
+    alert(`Gagal memproses file ERP. Error: ${error.message || 'Server error'}`)
+  } finally {
+    isProcessingErp.value = false
+  }
+}
+
 const resetForm = () => {
   newShipment.value = {
     noPo: '',
@@ -836,8 +976,13 @@ const resetForm = () => {
     namaDriver: '',
     tanggalTerima: new Date().toISOString().slice(0, 16),
     kategori: '',
+    supplierName: '',
+    incomingNumber: '', // <<< RESET INCOMING NUMBER
+    erpPdfFile: null, // <<< RESET FILE
+    isErpDataLoaded: false, // <<< RESET FLAG
     items: []
   }
+  supplierSearchQuery.value = '';
 }
 
 const addNewItem = () => {
@@ -979,8 +1124,8 @@ const updateNamaMaterial = (index) => {
 
 const saveShipment = () => {
   if (isSaving.value) { // <-- CEK FLAG
-      console.log('Penyimpanan sedang dalam proses. Permintaan diabaikan.')
-      return
+    console.log('Penyimpanan sedang dalam proses. Permintaan diabaikan.')
+    return
   }
 
   if (!isFormValid.value) {
@@ -994,31 +1139,31 @@ const saveShipment = () => {
   console.log('Data yang akan dikirim:', JSON.stringify(newShipment.value, null, 2))
 
   router.post('/transaction/goods-receipt', newShipment.value, {
-      preserveScroll: true,
-      onBefore: () => {
-          console.log('Request dimulai...')
-      },
-      onSuccess: (page) => {
-          console.log('Response sukses:', page)
-          console.log('Flash messages:', page.props.flash)
-          closeModal()
+    preserveScroll: true,
+    onBefore: () => {
+      console.log('Request dimulai...')
+    },
+    onSuccess: (page) => {
+      console.log('Response sukses:', page)
+      console.log('Flash messages:', page.props.flash)
+      closeModal()
 
-          // Reload data setelah sukses
-          router.reload({ only: ['shipments'] })
-          alert('Penerimaan berhasil disimpan')
-      },
-      onError: (errors) => {
-          console.error('Validation errors:', errors)
-          let errorMsg = 'Gagal menyimpan:\n'
-          Object.entries(errors).forEach(([key, value]) => {
-              errorMsg += `${key}: ${value}\n`
-          })
-          alert(errorMsg)
-      },
-      onFinish: () => {
-          isSaving.value = false // <-- RESET FLAG
-          console.log('Request selesai')
-      }
+      // Reload data setelah sukses
+      router.reload({ only: ['shipments'] })
+      alert('Penerimaan berhasil disimpan')
+    },
+    onError: (errors) => {
+      console.error('Validation errors:', errors)
+      let errorMsg = 'Gagal menyimpan:\n'
+      Object.entries(errors).forEach(([key, value]) => {
+        errorMsg += `${key}: ${value}\n`
+      })
+      alert(errorMsg)
+    },
+    onFinish: () => {
+      isSaving.value = false // <-- RESET FLAG
+      console.log('Request selesai')
+    }
   })
 }
 
@@ -1100,58 +1245,58 @@ const getStatusClass = (status) => {
 }
 
 const printChecklist = (shipment) => {
-    // Create print window with checklist form
-    const printWindow = window.open('', '_blank')
+  // Create print window with checklist form
+  const printWindow = window.open('', '_blank')
 
-    // logika generate nomor form checklist
-    const date = new Date(shipment.tanggalTerima);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const incomingNumber = shipment.incomingNumber || shipment.id;
-    const formChecklistNumber = `GR-${year}${month}-${incomingNumber}`;
+  // logika generate nomor form checklist
+  const date = new Date(shipment.tanggalTerima);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const incomingNumber = shipment.incomingNumber || shipment.id;
+  const formChecklistNumber = `GR-${year}${month}-${incomingNumber}`;
 
-    // --- LOGIKA UTAMA: Tentukan Teks Coretan/Normal ---
-    const getCheckedOrStriked = (isChecked, text) => {
-        // Jika true (dipilih), tampilkan tanda centang (✓)
-        if (isChecked) {
-            return `<span style="font-weight: bold;">${text} ✓</span>`;
-        }
-        // Jika false (tidak dipilih), tampilkan teks dengan coretan (strike-through)
-        return `<span style="text-decoration: line-through; color: #888;">${text}</span>`;
-    };
+  // --- LOGIKA UTAMA: Tentukan Teks Coretan/Normal ---
+  const getCheckedOrStriked = (isChecked, text) => {
+    // Jika true (dipilih), tampilkan tanda centang (✓)
+    if (isChecked) {
+      return `<span style="font-weight: bold;">${text} ✓</span>`;
+    }
+    // Jika false (tidak dipilih), tampilkan teks dengan coretan (strike-through)
+    return `<span style="text-decoration: line-through; color: #888;">${text}</span>`;
+  };
 
-    let itemsHTML = ''
-    let currentWadahStart = 1;
-    let totalWadah = 0;
+  let itemsHTML = ''
+  let currentWadahStart = 1;
+  let totalWadah = 0;
 
-    shipment.items.forEach((item, index) => {
-        // Pastikan qtyWadah adalah integer yang valid
-        const qtyWadah = parseInt(item.qtyWadah || '0');
-        
-        // 2. LAKUKAN PENJUMLAHAN KUMULATIF
-        totalWadah += qtyWadah;
+  shipment.items.forEach((item, index) => {
+    // Pastikan qtyWadah adalah integer yang valid
+    const qtyWadah = parseInt(item.qtyWadah || '0');
 
-        // Nomor wadah awal adalah nilai kumulatif sebelumnya
-        const wadahStart = currentWadahStart;
-        
-        // Nomor wadah akhir adalah wadah awal + jumlah wadah - 1
-        const wadahEnd = wadahStart + qtyWadah - 1;
-        
-        // Lanjutkan: Perbarui nilai kumulatif untuk baris berikutnya
-        currentWadahStart = wadahEnd + 1;
+    // 2. LAKUKAN PENJUMLAHAN KUMULATIF
+    totalWadah += qtyWadah;
 
-        // --- Perhitungan Wadah untuk Tampilan ---
-        let wadahDisplay;
-        if (qtyWadah === 0) {
-            wadahDisplay = 'N/A';
-        } else if (wadahStart === wadahEnd) {
-            wadahDisplay = wadahStart;
-        } else {
-            wadahDisplay = `${wadahStart}-${wadahEnd}`;
-        }
-        
-        // --- HTML Table Row Generation (Tidak berubah) ---
-        itemsHTML += `
+    // Nomor wadah awal adalah nilai kumulatif sebelumnya
+    const wadahStart = currentWadahStart;
+
+    // Nomor wadah akhir adalah wadah awal + jumlah wadah - 1
+    const wadahEnd = wadahStart + qtyWadah - 1;
+
+    // Lanjutkan: Perbarui nilai kumulatif untuk baris berikutnya
+    currentWadahStart = wadahEnd + 1;
+
+    // --- Perhitungan Wadah untuk Tampilan ---
+    let wadahDisplay;
+    if (qtyWadah === 0) {
+      wadahDisplay = 'N/A';
+    } else if (wadahStart === wadahEnd) {
+      wadahDisplay = wadahStart;
+    } else {
+      wadahDisplay = `${wadahStart}-${wadahEnd}`;
+    }
+
+    // --- HTML Table Row Generation (Tidak berubah) ---
+    itemsHTML += `
             <tr>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle; height: 40px;">
                     ${wadahDisplay}
@@ -1176,11 +1321,11 @@ const printChecklist = (shipment) => {
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">${item.qtyUnit ? parseInt(item.qtyUnit) : ''}</td>
             </tr>
         `
-    })
+  })
 
-    // Add empty rows to fill the table (total 8-10 rows)
-    for (let i = shipment.items.length; i < 10; i++) {
-        itemsHTML += `
+  // Add empty rows to fill the table (total 8-10 rows)
+  for (let i = shipment.items.length; i < 10; i++) {
+    itemsHTML += `
           <tr>
             <td style="border: 1px solid #000; padding: 8px; height: 40px;">&nbsp;</td>
             <td style="border: 1px solid #000; padding: 8px;">&nbsp;</td>
@@ -1195,24 +1340,24 @@ const printChecklist = (shipment) => {
             <td style="border: 1px solid #000; padding: 8px;">&nbsp;</td>
           </tr>
         `
-    }
+  }
 
-    // --- PRE-CALCULATE CHECKBOX STATES (Hanya ambil data item pertama) ---
-    const firstItem = shipment.items[0] || {};
+  // --- PRE-CALCULATE CHECKBOX STATES (Hanya ambil data item pertama) ---
+  const firstItem = shipment.items[0] || {};
 
-    const labelMfgAdaHtml = getCheckedOrStriked(firstItem.labelMfgAda, 'Ada');
-    const labelMfgTidakAdaHtml = getCheckedOrStriked(firstItem.labelMfgTidakAda, 'Tidak');
+  const labelMfgAdaHtml = getCheckedOrStriked(firstItem.labelMfgAda, 'Ada');
+  const labelMfgTidakAdaHtml = getCheckedOrStriked(firstItem.labelMfgTidakAda, 'Tidak');
 
-    const labelCoaSesuaiHtml = getCheckedOrStriked(firstItem.labelCoaSesuai, 'Ada');
-    const labelCoaTidakSesuaiHtml = getCheckedOrStriked(firstItem.labelCoaTidakSesuai, 'Tidak');
+  const labelCoaSesuaiHtml = getCheckedOrStriked(firstItem.labelCoaSesuai, 'Ada');
+  const labelCoaTidakSesuaiHtml = getCheckedOrStriked(firstItem.labelCoaTidakSesuai, 'Tidak');
 
-    const coaAdaHtml = getCheckedOrStriked(firstItem.coaAda, 'Ada');
-    const coaTidakAdaHtml = getCheckedOrStriked(firstItem.coaTidakAda, 'Tidak');
+  const coaAdaHtml = getCheckedOrStriked(firstItem.coaAda, 'Ada');
+  const coaTidakAdaHtml = getCheckedOrStriked(firstItem.coaTidakAda, 'Tidak');
 
-    const isHalalHtml = getCheckedOrStriked(firstItem.isHalal, 'Halal');
-    const isNonHalalHtml = getCheckedOrStriked(firstItem.isNonHalal, 'Non-Halal');
+  const isHalalHtml = getCheckedOrStriked(firstItem.isHalal, 'Halal');
+  const isNonHalalHtml = getCheckedOrStriked(firstItem.isNonHalal, 'Non-Halal');
 
-    printWindow.document.write(`
+  printWindow.document.write(`
         <html>
         <head>
             <title>Form Checklist Penerimaan Material - ${shipment.noSuratJalan}</title>
@@ -1645,8 +1790,8 @@ const printChecklist = (shipment) => {
         </html>
     `)
 
-    printWindow.document.close()
-    printWindow.focus()
+  printWindow.document.close()
+  printWindow.focus()
 }
 
 const printFinanceSlip = (shipment) => {
@@ -1903,7 +2048,7 @@ const printSingleQR = (labelData) => {
     const formattedExpDate = formatDateOnly(labelData.expDate);
 
 
-    const qtyBoxDescription = `${labelData.qtyUnit} Pcs`; 
+    const qtyBoxDescription = `${labelData.qtyUnit} Pcs`;
     const qtyBoxDetail = labelData.qtyWadah > 0 ? `${labelData.qtyUnit / labelData.qtyWadah} x ${labelData.qtyWadah} box` : '';
 
 
@@ -1992,7 +2137,6 @@ const printSingleQR = (labelData) => {
                         font-weight: bold;
                         overflow: hidden;
                         text-overflow: ellipsis;
-                        white-space: nowrap; /* Teks tidak wrap */
                     }
                     .info-value.multi-line {
                         white-space: normal; /* Izinkan wrap untuk detail box */
@@ -2106,7 +2250,7 @@ const printSingleQR = (labelData) => {
                     
                     <div class="footer">
                         <span class="footer-left">Logistik</span>
-                        <span class="footer-right">Rev. 02</span>
+                        <span class="footer-right">QL1001-01 Rev. 02</span>
                     </div>
                 </div>
                 
@@ -2138,7 +2282,7 @@ const printAllQR = () => {
   const currentUser = usePage().props.auth?.user?.name || 'Admin';
 
   // Ditetapkan menjadi 6 label per halaman (2 kolom x 3 baris)
-  const LABELS_PER_PAGE = 6; 
+  const LABELS_PER_PAGE = 6;
 
   const LOGO_URL = "https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png";
   let pagesHTML = '';
@@ -2356,7 +2500,6 @@ const printAllQR = () => {
                     font-weight: bold;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    white-space: nowrap; 
                 }
                 .info-value.multi-line {
                     white-space: normal; 

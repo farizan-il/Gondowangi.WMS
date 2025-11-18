@@ -23,25 +23,46 @@
 
         <!-- Alerts/Notifications -->
         <div v-if="localAlerts.length > 0" class="mb-4 space-y-2">
-          <div v-for="alert in localAlerts" :key="alert.id" 
-              :class="[
-                  getAlertClass(alert.type),
-                  // Berikan highlight jika filter ini aktif
-                  {'ring-2 ring-yellow-500 ring-offset-2': activeAlertFilter === 'putAwayRequired' && alert.type === 'warning'}
-              ]"
-              class="p-3 rounded-lg flex items-center justify-between cursor-pointer transition duration-150 ease-in-out"
-              
-              @click="alert.type === 'warning' ? triggerPutAwayFilter() : null" >
-              <div class="flex items-center space-x-2">
-                  <span>{{ alert.message }}</span>
-              </div>
-              
-              <button @click.stop="dismissAlert(alert.id)" class="text-current opacity-70 hover:opacity-100 p-1"> 
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-              </button>
+        <div v-for="alert in localAlerts" :key="alert.id" 
+          :class="[
+            getAlertClass(alert.type),
+            { 
+              // Put Away Filter (ID 0)
+              'ring-2 ring-blue-500 ring-offset-2': activeAlertFilter === 'putAwayRequired' && alert.id === '0',
+              // Karantina/QC Filter (ID 3)
+              'ring-2 ring-orange-500 ring-offset-2': activeAlertFilter === 'requiresQC' && alert.id === '3',
+              // Expired Soon Filter (ID 1)
+              'ring-2 ring-yellow-500 ring-offset-2': activeAlertFilter === 'expiringSoon' && alert.id === '1',
+
+              // Tambahkan indikator bisa diklik untuk alert yang ingin difilter
+              'cursor-pointer hover:shadow-md transition duration-150 ease-in-out': ['0', '3', '1'].includes(alert.id)
+            }
+          ]"
+          class="p-3 rounded-lg flex items-center justify-between"
+          @click="
+            alert.id === '0' ? toggleAlertFilter('putAwayRequired') :
+            alert.id === '3' ? toggleAlertFilter('requiresQC') :
+            alert.id === '1' ? toggleAlertFilter('expiringSoon') : null
+          " >
+          <div class="flex items-center space-x-2">
+            <svg v-if="alert.id === '0'" class="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <svg v-if="alert.id === '3'" class="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.276a2 2 0 010 2.553l-3.52 3.52c-.144.144-.33.225-.53.225H12V7h3.707l-3.52-3.52a2 2 0 012.553 0l3.52 3.52z" />
+            </svg>
+            <svg v-if="alert.id === '1'" class="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ alert.message }}</span>
           </div>
+          
+          <button @click.stop="dismissAlert(alert.id)" class="text-current opacity-70 hover:opacity-100 p-1"> 
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
         <!-- Toolbar -->
@@ -63,12 +84,6 @@
               <!-- Filters -->
               <select v-model="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
                 <option value="">Semua Status</option>
-                <option value="Waiting QC">Waiting QC</option>
-                <option value="Karantina">Karantina</option>
-                <option value="Released">Released</option>
-                <option value="Reject">Reject</option>
-                <option value="In Production">In Production</option>
-                <option value="Returned">Returned</option>
               </select>
 
               <select v-model="filterType" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
@@ -704,11 +719,27 @@ const isTransferValid = computed(() => {
 const filteredItems = computed(() => {
   let filtered = props.materialItems
 
+  // Filter Utama: Alert Put Away
   if (activeAlertFilter.value === 'putAwayRequired') {
-      // Filter: Status harus 'Released' DAN Lokasi harus dimulai dengan 'QRT-'
-      filtered = filtered.filter(item => 
-          item.status === 'RELEASED' && item.lokasi.startsWith('QRT-')
-      )
+    // Filter: Item yang memiliki flag requiresPutAway
+    filtered = filtered.filter(item => item.requiresPutAway)
+  } 
+  // Filter Baru: Alert Karantina/QC
+  else if (activeAlertFilter.value === 'requiresQC') {
+    // Filter: Item yang memiliki flag requiresQC
+    filtered = filtered.filter(item => item.requiresQC)
+  }
+  // Filter Baru: Alert Expired Soon (dalam 30 hari, tidak termasuk yang sudah expired)
+  else if (activeAlertFilter.value === 'expiringSoon') {
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+    
+    filtered = filtered.filter(item => {
+      const expired = new Date(item.expiredDate);
+      // Item harus BELUM expired (expired > now) DAN expired DALAM 30 hari (expired <= thirtyDaysFromNow)
+      return expired > now && expired <= thirtyDaysFromNow;
+    });
   }
 
   // Search filter
@@ -723,6 +754,7 @@ const filteredItems = computed(() => {
 
   // Status filter
   if (filterStatus.value) {
+    // 💡 Perubahan: Gunakan status yang dikirim dari backend
     filtered = filtered.filter(item => item.status === filterStatus.value)
   }
 
@@ -751,6 +783,22 @@ const filteredItems = computed(() => {
 
   return filtered
 })
+
+const toggleAlertFilter = (filterKey: string) => {
+  if (activeAlertFilter.value === filterKey) {
+    // Jika filter yang sama diklik lagi, nonaktifkan (toggle off)
+    activeAlertFilter.value = '';
+  } else {
+    // Jika filter yang berbeda/baru diklik, aktifkan
+    activeAlertFilter.value = filterKey;
+    
+    // BONUS: Nonaktifkan filter dropdown & search bawaan saat alert filter aktif
+    filterStatus.value = '';
+    filterType.value = '';
+    filterLocation.value = '';
+    searchQuery.value = '';
+  }
+}
 
 // Fungsi untuk memicu filter put away
 const triggerPutAwayFilter = () => {
@@ -794,7 +842,7 @@ const getExpiredClass = (expiredDate: string) => {
 
   if (daysToExpired < 0) return 'text-red-600 dark:text-red-400 font-semibold'
   if (daysToExpired <= 30) return 'text-yellow-600 dark:text-yellow-400 font-semibold'
-  return 'text-gray-900 dark:text-white'
+  return 'text-gray-900'
 }
 
 const getStatusClass = (status: string) => {

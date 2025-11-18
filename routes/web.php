@@ -25,8 +25,6 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
-
-
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:incoming.view')
@@ -104,6 +102,9 @@ Route::middleware('auth')->group(function () {
     // Transaction Routes with Permission Protection
     Route::prefix('transaction')->name('transaction.')->group(function () {
         // Awal Route Goods Receipt
+        Route::post('/goods-receipt/parse-erp-pdf', [GoodsReceiptController::class, 'parseErpPdf'])
+            ->middleware('permission:incoming.create')
+            ->name('goods-receipt.parse-erp-pdf');
         Route::get('/goods-receipt', [GoodsReceiptController::class, 'index'])
             ->middleware('permission:incoming.view')
             ->name('goods-receipt');

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Smalot\PdfParser\Parser;
 use App\Traits\ActivityLogger;
 
 class GoodsReceiptController extends Controller
@@ -104,6 +105,136 @@ class GoodsReceiptController extends Controller
         ]);
     }
 
+    public function parseErpPdf(Request $request)
+    {
+        // ... (Validasi File tetap sama)
+        $pdfFile = $request->file('erp_pdf');
+
+        // --- INI ADALAH LOGIKA PARSING PDF SESUNGGUHNYA ---
+        try {
+            $parser = new Parser();
+            $pdf = $parser->parseFile($pdfFile->getPathname());
+            $text = $pdf->getText();
+            $text = preg_replace('/\s+/', ' ', $text); 
+
+            $extractedData = [
+                'incoming_number' => '',
+                'no_surat_jalan' => '',
+                'no_po' => '',
+                'date' => '',
+                'no_truck' => '', 
+                'driver_name' => '', 
+                'supplier_name' => '', 
+                'supplier_code' => '',
+                'items' => [],
+            ];
+            
+            // =======================================================
+            // 2. EKSTRAKSI DATA HEADER MENGGUNAKAN REGEX
+            // =======================================================
+
+            // A. Incoming Shipment Number (IN/27576)
+            if (preg_match('/Incoming Shipment : ([A-Z]{2}\/[0-9]+)/', $text, $matches)) {
+                $extractedData['incoming_number'] = trim($matches[1]);
+            }
+            
+            // B. No SJ dan No PO (Mendukung pola yang diunggah)
+            // Pola yang DICARI: No SJ (SJ2511000171), Order(Origin) (P064943), Date/Time
+            // Kita mencari teks di sekitar baris "No SJ" dan "Order(Origin)"
+            // Pola 1: Mencari di sekitar teks 'No SJ'
+            if (preg_match('/No SJ\s+Order\(Origin\)\s+Date\s+Input by\s+No Truck\s+Driver Name\s+([A-Z0-9]+)\s+([A-Z0-9]+)\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $matches)) {
+                $extractedData['no_surat_jalan'] = trim($matches[1]); // SJ
+                $extractedData['no_po'] = trim($matches[2]);          // PO
+                $extractedData['date'] = trim("{$matches[3]} {$matches[4]}");
+            } 
+            // Pola 2 (Fallback untuk PDF lama jika ada): Mencari di baris setelah header tabel
+            else if (preg_match('/(SJ[0-9]+|DO-[0-9]{2}-[0-9]+)\s+(P[0-9]+)\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $matches)) {
+                $extractedData['no_surat_jalan'] = trim($matches[1]);
+                $extractedData['no_po'] = trim($matches[2]);
+                $extractedData['date'] = trim("{$matches[3]} {$matches[4]}");
+            }
+            
+            // C. Supplier Name
+            if (preg_match('/Supplier Address : ([A-Za-z\s.,]+?)\s+Komp Industri/', $text, $matches)) {
+                // Mencoba mengambil nama supplier yang paling dekat dengan 'Supplier Address :'
+                // Pola untuk: Universal Lestari Grafika, PT
+                $extractedData['supplier_name'] = trim($matches[1]);
+            } else if (preg_match('/Supplier Address : ([A-Z]+\s*[A-Za-z\s]+\s*),/', $text, $matches)) {
+                // Coba pola alternatif (seperti di PDF lama)
+                $extractedData['supplier_name'] = trim($matches[1]);
+            }
+
+
+            // =======================================================
+            // 3. EKSTRAKSI DETAIL ITEM (Pola: [CODE] Description UoM Quantity)
+            // =======================================================
+
+            // Pola yang diperbarui: [CODE] Deskripsi... UoM Quantity.
+            // Deskripsi sekarang bisa berisi koma dan spasi panjang (misal: Almond & Ginseng Oil 60 ml - R23)
+            // Pattern: \[([0-9]+)\]\s+(.*?)\s+([A-Za-z]{2,5})\s+([0-9\.,]+)
+            $itemPattern = '/\[([0-9]+)\]\s+([A-Za-z0-9\s,&._-]+)\s+([A-Za-z]{2,5})\s+([0-9\.,]+)/';
+
+
+            if (preg_match_all($itemPattern, $text, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    // Konversi '5.000,0000' ke '5000.0000'
+                    $quantity = str_replace(['.', ','], ['', '.'], $match[4]); 
+                    
+                    $extractedData['items'][] = [
+                        'kode_material' => trim($match[1]), 
+                        'description' => trim($match[2]),
+                        'uom' => trim($match[3]),
+                        'quantity' => floatval($quantity),
+                    ];
+                }
+            }
+
+
+            // =======================================================
+            // 4. PEMROSESAN AKHIR (Pencocokan Supplier dan Konversi Tanggal)
+            // =======================================================
+            
+            // A. Konversi Tanggal ke format ISO untuk Vue
+            // ... (Logika konversi tanggal tetap sama)
+            if (!empty($extractedData['date'])) {
+                try {
+                    $date = \DateTime::createFromFormat('d/m/Y H:i:s', $extractedData['date']);
+            
+                    if ($date) {
+                        $extractedData['tanggal_terima'] = $date->format('Y-m-d\TH:i'); 
+                    } else {
+                        $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
+                    }
+            
+                } catch (\Exception $e) {
+                    $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
+                }
+            } else {
+                $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
+            }
+
+
+            // B. Cari Supplier di database
+            if (!empty($extractedData['supplier_name'])) {
+                $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . $extractedData['supplier_name'] . '%')
+                                    ->orWhere('nama_supplier', trim($extractedData['supplier_name']))
+                                    ->first();
+                if ($supplier) {
+                    $extractedData['supplier_name'] = $supplier->nama_supplier;
+                    $extractedData['supplier_code'] = $supplier->kode_supplier;
+                }
+            }
+
+            return response()->json($extractedData);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Gagal memproses PDF. Pastikan file dalam format ERP yang didukung.',
+                'details' => $e->getMessage()
+            ], 500); 
+        }
+    }
+
     public function store(Request $request)
     {
         // dd($request->all());
@@ -135,13 +266,26 @@ class GoodsReceiptController extends Controller
             'items.*.labelCoaTidakSesuai' => 'nullable|boolean',
         ]);
 
+        $incomingNumberFromRequest = $request->input('incomingNumber');
         DB::beginTransaction();
         try {
             // Generate incoming number
             $date = date('Ymd');
             $lastIncoming = IncomingGood::whereDate('created_at', today())->latest()->first();
             $sequence = $lastIncoming ? (intval(substr($lastIncoming->incoming_number, -4)) + 1) : 1;
-            $incomingNumber = "IN/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+            
+            $incomingNumber = $incomingNumberFromRequest;
+
+            if (empty($incomingNumber)){
+                $date = date('Ymd');
+                $lastIncoming = IncomingGood::whereDate('created_at', today())->latest()->first();
+                $sequence = $lastIncoming ? (intval(substr($lastIncoming->incoming_number, -4)) + 1) : 1;
+                $incomingNumber = "IN/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+            }else {
+                if (IncomingGood::where('incoming_number', $incomingNumber)->exists()) {
+                    throw new \Exception("Nomor Incoming ERP ({$incomingNumber}) sudah ada dalam sistem.");
+                }
+            }
 
             // Create incoming good record
             $incoming = IncomingGood::create([
@@ -194,20 +338,7 @@ class GoodsReceiptController extends Controller
                     'exp_date' => $itemData['expDate'] ?? null,
                     'qty_wadah' => $jumlahWadah,
                     'qty_unit' => $qtyPerWadah, 
-                    // Jika Anda memiliki kolom 'total_qty_received' di IncomingGoodsItem, gunakan itu:
-                    // 'total_qty_received' => $totalQtyReceived, 
-                    // Karena kode lama menggunakan 'qty_unit' untuk menyimpan total Qty, dan Anda ingin mempertahankannya:
-                    // Anda perlu membuat kolom baru, atau mengubah maksud kolom.
-                    // Jika kolom Anda di IncomingGoodsItem yang bernama 'qty_unit' akan menampung TOTAL QTY (seperti yang ditunjukkan kode lama), 
-                    // maka kodenya dikembalikan ke:
-                    // 'qty_unit' => $totalQtyReceived, // Simpan total qty di qty_unit untuk QC
-                    // Namun ini membingungkan. Lebih baik **asumsi** `qty_unit` menyimpan kuantitas unit per wadah, dan Anda akan **menggunakan kolom lain di InventoryStock** untuk totalnya.
-                    // Berdasarkan permintaan, saya akan **mempertahankan** `$totalQtyReceived` yang dihitung dan **menggunakan kolom `qty_unit` di `IncomingGoodsItem` untuk menyimpan total qty** (sesuai dengan maksud kode Anda yang sebelumnya), tapi ini butuh penyesuaian di sisi frontend/QC.
-                    
-                    // Untuk menjaga konsistensi dengan InventoryStock:
-                    // 'qty_unit' => $totalQtyReceived, // Menyimpan total qty
-                    // 'qty_per_wadah' => $qtyPerWadah, // *ASUMSI: Anda menambahkan kolom ini untuk menyimpan Qty per Wadah yang asli*
-                    
+
                     'satuan' => $material->satuan,
                     
                     // Semua field checklist kondisi/coa/label
@@ -257,7 +388,6 @@ class GoodsReceiptController extends Controller
                 $inventory->qty_on_hand += $totalQtyReceived;
                 $inventory->qty_available = $inventory->qty_on_hand; // Stok QRT dianggap available untuk QC
                 $inventory->save();
-
 
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [

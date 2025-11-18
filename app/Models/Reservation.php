@@ -11,7 +11,7 @@ class Reservation extends Model
     protected $fillable = [
         'reservation_no',
         'reservation_request_id',
-        'reservation_type',
+        'reservation_type', 
         'material_id',
         'warehouse_id',
         'bin_id',
