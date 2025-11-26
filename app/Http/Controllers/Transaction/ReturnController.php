@@ -17,7 +17,7 @@ class ReturnController extends Controller
     use ActivityLogger;
     public function index()
     {
-        return Inertia::render('Return');
+        return Inertia::render('CycleCount');
     }
 
     /**

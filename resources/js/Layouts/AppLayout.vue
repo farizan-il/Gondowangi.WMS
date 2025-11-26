@@ -68,6 +68,17 @@
                         <span v-show="sidebarOpen" class="font-medium">Master Data</span>
                     </Link>
 
+                    <Link 
+                        v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
+                        href="/transaction/cycle-count"
+                        :class="navLinkClass('/transaction/cycle-count')"
+                    >
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6"/>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium">Cycle Count</span>
+                    </Link>
+
                     <!-- Role Permission (hanya untuk admin) -->
                     <Link 
                         v-if="hasAnyPermission(['central_data.role_management_view', 'central_data.role_management_admin'])"
@@ -165,7 +176,7 @@
                         <span v-show="sidebarOpen" class="font-medium">Picking List</span>
                     </Link>
 
-                    <!-- Return -->
+                    <!-- Return
                     <Link 
                         v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
                         href="/transaction/return"
@@ -175,7 +186,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6"/>
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">Return</span>
-                    </Link>
+                    </Link>  -->
                 </div>
             </nav>
 
@@ -266,7 +277,7 @@
 
     const page = usePage();
     const { hasPermission, hasAnyPermission } = usePermissions();
-    const sidebarOpen = ref(false);
+    const sidebarOpen = ref(true);
 
     // Check if user has any transaction permissions
     const hasAnyTransactionPermission = computed(() => {

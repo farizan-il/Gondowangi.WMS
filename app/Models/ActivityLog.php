@@ -37,26 +37,6 @@ class ActivityLog extends Model
         'exp_date' => 'date',
     ];
 
-    // public function user()
-    // {
-    //     return $this->belongsTo(User::class, 'user_id');
-    // }
-
-    // public function material()
-    // {
-    //     return $this->belongsTo(Material::class);
-    // }
-
-    // public function supplier()
-    // {
-    //     return $this->belongsTo(Supplier::class);
-    // }
-
-    // public function warehouseBin()
-    // {
-    //     return $this->belongsTo(WarehouseBin::class, 'warehousebin_id');
-    // }
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

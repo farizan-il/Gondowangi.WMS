@@ -12,6 +12,7 @@ use App\Http\Controllers\Transaction\PickingListController;
 use App\Http\Controllers\Transaction\ReturnController;
 use App\Http\Controllers\Transaction\BintobinController;
 use App\Http\Controllers\Transaction\QualityControlController;
+use App\Http\Controllers\Transaction\CycleCountController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -99,8 +100,20 @@ Route::middleware('auth')->group(function () {
         Route::put('/role-permission/{id}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('role-permission.update-permissions');
     });
 
+    
+
     // Transaction Routes with Permission Protection
     Route::prefix('transaction')->name('transaction.')->group(function () {
+        Route::get('/cycle-count', [CycleCountController::class, 'index'])
+            ->name('cycle-count.index');
+
+            Route::post('/cycle-count/approve', [CycleCountController::class, 'approve'])
+        ->name('cycle-count.approve');
+
+        // Proses Simpan (Agar tombol Simpan berfungsi)
+        Route::post('/cycle-count/store', [CycleCountController::class, 'store'])
+            ->name('cycle-count.store');
+
         // Awal Route Goods Receipt
         Route::post('/goods-receipt/parse-erp-pdf', [GoodsReceiptController::class, 'parseErpPdf'])
             ->middleware('permission:incoming.create')
@@ -234,9 +247,20 @@ Route::middleware('auth')->group(function () {
             ->name('api.picking-list');
 
         // Return
-        Route::get('/return', [ReturnController::class, 'index'])
-            ->middleware('permission:return.view')
-            ->name('return');
+        // Route::get('/return', [ReturnController::class, 'index'])
+        //     ->middleware('permission:return.view')
+        //     ->name('return');
+        
+
+        // Cycle Count
+        // Route::prefix('cycle-count')->name('cycle-count.')->group(function () {
+        //     Route::get('/', [CycleCountController::class, 'index'])->name('index');
+        //     Route::get('/create', [CycleCountController::class, 'create'])->name('create');
+        //     Route::post('/', [CycleCountController::class, 'store'])->name('store');
+        //     Route::get('/{id}', [CycleCountController::class, 'show'])->name('show');
+        //     Route::put('/{id}', [CycleCountController::class, 'update'])->name('update');
+        //     Route::post('/{id}/finalize', [CycleCountController::class, 'finalize'])->name('finalize');
+        // });
     });
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
