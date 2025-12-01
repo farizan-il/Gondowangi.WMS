@@ -107,8 +107,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/cycle-count', [CycleCountController::class, 'index'])
             ->name('cycle-count.index');
 
-            Route::post('/cycle-count/approve', [CycleCountController::class, 'approve'])
-        ->name('cycle-count.approve');
+        Route::post('/cycle-count/approve', [CycleCountController::class, 'approve'])
+            ->name('cycle-count.approve');
+        
+        Route::get('/cycle-count/history/{materialId}', [CycleCountController::class, 'getHistory'])
+            ->name('cycle-count.history');
+        
+        Route::post('/cycle-count/repeat', [CycleCountController::class, 'repeat'])
+            ->name('cycle-count.repeat');
 
         // Proses Simpan (Agar tombol Simpan berfungsi)
         Route::post('/cycle-count/store', [CycleCountController::class, 'store'])
@@ -247,9 +253,9 @@ Route::middleware('auth')->group(function () {
             ->name('api.picking-list');
 
         // Return
-        // Route::get('/return', [ReturnController::class, 'index'])
-        //     ->middleware('permission:return.view')
-        //     ->name('return');
+        Route::get('/return', [ReturnController::class, 'index'])
+            ->middleware('permission:return.view')
+            ->name('return');
         
 
         // Cycle Count

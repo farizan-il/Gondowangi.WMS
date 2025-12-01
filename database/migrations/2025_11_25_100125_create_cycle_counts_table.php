@@ -13,13 +13,16 @@ return new class extends Migration
     {
         Schema::create('cycle_counts', function (Blueprint $table) {
             $table->id();
-            $table->string('reference_number')->unique();
-            $table->foreignId('assigned_user_id')->nullable()->constrained('users');
-            $table->foreignId('warehouse_id')->constrained('warehouses'); // Assuming warehouses table exists, or just integer
-            $table->enum('status', ['draft', 'in_progress', 'completed', 'cancelled'])->default('draft');
-            $table->text('notes')->nullable();
-            $table->timestamp('started_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
+            $table->string('cycle_number'); // Serial number or cycle identifier
+            $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
+            $table->foreignId('warehouse_bin_id')->constrained('warehouse_bins')->onDelete('cascade');
+            $table->decimal('system_qty', 10, 2); // Quantity in system
+            $table->decimal('physical_qty', 10, 2)->nullable(); // Actual counted quantity
+            $table->string('scanned_serial')->nullable(); // Scanned serial number
+            $table->string('scanned_bin')->nullable(); // Scanned bin location
+            $table->timestamp('count_date'); // When the count was performed
+            $table->enum('status', ['DRAFT', 'REVIEW_NEEDED', 'APPROVED'])->default('DRAFT');
+            $table->text('spv_note')->nullable(); // Supervisor notes
             $table->timestamps();
         });
     }

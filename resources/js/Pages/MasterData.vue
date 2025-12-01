@@ -303,7 +303,7 @@
                         <div class="text-sm font-medium text-gray-900">{{ user.jabatan }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ user.name }}</div>
+                        <div class="text-sm text-gray-900">{{ user.fullName }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getRoleClass(user.role)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -714,12 +714,9 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Pilih Role</option>
-                  <option value="Admin">Admin</option>
-                  <option value="QC">QC</option>
-                  <option value="Receiving">Receiving</option>
-                  <option value="Warehouse">Warehouse</option>
-                  <option value="Production">Production</option>
-                  <option value="Supervisor">Supervisor</option>
+                  <option v-for="role in roleList" :key="role.id" :value="role.name">
+                    {{ role.name }}
+                  </option>
                 </select>
               </div>
               <div>
@@ -887,6 +884,7 @@ const props = defineProps<{
     userData: PaginatedData<any>;
     supplierList?: any[];
     zoneList?: any[];
+    roleList?: any[];
     activeTab: string;
     search: string;
     status: string;
@@ -1129,6 +1127,7 @@ const activeSupplierData = computed(() => props.supplierData);
 const activeBinData = computed(() => props.binData);
 const activeUserData = computed(() => props.userData);
 const zoneList = ref(props.zoneList || [])
+const roleList = ref(props.roleList || [])
 
 const resetForm = () => {
     const defaultValues: Record<string, any> = {
@@ -1197,10 +1196,30 @@ const editItem = (item: any) => {
 
 const saveData = async () => {
   try {
-    // Validasi form data
-    if (!formData.value.code) {
+    // Validasi form data - skip code validation untuk user tab
+    if (activeTab.value !== 'user' && !formData.value.code) {
       showMessage('error', 'Kode wajib diisi')
       return
+    }
+
+    // Validasi khusus untuk user
+    if (activeTab.value === 'user') {
+      if (!formData.value.fullName) {
+        showMessage('error', 'Nama lengkap wajib diisi')
+        return
+      }
+      if (!showEditModal.value && !formData.value.password) {
+        showMessage('error', 'Password wajib diisi')
+        return
+      }
+      if (!formData.value.role) {
+        showMessage('error', 'Role wajib dipilih')
+        return
+      }
+      if (!formData.value.department) {
+        showMessage('error', 'Department wajib dipilih')
+        return
+      }
     }
 
     // Validasi khusus untuk bin

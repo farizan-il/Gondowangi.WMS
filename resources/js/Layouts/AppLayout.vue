@@ -1,5 +1,5 @@
 <template>
-    <div class="min-h-screen flex bg-gray-100">
+    <div class="h-screen flex bg-gray-100 overflow-hidden">
         <!-- Sidebar -->
         <aside 
             :class="[
@@ -44,30 +44,6 @@
                         <span v-show="sidebarOpen" class="font-medium">On Hand</span>
                     </Link>
 
-                    <!-- Riwayat Aktivitas -->
-                    <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view'])"
-                        href="/activity-log"
-                        :class="navLinkClass('/activity-log')"
-                    >
-                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Riwayat Aktivitas</span>
-                    </Link>
-
-                    <!-- Master Data -->
-                    <Link 
-                        v-if="hasAnyPermission(['central_data.sku_management_view', 'central_data.supplier_management_view', 'central_data.bin_management_view'])"
-                        href="/master-data"
-                        :class="navLinkClass('/master-data')"
-                    >
-                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
-                        </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Master Data</span>
-                    </Link>
-
                     <Link 
                         v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
                         href="/transaction/cycle-count"
@@ -79,17 +55,16 @@
                         <span v-show="sidebarOpen" class="font-medium">Cycle Count</span>
                     </Link>
 
-                    <!-- Role Permission (hanya untuk admin) -->
+                    <!-- Riwayat Aktivitas -->
                     <Link 
-                        v-if="hasAnyPermission(['central_data.role_management_view', 'central_data.role_management_admin'])"
-                        href="/role-permission"
-                        :class="navLinkClass('/role-permission')"
+                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view'])"
+                        href="/activity-log"
+                        :class="navLinkClass('/activity-log')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Role Permission</span>
+                        <span v-show="sidebarOpen" class="font-medium">Riwayat Aktivitas</span>
                     </Link>
 
                     <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->
@@ -176,17 +151,54 @@
                         <span v-show="sidebarOpen" class="font-medium">Picking List</span>
                     </Link>
 
-                    <!-- Return
+                    <!-- Return -->
                     <Link 
                         v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
                         href="/transaction/return"
                         :class="navLinkClass('/transaction/return')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6"/>
-                        </svg>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M4 4v5h5M20 20v-5h-5m-1 5a8 8 0 01-14.8-3h-2m.2-2h-2m14-3h-2m-1 5a8 8 0 01-14.8-3" 
+                            />
+                            </svg>
                         <span v-show="sidebarOpen" class="font-medium">Return</span>
-                    </Link>  -->
+                    </Link>
+
+                    <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->
+                    <div v-if="hasAnyTransactionPermission" class="my-4 px-2">
+                        <div class="border-t border-gray-200"></div>
+                        <div v-show="sidebarOpen" class="mt-3 mb-2 px-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Kelola
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Master Data -->
+                    <Link 
+                        v-if="hasAnyPermission(['central_data.sku_management_view', 'central_data.supplier_management_view', 'central_data.bin_management_view'])"
+                        href="/master-data"
+                        :class="navLinkClass('/master-data')"
+                    >
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium">Master Data</span>
+                    </Link>
+
+                    <!-- Role Permission (hanya untuk admin) -->
+                    <Link 
+                        v-if="hasAnyPermission(['central_data.role_management_view', 'central_data.role_management_admin'])"
+                        href="/role-permission"
+                        :class="navLinkClass('/role-permission')"
+                    >
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium">Role Permission</span>
+                    </Link>
                 </div>
             </nav>
 
@@ -309,7 +321,9 @@
     };
 
     const navLinkClass = (path) => {
-        const isActive = page.url === path || page.url.startsWith(path + '/')
+        // Remove query parameters from current URL for comparison
+        const currentPath = page.url.split('?')[0]
+        const isActive = currentPath === path || currentPath.startsWith(path + '/')
 
         const baseClasses = 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200'
 

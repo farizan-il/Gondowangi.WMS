@@ -159,7 +159,6 @@
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi/Bin</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referensi Dokumen</th>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
       </tr>
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
@@ -209,11 +208,6 @@
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
           {{ activity.reference_no && activity.reference_no !== '-' ? activity.reference_no : '-' }}
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-          <button @click="showDetailModal(activity)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
-            Detail
-          </button>
         </td>
       </tr>
     </tbody>

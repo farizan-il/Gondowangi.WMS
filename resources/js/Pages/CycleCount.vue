@@ -6,10 +6,7 @@
         <div>
            <h2 class="text-xl font-bold text-gray-800">Cycle Count Inventory</h2>
            <p class="text-sm text-gray-500">
-             <span v-if="hasSavedDraft" class="text-orange-600 font-bold animate-pulse">
-               ⚠ Sesi sebelumnya dipulihkan (Auto-save aktif)
-             </span>
-             <span v-else>Scan QR Lokasi & Serial Number untuk validasi.</span>
+             Scan QR Lokasi & Serial Number untuk validasi.
            </p>
         </div>
 
@@ -48,14 +45,15 @@
               <th class="border border-blue-400 p-2 bg-blue-100 w-24">Scan Bin</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Qty</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Acc</th>
-              <th class="border border-blue-400 p-2 bg-blue-100 w-20">Var</th>
+              <th class="border border-blue-400 p-2 bg-blue-100 w-20">In Acc</th>
               
               <th class="border border-blue-400 p-2 bg-yellow-100 w-40">Note SPV</th>
               <th class="border border-blue-400 p-2 bg-yellow-100 w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in form.items" :key="index" class="hover:bg-gray-50 text-center text-gray-700">
+            <template v-for="(item, index) in form.items" :key="index">
+            <tr class="hover:bg-gray-50 text-center text-gray-700">
               
               <td class="border border-gray-300 p-2 bg-gray-50 text-xs font-mono font-bold text-blue-900">
                   {{ extractSerial(item.serial_number) }}
@@ -105,17 +103,6 @@
                     class="w-full text-xs border border-yellow-300 rounded px-1 py-1 bg-white focus:ring-yellow-500 focus:border-yellow-500" 
                     placeholder="Catatan SPV...">
               </td>
-              <!-- <td class="border border-gray-300 p-1 bg-yellow-50 text-center">
-                  <button v-if="item.status !== 'APPROVED'" 
-                    @click="approveItem(item)"
-                    type="button" 
-                    class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold py-1 px-2 rounded shadow flex items-center justify-center gap-1 mx-auto">
-                      <span>Approve</span>
-                  </button>
-                  <span v-else class="text-green-600 font-bold text-[10px] border border-green-600 px-1 rounded">
-                      DONE
-                  </span>
-              </td> -->
               <td class="border border-gray-300 p-1 bg-yellow-50 text-center align-middle">
                   
                   <div v-if="item.status === 'DRAFT' || !item.status" class="flex flex-col items-center justify-center">
@@ -138,6 +125,71 @@
 
               </td>
             </tr>
+            
+            <!-- History Row (Expandable) -->
+            <!-- Show if: item is APPROVED OR has history -->
+            <tr v-if="item.status === 'APPROVED' || (item.history && item.history_count > 0)" class="bg-gray-50">
+              <td colspan="10" class="border border-gray-300 p-2">
+                <div class="flex items-center justify-between">
+                  <!-- History toggle button - only show if there's actual history -->
+                  <button 
+                    v-if="item.history && item.history_count > 0"
+                    @click="toggleHistory(index)"
+                    class="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 font-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" :class="item.showHistory ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <span>{{ item.showHistory ? 'Sembunyikan' : 'Lihat' }} Riwayat ({{ item.history_count }}x)</span>
+                  </button>
+                  
+                  <!-- If no history, show info text -->
+                  <span v-else class="text-xs text-gray-500 italic">
+                    Material ini sudah selesai di-cycle count
+                  </span>
+                  
+                  <!-- Repeat button - always show if row is visible -->
+                  <button 
+                    @click="repeatCycleCount(item)"
+                    class="flex items-center gap-1 px-3 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded shadow transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill=" none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Ulangi Cycle Count</span>
+                  </button>
+                </div>
+                
+                <!-- History Table (Collapsible) -->
+                <div v-if="item.showHistory && item.history && item.history_count > 0" class="mt-3 overflow-x-auto">
+                  <table class="w-full text-xs border border-gray-300">
+                    <thead class="bg-gray-200">
+                      <tr>
+                        <th class="border border-gray-300 p-2">Tanggal</th>
+                        <th class="border border-gray-300 p-2">System Qty</th>
+                        <th class="border border-gray-300 p-2">Physical Qty</th>
+                        <th class="border border-gray-300 p-2">Accuracy</th>
+                        <th class="border border-gray-300 p-2">Status</th>
+                        <th class="border border-gray-300 p-2">Note SPV</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(h, hIndex) in item.history" :key="hIndex" class="hover:bg-gray-100">
+                        <td class="border border-gray-300 p-2 text-center">{{ h.count_date }}</td>
+                        <td class="border border-gray-300 p-2 text-right">{{ formatNumber(h.system_qty) }}</td>
+                        <td class="border border-gray-300 p-2 text-right">{{ formatNumber(h.physical_qty) }}</td>
+                        <td class="border border-gray-300 p-2 text-center font-bold" :class="h.accuracy === 100 ? 'text-green-600' : 'text-red-600'">{{ h.accuracy }}%</td>
+                        <td class="border border-gray-300 p-2 text-center">
+                          <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="h.status === 'APPROVED' ? 'bg-green-100 text-green-700 border border-green-500' : 'bg-gray-100 text-gray-600'">
+                            {{ h.status }}
+                          </span>
+                        </td>
+                        <td class="border border-gray-300 p-2">{{ h.spv_note || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -148,7 +200,7 @@
                   <h3 class="font-bold text-gray-800 text-sm">Scan: <span class="text-blue-600">{{ scanningField === 'scan_serial' ? 'Serial Number' : 'Lokasi Bin' }}</span></h3>
                   <button @click="closeScanner" class="text-gray-400 hover:text-red-500 font-bold text-2xl leading-none">&times;</button>
               </div>
-              <div class="p-0 bg-black relative">
+              <div class="p-0 bg-white relative">
                   <div id="reader" class="w-full" style="min-height: 300px;"></div>
                   <div v-if="isCameraLoading" class="absolute inset-0 flex items-center justify-center text-white text-xs">Memuat Kamera...</div>
               </div>
@@ -193,40 +245,24 @@ const scanningItem = ref(null);
 const scanningField = ref('');  
 let scannerInstance = null;
 
-// Modal & Auto-save State
+// Modal State
 const showErrorModal = ref(false);
 const errorMessage = ref('');
-const hasSavedDraft = ref(false);
-const LOCAL_STORAGE_KEY = 'cycle_count_draft_qr_only'; // Ganti key biar fresh
 
 onMounted(() => { 
-    // 1. Cek Local Storage saat halaman dimuat
-    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedData) {
-        try {
-            // Kita replace form items dengan data yg tersimpan
-            form.items = JSON.parse(savedData);
-            hasSavedDraft.value = true;
-        } catch(e) {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            loadInitialData();
-        }
-    } else {
-        loadInitialData();
-    }
+    loadInitialData();
 });
 
 const loadInitialData = () => {
-    if (props.initialStocks) form.items = JSON.parse(JSON.stringify(props.initialStocks));
+    if (props.initialStocks) {
+        form.items = JSON.parse(JSON.stringify(props.initialStocks));
+        
+        // Initialize showHistory for each item
+        form.items.forEach((item) => {
+            item.showHistory = false;
+        });
+    }
 }
-
-// --- FUNGSI SIMPAN DRAFT (Manual Trigger) ---
-const saveDraft = () => {
-    // Simpan seluruh state items saat ini ke Local Storage
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(form.items));
-}
-
-// Catatan: Saya MENGHAPUS 'watch' disini agar tidak auto-save saat ketik manual.
 
 onBeforeUnmount(() => { if (scannerInstance) scannerInstance.clear().catch(err => console.error(err)); });
 
@@ -302,12 +338,8 @@ const onScanSuccess = (decodedText) => {
             return; 
         }
 
-        // Jika SESUAI -> Update Data & SIMPAN DRAFT
-        scanningItem.value[scanningField.value] = resultText;
-        
-        // --- TRIGGER AUTO SAVE DISINI ---
-        // Hanya jalan kalau scan berhasil dan valid
-        saveDraft(); 
+        // Jika SESUAI -> Update Data
+        scanningItem.value[scanningField.value] = resultText; 
     }
     
     closeScanner();
@@ -355,8 +387,6 @@ const submitOpname = () => {
     if (confirm('Simpan hasil opname?')) {
         form.post('/transaction/cycle-count/store', {
             onSuccess: () => {
-                // Hapus penyimpanan sementara jika sukses submit ke server
-                localStorage.removeItem(LOCAL_STORAGE_KEY);
                 alert('Berhasil disubmit ke Supervisor!');
             },
             onError: (errors) => {
@@ -388,6 +418,30 @@ const approveItem = (item) => {
         onError: (errors) => {
             // Tangkap error dari controller validasi tadi
             alert('Gagal: Item mungkin belum disubmit.');
+        }
+    });
+}
+
+// Toggle history visibility
+const toggleHistory = (index) => {
+    form.items[index].showHistory = !form.items[index].showHistory;
+}
+
+// Repeat cycle count
+const repeatCycleCount = (item) => {
+    if (!confirm(`Apakah Anda yakin ingin mengulang cycle count untuk ${item.product_name}?`)) return;
+    
+    router.post('/transaction/cycle-count/repeat', {
+        material_id: item.material_id,
+        bin_id: item.bin_id
+    }, {
+        onSuccess: () => {
+            alert('Cycle count baru berhasil dibuat!');
+            router.reload();
+        },
+        onError: (errors) => {
+            console.error(errors);
+            alert('Gagal membuat cycle count baru.');
         }
     });
 }

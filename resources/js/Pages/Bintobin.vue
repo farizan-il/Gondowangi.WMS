@@ -4,18 +4,18 @@
             <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
 
                 <!-- Header Section with Sidebar Toggle -->
-                <div class="mb-8 flex items-center justify-between">
+                <div class="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h1
-                            class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+                            class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                             Sistem Bin to Bin Transfer
                         </h1>
-                        <p class="text-gray-600 text-lg">Real-time warehouse material movement tracking system</p>
+                        <p class="text-gray-600 text-base md:text-lg">Real-time warehouse material movement tracking system</p>
                     </div>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
                         <!-- Toggle Sidebar Button -->
                         <button @click="toggleSidebar"
-                            class="relative px-6 py-3 bg-white rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-all flex items-center space-x-2 group">
+                            class="relative flex-1 md:flex-none px-6 py-3 bg-white rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center space-x-2 group">
                             <svg class="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" fill="none"
                                 stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -30,12 +30,12 @@
                             </span>
                         </button>
 
-                        <div class="bg-white px-6 py-3 rounded-xl shadow-lg border border-gray-200">
+                        <div class="hidden md:block bg-white px-6 py-3 rounded-xl shadow-lg border border-gray-200">
                             <div class="text-xs text-gray-500 mb-1">Tanggal</div>
                             <div class="font-semibold text-gray-900">{{ currentDate }}</div>
                         </div>
                         <div
-                            class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-3 rounded-xl shadow-lg text-white">
+                            class="hidden md:block bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-3 rounded-xl shadow-lg text-white">
                             <div class="text-xs opacity-90 mb-1">Status Sistem</div>
                             <div class="font-bold flex items-center">
                                 <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
@@ -51,11 +51,11 @@
                     <!-- Progress Steps -->
                     <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                         <!-- Progress steps content sama seperti sebelumnya -->
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center flex-1">
-                                <div class="flex items-center"
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0">
+                            <div class="flex flex-col md:flex-row items-start md:items-center flex-1 w-full">
+                                <div class="flex items-center w-full md:w-auto mb-4 md:mb-0"
                                     :class="currentStep === 'scan_material' || currentStep === 'scan_destination' || currentStep === 'complete' ? 'text-blue-600' : 'text-gray-400'">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2"
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 shrink-0"
                                         :class="currentStep === 'scan_material' || currentStep === 'scan_destination' || currentStep === 'complete' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-200 text-gray-400 border-gray-300'">
                                         <span v-if="currentStep === 'scan_material'">1</span>
                                         <svg v-else class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -70,13 +70,16 @@
                                     </div>
                                 </div>
 
-                                <div class="flex-1 h-1 mx-4"
+                                <div class="hidden md:block flex-1 h-1 mx-4"
+                                    :class="currentStep === 'scan_destination' || currentStep === 'complete' ? 'bg-blue-600' : 'bg-gray-300'">
+                                </div>
+                                <div class="md:hidden w-1 h-8 ml-5"
                                     :class="currentStep === 'scan_destination' || currentStep === 'complete' ? 'bg-blue-600' : 'bg-gray-300'">
                                 </div>
 
-                                <div class="flex items-center"
+                                <div class="flex items-center w-full md:w-auto mb-4 md:mb-0"
                                     :class="currentStep === 'scan_destination' || currentStep === 'complete' ? 'text-blue-600' : 'text-gray-400'">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2"
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 shrink-0"
                                         :class="currentStep === 'scan_destination' || currentStep === 'complete' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-200 text-gray-400 border-gray-300'">
                                         <span v-if="currentStep !== 'complete'">2</span>
                                         <svg v-else class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -91,12 +94,14 @@
                                     </div>
                                 </div>
 
-                                <div class="flex-1 h-1 mx-4"
+                                <div class="hidden md:block flex-1 h-1 mx-4"
+                                    :class="currentStep === 'complete' ? 'bg-green-600' : 'bg-gray-300'"></div>
+                                <div class="md:hidden w-1 h-8 ml-5"
                                     :class="currentStep === 'complete' ? 'bg-green-600' : 'bg-gray-300'"></div>
 
-                                <div class="flex items-center"
+                                <div class="flex items-center w-full md:w-auto"
                                     :class="currentStep === 'complete' ? 'text-green-600' : 'text-gray-400'">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2"
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 shrink-0"
                                         :class="currentStep === 'complete' ? 'bg-green-600 text-white border-green-600' : 'bg-gray-200 text-gray-400 border-gray-300'">
                                         ✓
                                     </div>
@@ -111,7 +116,7 @@
 
                     <!-- Scanner Card -->
                     <div
-                        class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl p-8 border-2 border-blue-200">
+                        class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl p-4 md:p-8 border-2 border-blue-200">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-2xl font-bold text-gray-900 mb-1">
@@ -130,13 +135,13 @@
                         <div v-if="showCamera" class="mb-6">
                             <div
                                 class="bg-black rounded-2xl overflow-hidden relative border-4 border-blue-500 shadow-2xl">
-                                <video ref="videoElement" autoplay playsinline class="w-full h-96 object-cover"></video>
+                                <video ref="videoElement" autoplay playsinline class="w-full h-64 md:h-96 object-cover"></video>
 
                                 <!-- Scanning Frame Overlay -->
                                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                                     <div class="relative">
                                         <!-- Scanning Frame -->
-                                        <div class="w-80 h-48 border-4 border-red-500 rounded-xl relative">
+                                        <div class="w-64 h-40 md:w-80 md:h-48 border-4 border-red-500 rounded-xl relative">
                                             <!-- Corner Decorations -->
                                             <div
                                                 class="absolute -top-1 -left-1 w-8 h-8 border-t-8 border-l-8 border-red-500 rounded-tl-xl">
@@ -213,7 +218,7 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <!-- Camera Button -->
                             <button @click="toggleCamera" :disabled="currentStep === 'complete'"
                                 class="py-5 px-6 rounded-xl font-bold text-lg transition-all duration-200 shadow-lg flex items-center justify-center"
@@ -291,7 +296,7 @@
 
                             <div class="p-8 space-y-6">
                                 <!-- Material Header -->
-                                <div class="grid grid-cols-2 gap-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div
                                         class="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-2xl border-2 border-blue-300 shadow-lg">
                                         <p class="text-sm text-blue-700 mb-2 font-bold uppercase tracking-wide">Kode
@@ -309,7 +314,7 @@
                                 </div>
 
                                 <!-- Material Info Grid -->
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div
                                         class="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl border-2 border-gray-200 shadow">
                                         <div class="flex items-center mb-2">
@@ -365,8 +370,8 @@
                                         </svg>
                                         Rute Perpindahan
                                     </p>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex-1">
+                                    <div class="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
+                                        <div class="flex-1 w-full text-center md:text-left">
                                             <p class="text-xs text-amber-700 mb-3 font-semibold uppercase">Dari Bin</p>
                                             <div
                                                 class="bg-white px-8 py-6 rounded-2xl shadow-lg border-3 border-amber-400">
@@ -374,14 +379,14 @@
                                                     scannedMaterial.currentBin }}</p>
                                             </div>
                                         </div>
-                                        <div class="px-6">
+                                        <div class="px-6 transform rotate-90 md:rotate-0">
                                             <svg class="w-16 h-16 text-amber-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                                     d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                                             </svg>
                                         </div>
-                                        <div class="flex-1">
+                                        <div class="flex-1 w-full text-center md:text-left">
                                             <p class="text-xs text-amber-700 mb-3 font-semibold uppercase">Ke Bin</p>
                                             <div v-if="destinationBin"
                                                 class="bg-white px-8 py-6 rounded-2xl shadow-lg border-3 border-green-400">

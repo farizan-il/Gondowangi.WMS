@@ -30,7 +30,6 @@ class MasterDataController extends Controller
 
     public function index()
     {
-        // 1. Ambil data dengan Paginasi
         $skuPaginator = Material::with('defaultSupplier')->paginate(self::PER_PAGE);
         $supplierPaginator = Supplier::paginate(self::PER_PAGE);
         $binPaginator = WarehouseBin::with('zone')->paginate(self::PER_PAGE);
@@ -78,7 +77,7 @@ class MasterDataController extends Controller
         $userCallback = fn($item) => [
             'id' => $item->id,
             'jabatan' => $item->jabatan,
-            'fullName' => $item->nama_lengkap,
+            'fullName' => $item->name ?? 'N/',
             'role' => $item->role->role_name ?? 'N/A',
             'department' => $item->departement,
             'status' => $item->status === 'active' ? 'Active' : 'Inactive'
@@ -97,7 +96,14 @@ class MasterDataController extends Controller
             'zoneList' => WarehouseZone::where('status', 'active')->get()->map(fn($z) => [
                 'id' => $z->id,
                 'name' => $z->zone_name
-            ])
+            ]),
+            'roleList' => Role::all()->map(fn($r) => [
+                'id' => $r->id,
+                'name' => $r->role_name
+            ]),
+            'activeTab' => request()->query('activeTab', 'sku'),
+            'search' => request()->query('search', ''),
+            'status' => request()->query('status', '')
         ]);
     }
 
@@ -757,7 +763,7 @@ class MasterDataController extends Controller
 
         try {
             $user = User::create([
-                'nama_lengkap' => $validated['fullName'],
+                'name' => $validated['fullName'],
                 'email' => strtolower(str_replace(' ', '.', $validated['fullName'])) . '@company.com',
                 'nik' => 'NIK-' . time(),
                 'password' => bcrypt($validated['password']),

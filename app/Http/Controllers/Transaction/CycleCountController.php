@@ -16,48 +16,88 @@ use App\Models\WarehouseBin;
 
 class CycleCountController extends Controller
 {
-    /**
-     * Menampilkan halaman Cycle Count dengan format tabel sesuai gambar.
-     */
     public function index()
     {
+        // Get all cycle counts grouped by material and bin
+        // We only want to show the LATEST record per material-bin combination
         $cycleCounts = CycleCount::with(['material', 'bin'])
-            ->where('status', '!=', 'APPROVED') // Hanya tampilkan yang belum selesai
             ->orderBy('count_date', 'desc')
-            ->get();
+            ->get()
+            ->groupBy(function($item) {
+                return $item->material_id . '_' . $item->warehouse_bin_id;
+            })
+            ->map(function($group) {
+                // Return only the latest (first) record from each group
+                return $group->first();
+            })
+            ->values();
 
         if ($cycleCounts->isEmpty()) {
             $stocks = InventoryStock::with(['material', 'bin'])
                 ->where('qty_on_hand', '>', 0)
-                ->limit(10) 
+                ->limit(10)
                 ->get();
 
             $data = $stocks->map(function ($stock) {
+                // Get history for this material (exclude current if exists)
+                $history = CycleCount::where('material_id', $stock->material_id)
+                    ->where('warehouse_bin_id', $stock->bin_id)
+                    ->where('status', 'APPROVED')
+                    ->orderBy('count_date', 'desc')
+                    ->limit(10)
+                    ->get()
+                    ->map(function($h) {
+                        return [
+                            'count_date' => $h->count_date->format('d/m/Y H:i'),
+                            'system_qty' => (float) $h->system_qty,
+                            'physical_qty' => (float) $h->physical_qty,
+                            'status' => $h->status,
+                            'spv_note' => $h->spv_note,
+                            'accuracy' => $h->system_qty > 0 ? round(($h->physical_qty / $h->system_qty) * 100, 2) : 0
+                        ];
+                    });
+
                 return [
-                    'id' => null, // Belum tersimpan di DB cycle_counts
+                    'id' => null,
                     'material_id' => $stock->material_id,
                     'bin_id' => $stock->bin_id,
-
                     'serial_number' => $stock->batch_lot ?? ($stock->material->kode_item . '-' . uniqid()), 
-
                     'tanggal' => Carbon::now()->format('d/m/Y H:i'),
                     'code' => $stock->material->kode_item,
                     'product_name' => $stock->material->nama_material,
                     'onhand' => (float) $stock->qty_on_hand,
                     'uom' => $stock->uom,
-
-                    'location' => $stock->bin ? $stock->bin->bin_code : '-', // Location sistem
-                    
-                    // Field Inputan User (Default Kosong)
+                    'location' => $stock->bin ? $stock->bin->bin_code : '-',
                     'scan_serial' => '', 
                     'scan_bin' => '',
-                    'physical_qty' => 0, // Default 0
-                    'status' => 'DRAFT'
+                    'physical_qty' => 0,
+                    'status' => 'DRAFT',
+                    'history' => $history,
+                    'history_count' => $history->count()
                 ];
             });
         } else {
-            // Jika sudah ada data tersimpan (User melanjutkan pekerjaan)
             $data = $cycleCounts->map(function ($cc) {
+                // Get history for this material-bin combination
+                // Exclude the current record and only get APPROVED records
+                $history = CycleCount::where('material_id', $cc->material_id)
+                    ->where('warehouse_bin_id', $cc->warehouse_bin_id)
+                    ->where('status', 'APPROVED')
+                    ->where('id', '!=', $cc->id) // Exclude current record
+                    ->orderBy('count_date', 'desc')
+                    ->limit(10)
+                    ->get()
+                    ->map(function($h) {
+                        return [
+                            'count_date' => $h->count_date->format('d/m/Y H:i'),
+                            'system_qty' => (float) $h->system_qty,
+                            'physical_qty' => (float) $h->physical_qty,
+                            'status' => $h->status,
+                            'spv_note' => $h->spv_note,
+                            'accuracy' => $h->system_qty > 0 ? round(($h->physical_qty / $h->system_qty) * 100, 2) : 0
+                        ];
+                    });
+
                 return [
                     'id' => $cc->id,
                     'material_id' => $cc->material_id,
@@ -69,12 +109,12 @@ class CycleCountController extends Controller
                     'onhand' => (float) $cc->system_qty,
                     'uom' => $cc->material->satuan,
                     'location' => $cc->bin ? $cc->bin->bin_code : '-',
-                    
-                    // Field Inputan User (Isi dengan data yg sudah disimpan)
                     'scan_serial' => $cc->scanned_serial,
                     'scan_bin' => $cc->scanned_bin,
                     'physical_qty' => (float) $cc->physical_qty,
-                    'status' => $cc->status
+                    'status' => $cc->status,
+                    'history' => $history,
+                    'history_count' => $history->count()
                 ];
             });
         }
@@ -169,6 +209,78 @@ class CycleCountController extends Controller
             return redirect()->back()->with('success', 'Data berhasil disetujui.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal approve: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get cycle count history for a specific material
+     */
+    public function getHistory($materialId)
+    {
+        $history = CycleCount::with(['material', 'bin'])
+            ->where('material_id', $materialId)
+            ->where('status', 'APPROVED')
+            ->orderBy('count_date', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(function($h) {
+                return [
+                    'id' => $h->id,
+                    'count_date' => $h->count_date->format('d/m/Y H:i'),
+                    'system_qty' => (float) $h->system_qty,
+                    'physical_qty' => (float) $h->physical_qty,
+                    'status' => $h->status,
+                    'spv_note' => $h->spv_note,
+                    'location' => $h->bin ? $h->bin->bin_code : '-',
+                    'accuracy' => $h->system_qty > 0 ? round(($h->physical_qty / $h->system_qty) * 100, 2) : 0,
+                    'variance' => $h->system_qty > 0 ? round((($h->physical_qty - $h->system_qty) / $h->system_qty) * 100, 2) : 0
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'history' => $history
+        ]);
+    }
+
+    /**
+     * Repeat/create new cycle count for a material
+     */
+    public function repeat(Request $request)
+    {
+        $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'bin_id' => 'required|exists:warehouse_bins,id'
+        ]);
+
+        try {
+            // Get current stock data
+            $stock = InventoryStock::with(['material', 'bin'])
+                ->where('material_id', $request->material_id)
+                ->where('bin_id', $request->bin_id)
+                ->first();
+
+            if (!$stock) {
+                return redirect()->back()->with('error', 'Stock tidak ditemukan.');
+            }
+
+            // Create new cycle count record
+            $cycleCount = CycleCount::create([
+                'cycle_number' => $stock->batch_lot ?? ($stock->material->kode_item . '-' . uniqid()),
+                'material_id' => $stock->material_id,
+                'warehouse_bin_id' => $stock->bin_id,
+                'system_qty' => $stock->qty_on_hand,
+                'physical_qty' => null,
+                'scanned_serial' => null,
+                'scanned_bin' => null,
+                'count_date' => Carbon::now(),
+                'status' => 'DRAFT',
+                'spv_note' => 'Repeat cycle count by supervisor'
+            ]);
+
+            return redirect()->back()->with('success', 'Cycle count baru berhasil dibuat untuk material: ' . $stock->material->nama_material);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal membuat cycle count baru: ' . $e->getMessage());
         }
     }
 }

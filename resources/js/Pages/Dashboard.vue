@@ -453,34 +453,9 @@
                 <h4 class="text-sm font-medium text-gray-900 mb-3">QR Code & Dokumen</h4>
                 <div class="bg-gray-50 rounded-lg p-4 text-center">
                   <div
-                    class="w-32 h-32 bg-white mx-auto mb-2 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                    <!-- QR Code Pattern -->
-                    <svg class="w-24 h-24 text-gray-400" viewBox="0 0 100 100" fill="currentColor">
-                      <!-- Outer squares -->
-                      <rect x="0" y="0" width="20" height="20" />
-                      <rect x="80" y="0" width="20" height="20" />
-                      <rect x="0" y="80" width="20" height="20" />
-                      <!-- Inner squares -->
-                      <rect x="6" y="6" width="8" height="8" fill="white" />
-                      <rect x="86" y="6" width="8" height="8" fill="white" />
-                      <rect x="6" y="86" width="8" height="8" fill="white" />
-                      <!-- Random pattern -->
-                      <rect x="40" y="0" width="4" height="4" />
-                      <rect x="60" y="0" width="4" height="4" />
-                      <rect x="20" y="20" width="4" height="4" />
-                      <rect x="40" y="20" width="4" height="4" />
-                      <rect x="60" y="20" width="4" height="4" />
-                      <rect x="0" y="40" width="4" height="4" />
-                      <rect x="20" y="40" width="4" height="4" />
-                      <rect x="60" y="40" width="4" height="4" />
-                      <rect x="80" y="40" width="4" height="4" />
-                      <rect x="20" y="60" width="4" height="4" />
-                      <rect x="40" y="60" width="4" height="4" />
-                      <rect x="80" y="60" width="4" height="4" />
-                      <rect x="40" y="80" width="4" height="4" />
-                      <rect x="60" y="80" width="4" height="4" />
-                      <rect x="80" y="80" width="4" height="4" />
-                    </svg>
+                    class="w-32 h-32 bg-white mx-auto mb-2 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                    <img v-if="selectedItem.qr_image_url" :src="selectedItem.qr_image_url" alt="QR Code" class="w-full h-full object-contain">
+                    <div v-else class="text-xs text-gray-400">Generating...</div>
                   </div>
                   <p class="text-xs text-gray-500 mb-2">{{ selectedItem.kode }}-{{ selectedItem.lot }}</p>
                   <button @click="printQR(selectedItem)" class="text-blue-600 text-sm hover:underline font-medium">
@@ -545,10 +520,9 @@
 
           <div class="text-center space-y-4">
             <div id="qr-code-to-print" class="p-4 border border-gray-200 rounded-lg inline-block">
-                <div class="w-48 h-48 bg-gray-200 mx-auto flex items-center justify-center">
-                    <span class="text-xs text-gray-600">
-                        [QR CODE: {{ qrItem.qr_type }}]
-                    </span>
+                <div class="w-48 h-48 bg-white mx-auto flex items-center justify-center overflow-hidden">
+                    <img v-if="qrItem.qr_image_url" :src="qrItem.qr_image_url" alt="QR Code" class="w-full h-full object-contain">
+                    <span v-else class="text-xs text-gray-600">Generating...</span>
                 </div>
                 </div>
             
@@ -579,6 +553,7 @@
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import QRCode from 'qrcode'
 
 const activeAlertFilter = ref<string>('');
 
@@ -601,6 +576,8 @@ interface MaterialItem {
   status: 'Waiting QC' | 'Karantina' | 'Released' | 'Reject' | 'In Production' | 'Returned'
   history: HistoryItem[]
   qr_type: 'Karantina' | 'Released' | 'Waiting QC' | 'Reject'
+  qr_data?: string // Added for consistency
+  qr_image_url?: string // Added to store generated image URL
 }
 
 interface HistoryItem {
@@ -684,11 +661,6 @@ const tableColumns = [
   { key: 'status', label: 'Status' }
 ]
 
-// const { materialItems, alerts } = defineProps<{
-//   materialItems: MaterialItem[],
-//   alerts: Alert[]
-// }>()
-
 // Computed properties
 const uniqueLocations = computed(() => {
     return [...new Set(props.materialItems.map(item => item.lokasi))].sort() 
@@ -754,7 +726,6 @@ const filteredItems = computed(() => {
 
   // Status filter
   if (filterStatus.value) {
-    // 💡 Perubahan: Gunakan status yang dikirim dari backend
     filtered = filtered.filter(item => item.status === filterStatus.value)
   }
 
@@ -786,13 +757,9 @@ const filteredItems = computed(() => {
 
 const toggleAlertFilter = (filterKey: string) => {
   if (activeAlertFilter.value === filterKey) {
-    // Jika filter yang sama diklik lagi, nonaktifkan (toggle off)
     activeAlertFilter.value = '';
   } else {
-    // Jika filter yang berbeda/baru diklik, aktifkan
     activeAlertFilter.value = filterKey;
-    
-    // BONUS: Nonaktifkan filter dropdown & search bawaan saat alert filter aktif
     filterStatus.value = '';
     filterType.value = '';
     filterLocation.value = '';
@@ -803,10 +770,8 @@ const toggleAlertFilter = (filterKey: string) => {
 // Fungsi untuk memicu filter put away
 const triggerPutAwayFilter = () => {
     if (activeAlertFilter.value === 'putAwayRequired') {
-        // Jika sudah aktif, nonaktifkan (toggle off)
         activeAlertFilter.value = '';
     } else {
-        // Jika belum aktif, aktifkan
         activeAlertFilter.value = 'putAwayRequired';
     }
 }
@@ -900,9 +865,32 @@ const formatDateTime = (date: string) => {
   })
 }
 
-const openDetailPanel = (item: MaterialItem) => {
+const generateQRUrl = async (item: MaterialItem) => {
+    // Format: LOT|KODE|STATUS|QTY|EXP_DATE
+    // Status harus uppercase untuk konsistensi
+    const status = item.status.toUpperCase();
+    const qrContent = `${item.lot}|${item.kode}|${status}|${item.qty}|${item.expiredDate}`;
+    
+    // Simpan data QR string ke item jika belum ada
+    item.qr_data = qrContent;
+
+    try {
+        const url = await QRCode.toDataURL(qrContent, {
+            width: 200,
+            margin: 1,
+            errorCorrectionLevel: 'M'
+        });
+        item.qr_image_url = url;
+    } catch (err) {
+        console.error('Error generating QR:', err);
+    }
+}
+
+const openDetailPanel = async (item: MaterialItem) => {
     selectedItem.value = item
     showDetailPanel.value = true
+    // Generate QR saat panel dibuka
+    await generateQRUrl(item);
 }
 
 const closeDetailPanel = () => {
@@ -919,9 +907,11 @@ const dismissAlert = (alertId: string) => {
     }
 }
 
-const openQRDetailModal = (item: MaterialItem) => {
+const openQRDetailModal = async (item: MaterialItem) => {
     qrItem.value = item
     showQRDetailModal.value = true
+    // Generate QR saat modal dibuka
+    await generateQRUrl(item);
 }
 
 const closeQRDetailModal = () => {
