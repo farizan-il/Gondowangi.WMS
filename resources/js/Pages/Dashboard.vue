@@ -65,6 +65,86 @@
         </div>
       </div>
 
+        <!-- Expired Materials Widget -->
+        <div v-if="expiredMaterialsCount > 0" class="mb-6">
+          <form @submit.prevent="initiateReqc" method="POST">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-4">
+                  <!-- Animated Warning Icon -->
+                  <div class="relative">
+                    <div class="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                    <div class="relative bg-white/30 p-4 rounded-full">
+                      <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <!-- Info -->
+                  <div>
+                    <h3 class="text-2xl font-bold mb-1">{{ expiredMaterialsCount }} Material Expired!</h3>
+                    <p class="text-red-100 text-sm">Pilih material yang sudah di bin QRT untuk proses Re-QC</p>
+                    <p class="text-red-100 text-xs mt-1">Bin QRT: QRT-HALAL, QRT-NON HALAL, QRT-HALAL-AC</p>
+                  </div>
+                </div>
+                <!-- Action Button -->
+                <button 
+                  type="submit"
+                  :disabled="selectedExpiredMaterials.length === 0"
+                  :class="selectedExpiredMaterials.length > 0 ? 'bg-white hover:bg-red-50' : 'bg-white/50 cursor-not-allowed'"
+                  class="text-red-600 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all hover:scale-105 flex items-center space-x-2 group">
+                  <span>Proses Re-QC ({{ selectedExpiredMaterials.length }})</span>
+                  <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Expired Material List with Checkboxes -->
+              <div class="mt-4 pt-4 border-t border-white/20">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-sm text-red-100">Pilih material untuk Re-QC:</p>
+                  <button type="button" @click="toggleSelectAllExpired" class="text-xs text-white hover:text-red-100 underline">
+                    {{ selectedExpiredMaterials.length === expiredMaterials.length ? 'Batalkan Semua' : 'Pilih Semua' }}
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                  <label 
+                    v-for="material in expiredMaterials" 
+                    :key="material.id" 
+                    :class="[
+                      'flex items-start gap-3 p-3 rounded cursor-pointer transition-colors',
+                      isInQrtBin(material.lokasi) ? 'bg-white/10 hover:bg-white/20' : 'bg-orange-500/50 hover:bg-orange-500/60'
+                    ]">
+                    <input 
+                      type="checkbox" 
+                      :value="getInventoryStockId(material)"
+                      v-model="selectedExpiredMaterials"
+                      class="mt-1 w-4 h-4 rounded">
+                    <div class="flex-1 text-sm">
+                      <div class="font-semibold flex items-center gap-2">
+                        {{ material.nama }}
+                        <span v-if="!isInQrtBin(material.lokasi)" class="px-1.5 py-0.5 bg-orange-600 text-white text-[9px] font-bold rounded">
+                          Belum QRT
+                        </span>
+                      </div>
+                      <div class="text-red-100 text-xs mt-0.5">
+                        Exp: {{ formatDate(material.expiredDate) }} • {{ material.lokasi }} • {{ material.lot }}
+                      </div>
+                      <div v-if="!isInQrtBin(material.lokasi)" class="text-orange-200 text-[10px] mt-1">
+                        <a href="/transaction/bin-to-bin" class="underline hover:text-white">Bin-to-Bin dulu →</a>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+                <p v-if="expiredMaterialsCount > 10" class="text-xs text-red-100 mt-2">
+                  +{{ expiredMaterialsCount - 10 }} material lainnya (scroll untuk lihat semua)
+                </p>
+              </div>
+            </div>
+          </form>
+        </div>
+
         <!-- Toolbar -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div class="flex flex-wrap gap-4 items-center justify-between">
@@ -84,12 +164,16 @@
               <!-- Filters -->
               <select v-model="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
                 <option value="">Semua Status</option>
+                <option value="KARANTINA">Karantina</option>
+                <option value="RELEASED">Released</option>
+                <!-- <option value="HOLD">Hold</option>
+                <option value="REJECTED">Rejected</option> -->
               </select>
 
               <select v-model="filterType" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
                 <option value="">Semua Tipe</option>
-                <option value="RM">Raw Material</option>
-                <option value="PM">Packaging Material</option>
+                <option value="Raw Material">Raw Material</option>
+                <option value="Packaging Material">Packaging Material</option>
               </select>
 
               <select v-model="filterLocation"
@@ -152,6 +236,7 @@
                     {{ item.type }}
                   </span>
                 </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.sub_kategori || '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.kode }}</td>
                 <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.lot }}</td>
@@ -162,7 +247,7 @@
                   <span :class="getExpiredClass(item.expiredDate)">{{ formatDate(item.expiredDate) }}</span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span :class="getStatusClass(item.status)" class="px-2 py-1 text-xs font-semibold rounded-full">
+                  <span :class="getStatusClass(item.qr_type)" class="px-2 py-1 text-xs font-semibold rounded-full border">
                     {{ item.status }}
                   </span>
                 </td>
@@ -220,6 +305,7 @@
           <p class="mt-1 text-sm text-gray-500">Data material tidak ditemukan atau filter terlalu spesifik</p>
         </div>
       </div>
+
 
       <!-- Bin to Bin Transfer Modal -->
       <div v-if="showBinToBinModal"
@@ -545,13 +631,57 @@
           </div>
         </div>
       </div>
+
+      <!-- Modern Error Modal for Re-QC -->
+      <div v-if="showErrorModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-slideUp">
+          <!-- Header with Gradient -->
+          <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="bg-white/20 p-2 rounded-full">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-white">Validasi Gagal</h3>
+            </div>
+          </div>
+          
+          <!-- Body -->
+          <div class="p-6">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p class="text-sm text-red-800 whitespace-pre-line leading-relaxed">{{ errorModalMessage }}</p>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+              <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+              <div class="text-xs text-blue-800">
+                <p class="font-semibold mb-1">Solusi:</p>
+                <p>Lakukan <a href="/transaction/bin-to-bin" class="underline hover:text-blue-900 font-medium">Bin-to-Bin Transfer</a> terlebih dahulu ke bin QRT (QRT-HALAL, QRT-NON HALAL, atau QRT-HALAL-AC)</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+            <button 
+              @click="closeErrorModal"
+              class="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 import QRCode from 'qrcode'
 
@@ -566,6 +696,7 @@ const props = defineProps<{
 interface MaterialItem {
   id: string
   type: 'Raw Material' | 'Packaging Material'
+  sub_kategori?: string
   kode: string
   nama: string
   lot: string
@@ -651,6 +782,7 @@ onMounted(async () => {
 // Table columns
 const tableColumns = [
   { key: 'type', label: 'RM/PM' },
+  { key: 'sub_kategori', label: 'Sub Kategori' },
   { key: 'kode', label: 'Kode' },
   { key: 'nama', label: 'Nama Material' },
   { key: 'lot', label: 'Serial/Lot' },
@@ -726,7 +858,7 @@ const filteredItems = computed(() => {
 
   // Status filter
   if (filterStatus.value) {
-    filtered = filtered.filter(item => item.status === filterStatus.value)
+    filtered = filtered.filter(item => item.qr_type === filterStatus.value)
   }
 
   // Type filter
@@ -754,6 +886,89 @@ const filteredItems = computed(() => {
 
   return filtered
 })
+
+// Expired Materials Computed
+const expiredMaterials = computed(() => {
+  const now = new Date()
+  return props.materialItems.filter(item => {
+    const expiredDate = new Date(item.expiredDate)
+    return expiredDate < now
+  })
+})
+
+const expiredMaterialsCount = computed(() => {
+  return expiredMaterials.value.length
+})
+
+// Re-QC State
+const selectedExpiredMaterials = ref<string[]>([])
+const showErrorModal = ref(false)
+const errorModalMessage = ref('')
+
+// Re-QC Methods
+const toggleSelectAllExpired = () => {
+  if (selectedExpiredMaterials.value.length === expiredMaterials.value.length) {
+    selectedExpiredMaterials.value = []
+  } else {
+    selectedExpiredMaterials.value = expiredMaterials.value
+      .map(m => getInventoryStockId(m))
+      .filter(id => id !== null) as string[]
+  }
+}
+
+const isInQrtBin = (binLocation: string) => {
+  const qrtBins = ['QRT-HALAL', 'QRT-NON HALAL', 'QRT-HALAL-AC']
+  return qrtBins.includes(binLocation)
+}
+
+const getInventoryStockId = (material: MaterialItem) => {
+  // Extract inventory stock ID from material.id format: "INV-123"
+  const match = material.id.match(/INV-(\d+)/)
+  return match ? match[1] : null
+}
+
+const closeErrorModal = () => {
+  showErrorModal.value = false
+  errorModalMessage.value = ''
+}
+
+const initiateReqc = () => {
+  if (selectedExpiredMaterials.value.length === 0) {
+    errorModalMessage.value = 'Pilih minimal 1 material untuk Re-QC'
+    showErrorModal.value = true
+    return
+  }
+
+  console.log('🚀 Initiating Re-QC for:', selectedExpiredMaterials.value)
+
+  // Use Inertia router.post which handles CSRF automatically
+  router.post('/dashboard/reqc/initiate', {
+    inventory_stock_ids: selectedExpiredMaterials.value
+  }, {
+    preserveState: false,
+    preserveScroll: false,
+    onStart: () => {
+      console.log('📤 Re-QC request started...')
+    },
+    onSuccess: (page) => {
+      console.log('✅ Re-QC initiated successfully', page)
+    },
+    onError: (errors) => {
+      console.error('❌ Re-QC error:', errors)
+      // Show error in modal
+      if (errors.message) {
+        errorModalMessage.value = errors.message
+      } else {
+        const errorMessages = Object.values(errors).flat().join('\n')
+        errorModalMessage.value = errorMessages || 'Terjadi kesalahan. Silakan coba lagi.'
+      }
+      showErrorModal.value = true
+    },
+    onFinish: () => {
+      console.log('🏁 Re-QC request finished')
+    }
+  })
+}
 
 const toggleAlertFilter = (filterKey: string) => {
   if (activeAlertFilter.value === filterKey) {
@@ -811,15 +1026,24 @@ const getExpiredClass = (expiredDate: string) => {
 }
 
 const getStatusClass = (status: string) => {
+  // Handle both Title Case and Uppercase keys
   const statusClasses: Record<string, string> = {
-    'Waiting QC': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    'Karantina': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-    'Released': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    'Reject': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    'In Production': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    'Returned': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+    // Original Title Case
+    'Waiting QC': 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-200',
+    'Karantina': 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900 dark:text-orange-200',
+    'Released': 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200',
+    'Reject': 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200',
+    'In Production': 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200',
+    'Returned': 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900 dark:text-purple-200',
+    
+    // Uppercase (Raw Status from DB/Controller)
+    'KARANTINA': 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900 dark:text-orange-200',
+    'RELEASED': 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200',
+    'HOLD': 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200',
+    'REJECTED': 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200',
+    'REJECT': 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200'
   }
-  return statusClasses[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+  return statusClasses[status] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900 dark:text-gray-200'
 }
 
 const getAlertClass = (type: string) => {
@@ -944,7 +1168,7 @@ const triggerPrint = (item: MaterialItem) => {
       // Sertakan CSS untuk cetak, misalnya Tailwind minimal
       printWindow.document.write('<style>');
       printWindow.document.write('body { font-family: sans-serif; margin: 0; padding: 10mm; }');
-      printWindow.document.write('#qr-content { display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid black; padding: 10mm; width: fit-content; margin: 0 auto; }');
+      printWindow.document.write('#qr-content { display: flex; flex-direction: column; align-items: center; text-align: center; border: 2px solid #3b82f6; padding: 2px; width: fit-content; margin: 0 auto; }');
       printWindow.document.write('h4 { margin-bottom: 5px; font-size: 14pt; }');
       printWindow.document.write('p { margin: 0; font-size: 8pt; }');
       printWindow.document.write('.qr-area { margin-bottom: 10px; }');
@@ -1054,3 +1278,33 @@ const printQR = (item: MaterialItem) => {
   console.log(`Logika cetak QR Code: ${qrTitle}`);
 }
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+</style>

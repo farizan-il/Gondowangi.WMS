@@ -71,6 +71,11 @@ class InventoryStock extends Model
         $this->save();
     }
 
+    public function isExpired(): bool
+    {
+        return $this->exp_date && $this->exp_date < now();
+    }
+
     public function movements(): HasMany
     {
  

@@ -47,6 +47,13 @@
                 <td class="px-6 py-4 text-sm text-gray-900">
                   <div class="font-medium">{{ item.kodeItem }}</div>
                   <div class="text-xs text-gray-500">{{ item.namaMaterial }}</div>
+                  <!-- \u2b50 RE-QC BADGE -->
+                  <span v-if="item.is_reqc" class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    RE-QC ({{ item.reqc_count }}x)
+                  </span>
                 </td>
                 <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ formatInteger(item.qtyDatangTotal) }} {{ item.uom }} 
@@ -325,6 +332,21 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"></textarea>
                   </div>
 
+                  <!-- ⭐ EXPIRED DATE EDIT (ONLY FOR RE-QC PASS) -->
+                  <div v-if="selectedItem?.is_reqc && qcForm.hasilQC === 'PASS'" class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <label class="block text-sm font-medium text-orange-900 mb-1">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                        </svg>
+                        Expired Date Baru (RE-QC PASS)
+                      </span>
+                    </label>
+                    <input v-model="qcForm.newExpDate" type="date" required
+                      class="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white text-gray-900">
+                    <p class="text-xs text-orange-700 mt-1">Masukkan tanggal expired baru untuk material yang PASS Re-QC</p>
+                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Upload Foto Bukti</label>
                     <input type="file" multiple accept="image/*"
@@ -518,7 +540,8 @@ const qcForm = ref({
   defectCount: 0,
   catatanQC: '',
   hasilQC: '',
-  photos: []
+  photos: [],
+  newExpDate: '' // For Re-QC PASS - new expired date
 })
 
 // Computed
@@ -697,6 +720,11 @@ const submitQC = () => {
   formData.append('defect_count', qcForm.value.defectCount || 0)
   formData.append('catatan_qc', qcForm.value.catatanQC || '')
   formData.append('hasil_qc', qcForm.value.hasilQC)
+  
+  // \u2b50 Send new expired date for Re-QC PASS
+  if (selectedItem.value?.is_reqc && qcForm.value.hasilQC === 'PASS' && qcForm.value.newExpDate) {
+    formData.append('new_exp_date', qcForm.value.newExpDate)
+  }
 
   // Append photos jika ada
   if (qcForm.value.photos && qcForm.value.photos.length > 0) {

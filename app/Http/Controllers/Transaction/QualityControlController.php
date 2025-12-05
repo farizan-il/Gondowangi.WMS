@@ -10,6 +10,7 @@ use App\Models\InventoryStock;
 use App\Models\QCChecklist;
 use App\Models\QCChecklistDetail;
 use App\Models\QCPhoto;
+use App\Models\QcReqcHistory;
 use App\Models\ReturnSlip;
 use App\Models\StockMovement;
 use App\Models\WarehouseBin;
@@ -28,17 +29,46 @@ class QualityControlController extends Controller
     {
         $quarantineBin = WarehouseBin::where('bin_code', $item->bin_target)->first();
 
-        if (!$quarantineBin) {
-            return null;
+        if ($quarantineBin) {
+            // Search by bin location only, regardless of status (for Re-QC)
+            $inventoryStock = InventoryStock::where([
+                'material_id' => $item->material_id,
+                'bin_id' => $quarantineBin->id,
+            ])->first();
+            
+            if ($inventoryStock) {
+                return $inventoryStock;
+            }
         }
 
-        $inventoryStock = InventoryStock::where([
+        // Fallback for Re-QC: Search in all QRT bins by material_id + batch_lot
+        \Log::info('⚠️ Stock not found in bin_target, searching all QRT bins', [
             'material_id' => $item->material_id,
-            'bin_id' => $quarantineBin->id,
-            'status' => 'KARANTINA', 
-        ])->first();
+            'batch_lot' => $item->batch_lot,
+            'bin_target' => $item->bin_target
+        ]);
+        
+        $qrtBins = WarehouseBin::whereIn('bin_code', ['QRT-HALAL', 'QRT-NON HALAL', 'QRT-HALAL-AC'])->get();
+        
+        foreach ($qrtBins as $bin) {
+            // Search by bin + material + batch, no status filter
+            $inventoryStock = InventoryStock::where([
+                'material_id' => $item->material_id,
+                'bin_id' => $bin->id,
+            ])->where('batch_lot', $item->batch_lot)
+              ->first();
+              
+            if ($inventoryStock) {
+                \Log::info('✅ Found stock in QRT bin', [
+                    'bin_code' => $bin->bin_code,
+                    'stock_id' => $inventoryStock->id,
+                    'status' => $inventoryStock->status
+                ]);
+                return $inventoryStock;
+            }
+        }
 
-        return $inventoryStock;
+        return null;
     }
 
     private function groupItemsToQC(array $items)
@@ -150,6 +180,36 @@ class QualityControlController extends Controller
             // Jumlah wadah yang datang.
             $qtyWadah = (int)$item->qty_wadah;
 
+            // ⭐ CHECK RE-QC STATUS
+            // Get Re-QC history for this item
+            $reqcHistory = [];
+            $isReqc = false;
+            $reqcCount = 0;
+            
+            if ($inventoryStock) {
+                $reqcHistory = QcReqcHistory::where('inventory_stock_id', $inventoryStock->id)
+                    ->with('initiator')
+                    ->orderBy('initiated_at', 'desc')
+                    ->get()
+                    ->map(function($h) {
+                        return [
+                            'reqc_number' => $h->reqc_number,
+                            'old_status' => $h->old_status,
+                            'new_status' => $h->new_status,
+                            'old_exp_date' => $h->old_exp_date ? $h->old_exp_date->format('Y-m-d') : null,
+                            'new_exp_date' => $h->new_exp_date ? $h->new_exp_date->format('Y-m-d') : null,
+                            'reason' => $h->reason,
+                            'initiated_by' => $h->initiator ? $h->initiator->name : null,
+                            'initiated_at' => $h->initiated_at->format('d/m/Y H:i'),
+                            'status' => $h->status,
+                        ];
+                    })
+                    ->toArray();
+                    
+                $isReqc = count($reqcHistory) > 0;
+                $reqcCount = count($reqcHistory);
+            }
+
             return [
                 'id' => $item->id,
                 'shipmentNumber' => $item->incomingGood->incoming_number,
@@ -163,7 +223,6 @@ class QualityControlController extends Controller
                 
                 'uom' => $item->satuan,
                 'statusQC' => $item->status_qc,
-                // Qty Received: QTY Unit yang tersisa di Inventory QRT (setelah dikurangi sample, jika sudah QC)
                 'qtyReceived' => (float)$qtyCurrentStock, 
                 // Qty Datang Total: QTY Unit total sebelum ada QC/Sample
                 'qtyDatangTotal' => (float)$qtyDatangTotal, 
@@ -172,6 +231,11 @@ class QualityControlController extends Controller
                 // ⭐ Tambahkan Qty Wadah dan Qty Unit Per Wadah
                 'qtyWadah' => $qtyWadah, 
                 'qtyUnitPerWadah' => $qtyUnitPerWadah,
+
+                // ⭐ RE-QC DATA
+                'is_reqc' => $isReqc,
+                'reqc_count' => $reqcCount,
+                'reqc_history' => $reqcHistory,
 
                 'noKendaraan' => $item->incomingGood->no_kendaraan,
                 'namaDriver' => $item->incomingGood->nama_driver,
@@ -342,6 +406,7 @@ class QualityControlController extends Controller
                 'defect_count' => 'nullable|integer|min:0',
                 'catatan_qc' => 'nullable|string',
                 'hasil_qc' => 'required|in:PASS,REJECT',
+                'new_exp_date' => 'nullable|date|after:today', // For Re-QC PASS - new expired date
                 'photos' => 'nullable|array',
                 'photos.*' => 'image|max:5120',
             ]);
@@ -355,6 +420,29 @@ class QualityControlController extends Controller
             // Cek apakah item sudah di-QC
             if ($incomingItem->status_qc !== 'To QC') {
                 throw new \Exception("Item ini sudah di-QC dengan status: {$incomingItem->status_qc}");
+            }
+            
+            // ⭐ CHECK IF THIS IS RE-QC
+            $inventoryStock = $this->getQuarantineStock($incomingItem);
+            $pendingReqc = null;
+            $previousSampleTotal = 0;
+            $isReqc = false;
+            
+            if ($inventoryStock) {
+                $pendingReqc = QcReqcHistory::where('inventory_stock_id', $inventoryStock->id)
+                    ->where('status', 'PENDING')
+                    ->latest()
+                    ->first();
+                    
+                if ($pendingReqc) {
+                    $isReqc = true;
+                    // Get all previous QC details for cumulative count
+                    $allPreviousQc = QCChecklistDetail::whereHas('qcChecklist', function($q) use ($incomingItem) {
+                        $q->where('incoming_item_id', $incomingItem->id);
+                    })->sum('qty_sample');
+                    
+                    $previousSampleTotal = (float) $allPreviousQc;
+                }
             }
             
             $qtySample = (float) $validated['qty_sample'];
@@ -429,9 +517,16 @@ class QualityControlController extends Controller
             $qtyAfterSample = $inventoryStockQRT->qty_on_hand;
 
             // 4. Create QC Detail (Menggunakan qty_sample dan total_incoming tersisa)
+            // ⭐ Add cumulative sampling note if this is Re-QC
+            $catatanQc = $validated['catatan_qc'] ?? '';
+            if ($isReqc && $previousSampleTotal > 0) {
+                $cumulativeTotal = $previousSampleTotal + $qtySample;
+                $catatanQc = "[RE-QC] Sample sebelumnya: {$previousSampleTotal}, Sample baru: +{$qtySample}, Total kumulatif: {$cumulativeTotal}. " . $catatanQc;
+            }
+            
             $qcDetail = QCChecklistDetail::create([
                 'qc_checklist_id' => $qcChecklist->id,
-                'qty_sample' => $qtySample,
+                'qty_sample' => $qtySample, // Current sample only, not cumulative
                 'total_incoming' => $qtyIncomingOriginal,
                 
                 'jumlah_box_utuh' => 0, 
@@ -441,7 +536,7 @@ class QualityControlController extends Controller
                 
                 'uom' => $incomingItem->satuan,
                 'defect_count' => $validated['defect_count'] ?? 0,
-                'catatan_qc' => $validated['catatan_qc'] ?? null,
+                'catatan_qc' => $catatanQc,
                 'hasil_qc' => $validated['hasil_qc'],
                 'qc_date' => now(),
                 'qc_by' => Auth::id(),
@@ -470,9 +565,35 @@ class QualityControlController extends Controller
                 }
             }
             
+            // ⭐ UPDATE RE-QC HISTORY IF THIS IS RE-QC
+            if ($isReqc && $pendingReqc) {
+                $newExpDate = isset($validated['new_exp_date']) ? $validated['new_exp_date'] : null;
+                
+                $pendingReqc->update([
+                    'qc_checklist_id' => $qcChecklist->id,
+                    'status' => 'COMPLETED',
+                    'new_status' => $validated['hasil_qc'],
+                    'new_exp_date' => $newExpDate,
+                    'qty_sample_previous' => $previousSampleTotal,
+                    'qty_sample_new' => $qtySample,
+                    'completed_at' => now(),
+                ]);
+                
+                // Update inventory stock exp_date if PASS with new exp date
+                if ($validated['hasil_qc'] === 'PASS' && $newExpDate && $inventoryStock) {
+                    $inventoryStock->exp_date = $newExpDate;
+                    $inventoryStock->save();
+                    
+                    // Also update incoming item exp_date
+                    $incomingItem->exp_date = $newExpDate;
+                    $incomingItem->save();
+                }
+            }
+            
             // Log the QC activity
+            $activityDesc = $isReqc ? "[RE-QC] QC Check for {$incomingItem->material->nama_material}" : "QC Check for {$incomingItem->material->nama_material}";
             $this->logActivity($qcChecklist, $validated['hasil_qc'], [
-                'description' => "QC Check for {$incomingItem->material->nama_material} resulted in {$validated['hasil_qc']}. Qty Tersisa: {$qtyAfterSample}.",
+                'description' => "{$activityDesc} resulted in {$validated['hasil_qc']}. Qty Tersisa: {$qtyAfterSample}.",
                 'material_id' => $incomingItem->material_id,
                 'batch_lot' => $incomingItem->batch_lot,
                 'qty_after' => $qtyAfterSample,

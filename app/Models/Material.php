@@ -13,6 +13,7 @@ class Material extends Model
         'kode_item',
         'nama_material',
         'kategori',
+        'sub_kategori',
         'satuan',
         'deskripsi',
         'qc_required',

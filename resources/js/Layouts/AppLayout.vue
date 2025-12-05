@@ -67,6 +67,18 @@
                         <span v-show="sidebarOpen" class="font-medium">Riwayat Aktivitas</span>
                     </Link>
 
+                    <!-- IT Admin Dashboard -->
+                    <Link 
+                        v-if="hasAnyPermission(['central_data.role_management_admin'])"
+                        href="/it-dashboard"
+                        :class="navLinkClass('/it-dashboard')"
+                    >
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium">IT Dashboard</span>
+                    </Link>
+
                     <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->
                     <div v-if="hasAnyTransactionPermission" class="my-4 px-2">
                         <div class="border-t border-gray-200"></div>
@@ -111,7 +123,7 @@
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">PutAway & Transfer Order</span>
+                        <span v-show="sidebarOpen" class="font-medium">PutAway</span>
                     </Link>
 
                     <!-- Bin to Bin -->

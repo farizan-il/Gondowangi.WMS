@@ -31,13 +31,19 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:incoming.view')
         ->name('dashboard');
 
+    // Re-QC for expired materials
+    Route::post('/dashboard/reqc/initiate', [DashboardController::class, 'initiateReqcForExpiredMaterials'])
+        ->name('dashboard.reqc.initiate');
+
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
+    Route::get('/it-dashboard', [ActivityLogController::class, 'dashboard'])->name('it-dashboard');
 
     // Master Data Routes
     Route::get('/master-data/bin/{binId}/stocks', [MasterDataController::class, 'getBinStockDetails'])->name('bin.stocks.details');
     
     Route::prefix('master-data')->middleware(['auth'])->group(function () {
         
+        Route::post('/import-stock', [MasterDataController::class, 'importStock'])->name('master-data.import-stock');
         Route::get('/', [MasterDataController::class, 'index'])->name('master-data.index');
         
         // SKU Routes

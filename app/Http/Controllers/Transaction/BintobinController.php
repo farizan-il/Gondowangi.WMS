@@ -197,6 +197,20 @@ class BintobinController extends Controller
                 ->where('bin_id', $toBin->id)
                 ->first();
 
+            // --- VALIDASI KAPASITAS BIN TUJUAN ---
+            // Cek jika bin tujuan punya kapasitas terbatas (> 0)
+            if ($toBin->capacity > 0) {
+                // Jika stok baru (tidak merging), cek apakah bin penuh
+                if (!$existingStockInTargetBin) {
+                    if ($toBin->current_items >= $toBin->capacity) {
+                        throw new \Exception("Bin tujuan ({$toBin->bin_code}) sudah penuh! Kapasitas: {$toBin->capacity}, Terisi: {$toBin->current_items}.");
+                    }
+                }
+            }
+            // -------------------------------------
+
+            $isNewStockEntry = false;
+
             if ($existingStockInTargetBin) {
                 // Kasus 1: Stok Batch yang Sama SUDAH ADA di Bin Tujuan (Cukup di gabung)
                 
@@ -220,6 +234,7 @@ class BintobinController extends Controller
                 ]);
                 
                 $newStock = $stock; // Gunakan stok yang sama untuk logging dan riwayat
+                $isNewStockEntry = true; // Dianggap entry baru di bin tujuan (meski record sama)
                 
             } else {
                 // Kasus 3: Pindah PARSIAL (Sebagian). Perlu memisahkan stok.
@@ -236,7 +251,32 @@ class BintobinController extends Controller
                 $newStock->qty_available = $quantityToMove;
                 $newStock->qty_reserved = 0; // Pastikan reserved nol di entri baru
                 $newStock->save();
+
+                $isNewStockEntry = true;
             }
+
+            // --- UPDATE BIN OCCUPANCY (CURRENT ITEMS) ---
+            
+            // 1. Update Source Bin (Kurangi jika stok habis/pindah semua)
+            // Cek apakah stok asal sudah kosong/dihapus (untuk kasus parsial yang sisa 0 nanti dihapus)
+            // Atau jika kasus pindah seluruhnya (Kasus 2), maka bin asal kehilangan 1 item
+            if ($stock->qty_on_hand == 0 || $stock->bin_id == $toBin->id) {
+                 // Jika qty 0, akan dihapus di bawah. Jika bin_id berubah, berarti pindah full.
+                 // Maka kurangi current_items dari bin ASAL
+                 $fromBin->decrement('current_items');
+                 // Pastikan tidak negatif (safety)
+                 if ($fromBin->current_items < 0) {
+                     $fromBin->update(['current_items' => 0]);
+                 }
+            }
+
+            // 2. Update Destination Bin (Tambah jika entry baru)
+            if ($isNewStockEntry) {
+                // Jika ini adalah item baru di bin tujuan (bukan merge), tambah counter
+                // Note: Kasus 2 (Pindah Full) juga dianggap new entry bagi bin tujuan
+                $toBin->increment('current_items');
+            }
+            // --------------------------------------------
 
             // 3. Hapus entri stok asal jika kuantitasnya menjadi nol
             if ($stock->qty_on_hand == 0) {

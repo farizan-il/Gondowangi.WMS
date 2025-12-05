@@ -212,18 +212,11 @@ class PutawayTransferController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => "Transfer Order {$toNumber} berhasil dibuat",
-                'to_number' => $toNumber
-            ]);
+            return redirect()->back()->with('success', "Transfer Order {$toNumber} berhasil dibuat");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat Transfer Order: ' . $e->getMessage()
-            ], 500);
+            return redirect()->back()->with('error', 'Gagal membuat Transfer Order: ' . $e->getMessage());
         }
     }
 
@@ -370,17 +363,11 @@ class PutawayTransferController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => "Transfer Order {$transferOrder->to_number} berhasil diselesaikan"
-            ]);
+            return redirect()->back()->with('success', "Transfer Order {$transferOrder->to_number} berhasil diselesaikan");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menyelesaikan Transfer Order: ' . $e->getMessage()
-            ], 500);
+            return redirect()->back()->with('error', 'Gagal menyelesaikan Transfer Order: ' . $e->getMessage());
         }
     }
 

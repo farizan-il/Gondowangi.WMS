@@ -13,10 +13,6 @@ class QCChecklistDetail extends Model
 
     protected $fillable = [
         'qc_checklist_id',
-        // 'jumlah_box_utuh',
-        // 'qty_box_utuh',
-        // 'jumlah_box_tidak_utuh',
-        // 'qty_box_tidak_utuh',
         'qty_sample',
         'total_incoming',
         'uom',

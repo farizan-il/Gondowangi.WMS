@@ -2,7 +2,7 @@
   <AppLayout title="Cycle Count">
     <div class="min-h-screen bg-gray-50 p-2 sm:p-4 md:p-6 transition-colors duration-300">
       
-      <div class="mb-6 flex justify-between items-center">
+      <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
            <h2 class="text-xl font-bold text-gray-800">Cycle Count Inventory</h2>
            <p class="text-sm text-gray-500">
@@ -10,15 +10,56 @@
            </p>
         </div>
 
-        <button 
-          @click="submitOpname"
-          :disabled="form.processing"
-          class="flex items-center gap-2 px-4 py-2 rounded shadow transition-colors"
-          :class="form.processing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'"
-        >
-          <span v-if="form.processing">Menyimpan...</span>
-          <span v-else>Submit ke Supervisor</span>
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <!-- Search Input -->
+            <div class="relative flex-grow sm:flex-grow-0 flex gap-2">
+                <!-- Camera Scan Button -->
+                <button 
+                    @click="openScanner(null, 'search')"
+                    class="bg-blue-200 hover:bg-blue-300 text-blue-700 p-2 rounded-lg shadow transition-colors flex items-center justify-center"
+                    title="Scan QR via Camera"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+
+                <div class="relative w-full sm:w-64">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery" 
+                        @keydown.enter="handleSearch"
+                        placeholder="Scan QR Material / Cari..." 
+                        class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <button 
+                        v-if="searchQuery" 
+                        @click="clearSearch"
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button 
+              @click="submitOpname"
+              :disabled="form.processing"
+              class="flex items-center justify-center gap-2 px-4 py-2 rounded shadow transition-colors whitespace-nowrap"
+              :class="form.processing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'"
+            >
+              <span v-if="form.processing">Menyimpan...</span>
+              <span v-else>Submit ke Supervisor</span>
+            </button>
+        </div>
       </div>
 
       <div v-if="$page.props.flash.success" class="mb-4 p-4 bg-green-100 text-green-700 rounded border border-green-200">
@@ -65,6 +106,11 @@
                   <div class="flex flex-col items-end justify-center">
                       <span class="font-bold text-gray-800">
                           {{ formatNumber(item.onhand) }} {{ item.uom }}
+                      </span>
+                      <span v-if="item.inventory_status" 
+                        class="text-[10px] px-1.5 py-0.5 rounded font-bold mt-1 border"
+                        :class="getStatusBadgeClass(item.inventory_status)">
+                        {{ item.inventory_status }}
                       </span>
                   </div>
               </td>
@@ -197,7 +243,7 @@
       <div v-if="showScanner" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity">
           <div class="bg-white rounded-lg shadow-2xl w-full max-w-sm mx-4 overflow-hidden relative animate-fade-in-down">
               <div class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
-                  <h3 class="font-bold text-gray-800 text-sm">Scan: <span class="text-blue-600">{{ scanningField === 'scan_serial' ? 'Serial Number' : 'Lokasi Bin' }}</span></h3>
+                  <h3 class="font-bold text-gray-800 text-sm">Scan: <span class="text-blue-600">{{ scanningField === 'scan_serial' ? 'Serial Number' : (scanningField === 'scan_bin' ? 'Lokasi Bin' : 'Cari Material') }}</span></h3>
                   <button @click="closeScanner" class="text-gray-400 hover:text-red-500 font-bold text-2xl leading-none">&times;</button>
               </div>
               <div class="p-0 bg-white relative">
@@ -235,8 +281,26 @@ import { useForm, router } from '@inertiajs/vue3'
 import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue' // Hapus 'watch'
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
-const props = defineProps({ initialStocks: Array });
+const props = defineProps({ 
+    initialStocks: Array,
+    filters: Object 
+});
 const form = useForm({ items: [] });
+
+// Search State
+const searchQuery = ref(props.filters?.search || '');
+
+const handleSearch = () => {
+    router.get('/transaction/cycle-count', { search: searchQuery.value }, {
+        preserveState: true,
+        replace: true,
+    });
+}
+
+const clearSearch = () => {
+    searchQuery.value = '';
+    handleSearch();
+}
 
 // Scanner State
 const showScanner = ref(false);
@@ -317,6 +381,14 @@ const onScanSuccess = (decodedText) => {
 
     resultText = resultText.toUpperCase();
 
+    // --- HANDLE SEARCH MODE ---
+    if (scanningField.value === 'search') {
+        searchQuery.value = resultText;
+        handleSearch();
+        closeScanner();
+        return;
+    }
+
     // --- VALIDASI ---
     if (scanningItem.value && scanningField.value) {
         let expectedValue = '';
@@ -380,6 +452,16 @@ const getAccuracyColor = (item) => {
     return acc === 100 ? 'text-green-600' : (acc > 100 ? 'text-blue-600' : 'text-red-600');
 }
 const getVarianceColor = (item) => parseFloat(calculateVariance(item)) === 0 ? 'text-gray-400' : 'text-red-600';
+
+const getStatusBadgeClass = (status) => {
+    switch (status) {
+        case 'KARANTINA': return 'bg-orange-100 text-orange-700 border-orange-300';
+        case 'RELEASED': return 'bg-green-100 text-green-700 border-green-300';
+        case 'HOLD': return 'bg-gray-100 text-gray-700 border-gray-300';
+        case 'REJECTED': return 'bg-red-100 text-red-700 border-red-300';
+        default: return 'bg-gray-50 text-gray-500 border-gray-200';
+    }
+}
 
 // --- ACTIONS ---
 

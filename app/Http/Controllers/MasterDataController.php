@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\InitialStockImport;
 use App\Models\InventoryStock;
 use App\Models\Material;
+use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Models\WarehouseBin;
 use App\Models\WarehouseZone;
-use App\Models\User;
-use App\Models\Role;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+use App\Traits\ActivityLogger;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-use App\Traits\ActivityLogger;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterDataController extends Controller
 {
@@ -390,13 +393,23 @@ class MasterDataController extends Controller
             // Get zone untuk mendapatkan warehouse_id
             $zone = WarehouseZone::findOrFail($validated['zone']);
             
+            // Logic Kapasitas: QRT-* unlimited (0), selain itu max 4
+            $capacity = $validated['capacity'] ?? 0;
+            if (stripos($validated['code'], 'qrt-') === 0) {
+                $capacity = 0; // Unlimited
+            } else {
+                if ($capacity > 4) {
+                    $capacity = 4;
+                }
+            }
+
             $bin = WarehouseBin::create([
                 'bin_code' => $validated['code'],
                 'bin_name' => $validated['code'],
                 'zone_id' => $validated['zone'],
                 'warehouse_id' => $zone->warehouse_id ?? 1,
                 'bin_type' => $validated['type'],
-                'capacity' => $validated['capacity'] ?? 0,
+                'capacity' => $capacity,
                 'current_items' => 0,
                 'status' => strtolower($validated['status'] === 'Active' ? 'available' : 'inactive')
             ]);
@@ -460,13 +473,23 @@ class MasterDataController extends Controller
             $oldCode = $bin->bin_code;
             $zone = WarehouseZone::findOrFail($validated['zone']);
             
+            // Logic Kapasitas: QRT-* unlimited (0), selain itu max 4
+            $capacity = $validated['capacity'] ?? 0;
+            if (stripos($validated['code'], 'qrt-') === 0) {
+                $capacity = 0; // Unlimited
+            } else {
+                if ($capacity > 4) {
+                    $capacity = 4;
+                }
+            }
+            
             $bin->update([
                 'bin_code' => $validated['code'],
                 'bin_name' => $validated['code'],
                 'zone_id' => $validated['zone'],
                 'warehouse_id' => $zone->warehouse_id ?? $bin->warehouse_id,
                 'bin_type' => $validated['type'],
-                'capacity' => $validated['capacity'] ?? 0,
+                'capacity' => $capacity,
                 'status' => strtolower($validated['status'] === 'Active' ? 'available' : 'inactive')
             ]);
 
@@ -866,5 +889,25 @@ class MasterDataController extends Controller
     {
         $role = Role::where('role_name', $roleName)->first();
         return $role->id ?? 1;
+    }
+
+    public function importStock(Request $request)
+    {
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240', // Max 10MB
+        ]);
+
+        try {
+            Excel::import(new InitialStockImport, $request->file('file'));
+            // ...
+
+            return redirect()->back()->with('success', 'Data stok berhasil diimport!');
+        } catch (\Exception $e) {
+            Log::error('Import Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal mengimport data: ' . $e->getMessage());
+        }
     }
 }

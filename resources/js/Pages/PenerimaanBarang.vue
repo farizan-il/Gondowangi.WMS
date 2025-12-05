@@ -554,11 +554,11 @@
                           class="w-36 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
-                        <input v-model="item.qtyWadah" type="number"
+                        <input v-model="item.qtyUnit" type="number"
                           class="w-24 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
-                        <input v-model="item.qtyUnit" type="number"
+                        <input v-model="item.qtyWadah" type="number"
                           class="w-24 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">

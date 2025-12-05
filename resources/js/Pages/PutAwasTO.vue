@@ -592,7 +592,7 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
 import { Html5Qrcode } from 'html5-qrcode'
@@ -687,6 +687,11 @@ const clearTOState = () => {
 
 const page = usePage()
 const transferOrders = ref<TransferOrder[]>((page.props.transferOrders as TransferOrder[]) || [])
+
+// Update local state when props change (e.g. after Inertia reload)
+watch(() => page.props.transferOrders, (newOrders) => {
+  transferOrders.value = (newOrders as TransferOrder[]) || []
+}, { deep: true })
 
 // Reactive data
 const qcReleasedMaterials = ref<QCReleasedMaterial[]>([])
@@ -1134,13 +1139,22 @@ const completeTO = async () => {
     }, {
       onSuccess: () => {
         alert('Transfer Order berhasil diselesaikan!')
-        // [PERBAIKAN UTAMA 1]: Update status selectedTO secara lokal agar closeDetailModal tidak menyimpan state parsial.
+        
+        // Update status di list utama secara langsung
+        if (selectedTO.value) {
+            const index = transferOrders.value.findIndex(t => t.id === selectedTO.value?.id)
+            if (index !== -1) {
+                transferOrders.value[index].status = 'Completed'
+            }
+        }
+
+        // Update status selectedTO secara lokal
         if (selectedTO.value) {
             selectedTO.value.status = 'Completed' 
-            selectedTO.value.isExecuting = false // Opsional, tapi disarankan
+            selectedTO.value.isExecuting = false 
         }
-        clearTOState() // Hapus state setelah sukses
-        closeDetailModal() // Panggil close, yang sekarang tidak akan menyimpan state parsial
+        clearTOState() 
+        closeDetailModal() 
       },
       onError: (errors) => {
         console.error('Error completing TO:', errors)

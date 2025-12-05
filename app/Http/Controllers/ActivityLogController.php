@@ -11,9 +11,90 @@ use App\Models\ActivityLog;
 use App\Models\StockMovement;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ActivityLogController extends Controller
 {
+    public function dashboard()
+    {
+        // 1. Total Activities (Today, Week, Month)
+        $today = Carbon::today();
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $startOfMonth = Carbon::now()->startOfMonth();
+
+        // Helper to count across all log tables
+        $countLogs = function ($queryCallback) {
+            return IncomingActivityLog::where($queryCallback)->count() +
+                   QcActivityLog::where($queryCallback)->count() +
+                   ReservationActivityLog::where($queryCallback)->count() +
+                   ReturnActivityLog::where($queryCallback)->count() +
+                   WarehouseActivityLog::where($queryCallback)->count() +
+                   StockMovement::where($queryCallback)->count() +
+                   ActivityLog::where($queryCallback)->count();
+        };
+
+        $stats = [
+            'total_today' => $countLogs(fn($q) => $q->whereDate('created_at', $today)),
+            'total_week' => $countLogs(fn($q) => $q->where('created_at', '>=', $startOfWeek)),
+            'total_month' => $countLogs(fn($q) => $q->where('created_at', '>=', $startOfMonth)),
+        ];
+
+        // 2. Active Users Today (Unique users who performed an action)
+        // Note: This is a bit expensive to query across all tables, so we'll approximate or use a simpler approach
+        // For now, let's just count distinct user_ids from the main ActivityLog as a proxy, or union all.
+        // Optimization: Just check ActivityLog and StockMovement for now as they cover most.
+        $activeUsersCount = ActivityLog::whereDate('created_at', $today)->distinct('user_id')->count('user_id');
+        
+        // 3. Module Distribution (Pie Chart)
+        // We can count total rows in each table for "All Time" or "This Month"
+        $moduleStats = [
+            'Incoming' => IncomingActivityLog::count(),
+            'QC' => QcActivityLog::count(),
+            'Reservation' => ReservationActivityLog::count(),
+            'Return' => ReturnActivityLog::count(),
+            'Warehouse' => WarehouseActivityLog::count(),
+            'Stock Movement' => StockMovement::count(),
+            'Master Data' => ActivityLog::count(),
+        ];
+
+        // 4. Hourly Activity (Line Chart) - Last 24 Hours
+        // We will use ActivityLog as a representative sample or union all if needed.
+        // For performance, let's use ActivityLog + StockMovement
+        $hourlyStats = ActivityLog::selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+            ->where('created_at', '>=', Carbon::now()->subHours(24))
+            ->groupBy('hour')
+            ->pluck('count', 'hour')
+            ->toArray();
+            
+        // Fill missing hours with 0
+        $chartData = [];
+        for ($i = 0; $i < 24; $i++) {
+            $chartData[$i] = $hourlyStats[$i] ?? 0;
+        }
+
+        // 5. Top Users (Bar Chart)
+        $topUsers = ActivityLog::select('user_id', DB::raw('count(*) as total'))
+            ->with('user')
+            ->groupBy('user_id')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'name' => $log->user->nama_lengkap ?? 'Unknown',
+                    'count' => $log->total
+                ];
+            });
+
+        return Inertia::render('ITDashboard', [
+            'stats' => $stats,
+            'activeUsers' => $activeUsersCount,
+            'moduleStats' => $moduleStats,
+            'hourlyStats' => array_values($chartData),
+            'topUsers' => $topUsers,
+        ]);
+    }
+
     public function index()
     {
         $incomingLogs = IncomingActivityLog::with(['user.role', 'material'])->get();

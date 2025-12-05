@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 use App\Models\InventoryStock;
+use App\Models\IncomingGood;
+use App\Models\IncomingGoodsItem;
+use App\Models\QcReqcHistory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -77,6 +82,7 @@ class DashboardController extends Controller
                     'id' => 'INV-' . $item->id,
                     'source_table' => 'inventory_stock',
                     'type' => $item->material->kategori,
+                    'sub_kategori' => $item->material->sub_kategori,
                     'kode' => $item->material->kode_item,
                     'nama' => $item->material->nama_material,
                     'lot' => $item->batch_lot,
@@ -141,5 +147,187 @@ class DashboardController extends Controller
             'materialItems' => $materialItems,
             'alerts' => $alerts,
         ]);
+    }
+
+    /**
+     * Initiate Re-QC for expired materials
+     * Find existing QC items, reset status, create history
+     */
+    public function initiateReqcForExpiredMaterials(Request $request)
+    {
+        \Log::info('🚀 Re-QC Initiation Started', ['request' => $request->all()]);
+        
+        $validated = $request->validate([
+            'inventory_stock_ids' => 'required|array|min:1',
+            'inventory_stock_ids.*' => 'required|exists:inventory_stock,id',
+        ]);
+
+        \Log::info('✅ Validation passed', ['validated' => $validated]);
+
+        DB::beginTransaction();
+        try {
+            $inventoryStockIds = $validated['inventory_stock_ids'];
+            
+            // Get all selected inventory stocks
+            $stocks = InventoryStock::with(['material', 'bin'])
+                ->whereIn('id', $inventoryStockIds)
+                ->get();
+
+            \Log::info('📦 Retrieved stocks', ['count' => $stocks->count()]);
+
+            $errors = [];
+            $qrtBinCodes = ['QRT-HALAL', 'QRT-NON HALAL', 'QRT-HALAL-AC'];
+            $processedCount = 0;
+
+            foreach ($stocks as $stock) {
+                // Validate material is expired
+                if (!$stock->isExpired()) {
+                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) belum expired.";
+                    continue;
+                }
+
+                // Validate material is in QRT bin
+                $binCode = $stock->bin ? $stock->bin->bin_code : null;
+                if (!$binCode || !in_array($binCode, $qrtBinCodes)) {
+                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) belum berada di bin QRT.\n\nSilakan lakukan Bin-to-Bin transfer terlebih dahulu ke salah satu bin: " . implode(', ', $qrtBinCodes);
+                    continue;
+                }
+
+                // Validate stock has quantity
+                if ($stock->qty_on_hand <= 0) {
+                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) tidak memiliki stock.";
+                    continue;
+                }
+
+                // Find existing IncomingGoodsItem for this material
+                // For Re-QC, find ANY incoming item with same material+batch, regardless of status
+                $incomingItem = IncomingGoodsItem::where('material_id', $stock->material_id)
+                    ->where('batch_lot', $stock->batch_lot)
+                    ->orderBy('created_at', 'desc') // Get the latest one
+                    ->first();
+
+                if (!$incomingItem) {
+                    // This shouldn't happen for Re-QC since material should have been received before
+                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) belum pernah masuk sistem (tidak ada record incoming). Tidak dapat di Re-QC.";
+                    \Log::error('Re-QC: No incoming item found', [
+                        'material_id' => $stock->material_id,
+                        'batch_lot' => $stock->batch_lot
+                    ]);
+                    continue;
+                }
+
+                // Reset status for Re-QC
+                $oldStatus = $incomingItem->status_qc;
+                $incomingItem->status_qc = 'To QC';
+                $incomingItem->qty_unit = $stock->qty_on_hand;
+                
+                // Append RE-QC marker to keterangan
+                $reqcCount = QcReqcHistory::where('inventory_stock_id', $stock->id)->count() + 1;
+                $incomingItem->keterangan = ($incomingItem->keterangan ? $incomingItem->keterangan . ' | ' : '') 
+                    . "RE-QC #{$reqcCount} - " . now()->format('Y-m-d');
+                $incomingItem->save();
+
+                // Create Re-QC history record
+                QcReqcHistory::create([
+                    'inventory_stock_id' => $stock->id,
+                    'incoming_item_id' => $incomingItem->id,
+                    'reqc_number' => $this->generateReqcNumber(),
+                    'old_status' => $oldStatus,
+                    'old_exp_date' => $stock->exp_date,
+                    'reason' => 'Material Expired',
+                    'initiated_by' => auth()->id(),
+                    'initiated_at' => now(),
+                    'status' => 'PENDING',
+                ]);
+
+                $processedCount++;
+            }
+
+            if ($processedCount === 0) {
+                DB::rollBack();
+                \Log::warning('⚠️ No materials processed', ['errors' => $errors]);
+                return redirect()->back()
+                    ->withErrors(['message' => implode("\n\n", $errors)]);
+            }
+
+            DB::commit();
+            \Log::info('✅ Re-QC completed successfully', ['processed_count' => $processedCount]);
+
+            // Success - redirect to QC page using Inertia redirect
+            return redirect()->route('transaction.quality-control')
+                ->with('success', "{$processedCount} material siap untuk Re-QC.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('❌ Re-QC failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return back with error message
+            return redirect()->back()
+                ->withErrors(['message' => 'Gagal memproses Re-QC: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Create new IncomingGood + IncomingGoodsItem for materials never QC'd before
+     */
+    private function createNewIncomingForReqc(InventoryStock $stock)
+    {
+        // Get supplier_id - use material's supplier or find first available supplier
+        $supplierId = $stock->material->supplier_id;
+        
+        if (!$supplierId) {
+            // Fallback: get first supplier or create a default one
+            $supplier = \App\Models\Supplier::first();
+            if (!$supplier) {
+                throw new \Exception("Tidak ada supplier tersedia di sistem. Tambahkan supplier terlebih dahulu.");
+            }
+            $supplierId = $supplier->id;
+            \Log::warning('⚠️ Material has no supplier, using fallback', [
+                'material_id' => $stock->material_id,
+                'fallback_supplier_id' => $supplierId
+            ]);
+        }
+        
+        // Create IncomingGood container
+        $incomingGood = IncomingGood::create([
+            'incoming_number' => $this->generateReqcNumber(),
+            'no_surat_jalan' => 'RE-QC-' . time(),
+            'po_id' => null,
+            'supplier_id' => $supplierId, // Now guaranteed to have a value
+            'kategori' => 'Raw Material', // Use valid ENUM value
+            'status' => 'Received',
+            'received_by' => auth()->id(),
+            'tanggal_terima' => now(),
+        ]);
+
+        // Create IncomingGoodsItem
+        $incomingItem = IncomingGoodsItem::create([
+            'incoming_id' => $incomingGood->id,
+            'material_id' => $stock->material_id,
+            'batch_lot' => $stock->batch_lot,
+            'exp_date' => $stock->exp_date,
+            'qty_wadah' => 1, // Default
+            'qty_unit' => $stock->qty_on_hand,
+            'satuan' => $stock->uom,
+            'status_qc' => 'To QC',
+            'bin_target' => $stock->bin->bin_code,
+            'keterangan' => 'RE-QC #1 - Material Expired - ' . now()->format('Y-m-d'),
+        ]);
+
+        return $incomingItem;
+    }
+
+    /**
+     * Generate unique REQC number
+     */
+    private function generateReqcNumber()
+    {
+        $date = date('Ymd');
+        $lastReqc = QcReqcHistory::whereDate('created_at', today())->latest()->first();
+        $sequence = $lastReqc ? (intval(substr($lastReqc->reqc_number, -4)) + 1) : 1;
+        return "REQC/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }

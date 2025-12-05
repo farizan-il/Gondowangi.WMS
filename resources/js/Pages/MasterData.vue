@@ -1,13 +1,44 @@
 <template>
     <AppLayout pageTitle="Master Data" pageDescription="Kelola data master sistem WMS">
         <div class="min-h-screen transition-colors duration-300">
-    <div class="min-h-screen bg-gray-50 p-6">
+    <div class="min-h-screen bg-gray-50 p-6 relative">
+      <!-- Loading Overlay -->
+      <div v-if="isLoading" class="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center border border-gray-100">
+          <div class="warehouse-loader mb-4">
+            <div class="forklift">
+              <div class="forks"></div>
+            </div>
+            <div class="box"></div>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800">Importing Stock Data...</h3>
+          <p class="text-gray-500 mt-2">Memproses data warehouse, mohon tunggu.</p>
+        </div>
+      </div>
       <!-- Header -->
       <div class="mb-6">
         <div class="flex justify-between items-center">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">Master Data</h1>
             <p class="text-gray-600 mt-1">Kelola data master untuk seluruh sistem WMS</p>
+          </div>
+          <div>
+            <button 
+              @click="triggerImport"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import Initial Stock
+            </button>
+            <input 
+              ref="fileInput" 
+              type="file" 
+              accept=".xlsx,.xls,.csv" 
+              @change="handleFileImport" 
+              class="hidden"
+            >
           </div>
         </div>
       </div>
@@ -44,22 +75,7 @@
               Tambah {{ getCurrentTabLabel() }}
             </button>
             
-            <button 
-              @click="triggerImport"
-              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-              </svg>
-              Import Excel
-            </button>
-            <input 
-              ref="fileInput" 
-              type="file" 
-              accept=".xlsx,.xls,.csv" 
-              @change="handleFileImport" 
-              class="hidden"
-            >
+            <!-- Import button moved to header -->
             
             <button 
               @click="exportData"
@@ -69,6 +85,17 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Export Excel
+            </button>
+            
+            <button 
+              v-if="activeTab === 'bin'"
+              @click="printAllQRCodes"
+              class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print All QR Codes
             </button>
           </div>
 
@@ -103,7 +130,6 @@
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Required</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Default</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -133,9 +159,6 @@
                         <span :class="item.expiry ? 'text-green-600' : 'text-gray-400'">
                           {{ item.expiry ? '✓' : '✗' }}
                         </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ item.supplierDefault }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="getStatusClass(item.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -1375,12 +1398,8 @@ const printQRCode = () => {
         }
         .info {
           margin: 10px 0;
-          font-size: 14px;
-        }
-        .bin-code {
-          font-size: 24px;
+          font-size: 16px;
           font-weight: bold;
-          margin: 20px 0;
         }
         @media print {
           body {
@@ -1391,14 +1410,9 @@ const printQRCode = () => {
     </head>
     <body>
       <div class="print-container">
-        <h2>Warehouse Bin QR Code</h2>
-        <div class="bin-code">${qrCodeData.value.bin_code}</div>
         <img src="${qrCodeData.value.image}" alt="QR Code" class="qr-image">
-        <div class="info"><strong>Bin Name:</strong> ${qrCodeData.value.bin_name}</div>
-        <div class="info"><strong>Zone:</strong> ${qrCodeData.value.zone_name}</div>
-        <div class="info"><strong>Type:</strong> ${qrCodeData.value.bin_type}</div>
-        <div class="info"><strong>Capacity:</strong> ${qrCodeData.value.capacity}</div>
-        <div class="info"><small>Generated: ${new Date().toLocaleString()}</small></div>
+        <div class="info">Bin Name: ${qrCodeData.value.bin_name}</div>
+        <div class="info">Zone: ${qrCodeData.value.zone_name}</div>
       </div>
       <script>
         window.onload = function() {
@@ -1411,6 +1425,196 @@ const printQRCode = () => {
   
   printWindow.document.write(htmlContent)
   printWindow.document.close()
+}
+
+const printAllQRCodes = async () => {
+  try {
+    // Show loading message
+    showMessage('success', 'Memuat semua QR Codes...')
+    
+    // Fetch ALL bin locations from backend (not just current page)
+    const binsResponse = await fetch('/master-data/bins', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    
+    if (!binsResponse.ok) {
+      showMessage('error', 'Gagal memuat bin locations')
+      return
+    }
+    
+    const bins = await binsResponse.json()
+    
+    if (!bins || bins.length === 0) {
+      showMessage('error', 'Tidak ada bin location untuk di-print')
+      return
+    }
+    
+    showMessage('success', `Memuat ${bins.length} QR Codes...`)
+    
+    
+    // Fetch QR code data for all bins
+    const qrPromises = bins.map(bin => 
+      fetch(`/master-data/bin/${bin.id}/qr-code/preview`)
+        .then(res => {
+          if (!res.ok) {
+            console.error(`HTTP error for bin ${bin.code}: ${res.status}`)
+            return null
+          }
+          return res.json()
+        })
+        .then(data => {
+          if (!data || !data.success) {
+            console.error(`Invalid data for bin ${bin.code}`)
+            return null
+          }
+          return data.data
+        })
+        .catch(err => {
+          console.error(`Error fetching QR for bin ${bin.code}:`, err)
+          return null
+        })
+    )
+    
+    const qrDataList = await Promise.all(qrPromises)
+    const validQRData = qrDataList.filter(qr => qr !== null)
+    
+    if (validQRData.length === 0) {
+      showMessage('error', 'Gagal memuat QR Codes')
+      return
+    }
+    
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      showMessage('error', 'Gagal membuka window print. Mohon izinkan popup.')
+      return
+    }
+    
+    // Generate HTML content with page-based layout (4 QR codes per page)
+    let pagesHTML = ''
+    for (let i = 0; i < validQRData.length; i += 4) {
+      const pageItems = validQRData.slice(i, i + 4)
+      
+      pagesHTML += `
+        <div class="page">
+          <div class="qr-container">
+            ${pageItems.map(qr => `
+              <div class="qr-item">
+                <img src="${qr.image}" alt="QR Code" class="qr-image">
+                <div class="info">Bin Name: ${qr.bin_name}</div>
+                <div class="info">Zone: ${qr.zone_name}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `
+    }
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Print All QR Codes</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+          }
+          
+          .page {
+            width: 210mm;
+            height: 297mm;
+            padding: 12mm;
+            page-break-after: always;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+          }
+          
+          .page:last-child {
+            page-break-after: auto;
+          }
+          
+          .qr-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 8mm;
+            width: 100%;
+            height: 100%;
+          }
+          
+          .qr-item {
+            text-align: center;
+            padding: 3mm;
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .qr-image {
+            width: 70mm;
+            height: 70mm;
+            margin-bottom: 3mm;
+          }
+          
+          .info {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 1mm 0;
+            line-height: 1.3;
+          }
+          
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+            }
+            
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            
+            .page {
+              margin: 0;
+              padding: 10mm;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${pagesHTML}
+        <script>
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          }
+        <\/script>
+      </body>
+      </html>
+    `
+    
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+    
+  } catch (error) {
+    console.error('Print All QR Codes error:', error)
+    showMessage('error', 'Error saat print QR Codes')
+  }
 }
 
 const closeQRModal = () => {
@@ -1451,18 +1655,38 @@ const triggerImport = () => {
   fileInput.value?.click()
 }
 
+
+const isLoading = ref(false)
+
 const handleFileImport = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (file) {
-    // Simulate file processing
-    showMessage('success', `File ${file.name} berhasil diimport (simulasi)`)
+    isLoading.value = true // Start loading
     
-    // Reset file input
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
+    const formData = new FormData()
+    formData.append('file', file)
+
+    router.post('/master-data/import-stock', formData, {
+      forceFormData: true,
+      onSuccess: () => {
+        showMessage('success', `File ${file.name} berhasil diimport!`)
+        setTimeout(() => window.location.reload(), 1000)
+      },
+      onError: (errors) => {
+        console.error('Import error:', errors)
+        showMessage('error', 'Gagal mengimport file. Cek format data.')
+      },
+      onFinish: () => {
+        isLoading.value = false // Stop loading
+        if (fileInput.value) {
+          fileInput.value.value = ''
+        }
+      }
+    })
   }
 }
+
+// ... existing code ...
 
 const exportData = () => {
   const dataToExport = {
@@ -1543,3 +1767,88 @@ onMounted(() => {
 });
 
 </script>
+
+<style scoped>
+/* Warehouse Loading Animation */
+.warehouse-loader {
+  width: 100px;
+  height: 100px;
+  position: relative;
+}
+
+.forklift {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 40px;
+  background: #f59e0b; /* Amber-500 */
+  border-radius: 4px;
+  animation: drive 2s infinite linear;
+}
+
+.forklift::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  background: #f59e0b;
+  border-radius: 2px;
+}
+
+.forklift::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 5px;
+  width: 10px;
+  height: 10px;
+  background: #333;
+  border-radius: 50%;
+  box-shadow: 35px 0 0 #333;
+}
+
+.forks {
+  position: absolute;
+  bottom: 5px;
+  right: -15px;
+  width: 20px;
+  height: 5px;
+  background: #333;
+}
+
+.forks::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 5px;
+  height: 30px;
+  background: #333;
+}
+
+.box {
+  position: absolute;
+  bottom: 5px;
+  right: -15px;
+  width: 20px;
+  height: 20px;
+  background: #8B4513; /* SaddleBrown */
+  border: 2px solid #5D4037;
+  animation: lift 2s infinite ease-in-out;
+}
+
+@keyframes drive {
+  0% { transform: translateX(-20px); }
+  50% { transform: translateX(20px); }
+  100% { transform: translateX(-20px); }
+}
+
+@keyframes lift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-30px); }
+}
+</style>
+
