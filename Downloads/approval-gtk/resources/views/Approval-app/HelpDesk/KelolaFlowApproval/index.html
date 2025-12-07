@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Flow Approval - CMS Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container-fluid py-4">
+        
+    </div>
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Kelola Flow Approval</h2>
+            <p class="text-muted mb-0">Konfigurasi flow persetujuan untuk berbagai kategori pengajuan</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalKategori">
+            <i class="fas fa-plus me-2"></i>Tambah Kategori
+        </button>
+    </div>
+
+    <!-- Alert for notifications -->
+    <div id="alertContainer"></div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills nav-fill mb-4" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="kategori-tab" data-bs-toggle="pill" data-bs-target="#kategori-pane" type="button" role="tab">
+                <i class="fas fa-list-alt me-2"></i>Kategori Pengajuan
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="flow-tab" data-bs-toggle="pill" data-bs-target="#flow-pane" type="button" role="tab">
+                <i class="fas fa-project-diagram me-2"></i>Flow Approval
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="mainTabContent">
+        <!-- Kategori Pengajuan Tab -->
+        <div class="tab-pane fade show active" id="kategori-pane" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Daftar Kategori Pengajuan</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="kategoriTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">#</th>
+                                    <th>Nama Kategori</th>
+                                    <th width="100">Kode</th>
+                                    <th width="150">Status</th>
+                                    <th width="120">Settlement</th>
+                                    <th width="200">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kategoriTableBody">
+                                <!-- Data akan diisi via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flow Approval Tab -->
+        <div class="tab-pane fade" id="flow-pane" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Mapping Flow Approval</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="flowTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">#</th>
+                                    <th>Kategori</th>
+                                    <th>Department</th>
+                                    <th>Jumlah Step</th>
+                                    <th width="150">Status</th>
+                                    <th width="200">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="flowTableBody">
+                                <!-- Data akan diisi via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Kategori -->
+    <div class="modal fade" id="modalKategori" tabindex="-1" aria-labelledby="modalKategoriLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalKategoriLabel">Tambah Kategori Pengajuan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formKategori">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nama" class="form-label">Nama Kategori <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nama" name="nama" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="kode" class="form-label">Kode <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="kode" name="kode" maxlength="20" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="deskripsi" class="form-label">Deskripsi</label>
+                            <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="icon" class="form-label">Icon CSS Class</label>
+                                    <input type="text" class="form-control" id="icon" name="icon" placeholder="fas fa-file-alt">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="warna" class="form-label">Warna</label>
+                                    <input type="color" class="form-control form-control-color" id="warna" name="warna" value="#007bff">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="aktif">Aktif</option>
+                                        <option value="nonaktif">Non Aktif</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Settlement</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="settlement" name="settlement">
+                                        <label class="form-check-label" for="settlement">
+                                            Memerlukan Settlement
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="kategoriId" name="id">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="simpanKategori">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfigurasi Flow -->
+    <div class="modal fade" id="modalFlow" tabindex="-1" aria-labelledby="modalFlowLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFlowLabel">Konfigurasi Flow Approval</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label for="flowKategori" class="form-label">Kategori Pengajuan</label>
+                            <select class="form-select" id="flowKategori" disabled>
+                                <!-- Options akan diisi via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="flowDepartment" class="form-label">Department</label>
+                            <select class="form-select" id="flowDepartment">
+                                <!-- Options akan diisi via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="isFinansial">
+                                <label class="form-check-label" for="isFinansial">
+                                    <strong>Pengajuan Finansial</strong>
+                                    <small class="d-block text-muted">Otomatis load template finance flow</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Flow Approval Steps</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="tambahStep">
+                                    <i class="fas fa-plus me-1"></i>Tambah Step
+                                </button>
+                            </div>
+                            <div id="flowSteps" class="flow-steps">
+                                <!-- Steps akan diisi via JavaScript -->
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Preview Flow</h6>
+                            <div id="flowPreview" class="flow-preview">
+                                <p class="text-muted">Pilih department untuk melihat preview flow</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-outline-primary" id="previewFlow">Preview</button>
+                    <button type="button" class="btn btn-primary" id="simpanFlow">Simpan Flow</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
