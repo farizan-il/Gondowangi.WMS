@@ -169,7 +169,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($material, 'Create', [
-                'description' => "Created new SKU: {$material->nama_material}",
+                'description' => "Menambahkan Material baru: {$material->nama_material} ({$material->kode_item})",
                 'new_value' => json_encode($material),
             ]);
 
@@ -219,7 +219,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($material, 'Update', [
-                'description' => "Updated SKU: {$material->nama_material}",
+                'description' => "Memperbarui Material: {$material->nama_material} ({$material->kode_item})",
                 'old_value' => json_encode($oldValue),
                 'new_value' => json_encode($material),
             ]);
@@ -247,7 +247,7 @@ class MasterDataController extends Controller
             $material->delete();
 
             $this->logActivity($oldValue, 'Delete', [
-                'description' => "Deleted SKU: {$oldValue->nama_material}",
+                'description' => "Menghapus Material: {$oldValue->nama_material} ({$oldValue->kode_item})",
                 'old_value' => json_encode($oldValue),
             ]);
 
@@ -288,7 +288,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($supplier, 'Create', [
-                'description' => "Created new Supplier: {$supplier->nama_supplier}",
+                'description' => "Menambahkan Supplier baru: {$supplier->nama_supplier}",
                 'new_value' => json_encode($supplier),
             ]);
 
@@ -332,7 +332,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($supplier, 'Update', [
-                'description' => "Updated Supplier: {$supplier->nama_supplier}",
+                'description' => "Memperbarui Supplier: {$supplier->nama_supplier}",
                 'old_value' => json_encode($oldValue),
                 'new_value' => json_encode($supplier),
             ]);
@@ -360,7 +360,7 @@ class MasterDataController extends Controller
             $supplier->delete();
 
             $this->logActivity($oldValue, 'Delete', [
-                'description' => "Deleted Supplier: {$oldValue->nama_supplier}",
+                'description' => "Menghapus Supplier: {$oldValue->nama_supplier}",
                 'old_value' => json_encode($oldValue),
             ]);
 
@@ -425,7 +425,7 @@ class MasterDataController extends Controller
             $bin->refresh();
 
             $this->logActivity($bin, 'Create', [
-                'description' => "Created new Bin: {$bin->bin_code}",
+                'description' => "Menambahkan Bin baru: {$bin->bin_code}",
                 'new_value' => json_encode($bin),
             ]);
 
@@ -506,7 +506,7 @@ class MasterDataController extends Controller
 
             $bin->refresh();
             $this->logActivity($bin, 'Update', [
-                'description' => "Updated Bin: {$bin->bin_code}",
+                'description' => "Memperbarui Bin: {$bin->bin_code}",
                 'old_value' => json_encode($oldValue),
                 'new_value' => json_encode($bin),
             ]);
@@ -548,7 +548,7 @@ class MasterDataController extends Controller
             $bin->delete();
 
             $this->logActivity($oldValue, 'Delete', [
-                'description' => "Deleted Bin: {$oldValue->bin_code}",
+                'description' => "Menghapus Bin: {$oldValue->bin_code}",
                 'old_value' => json_encode($oldValue),
             ]);
 
@@ -797,7 +797,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($user, 'Create', [
-                'description' => "Created new User: {$user->nama_lengkap}",
+                'description' => "Menambahkan User baru: {$user->nama_lengkap} ({$user->jabatan})",
                 'new_value' => json_encode($user),
             ]);
 
@@ -839,7 +839,7 @@ class MasterDataController extends Controller
             ]);
 
             $this->logActivity($user, 'Update', [
-                'description' => "Updated User: {$user->nama_lengkap}",
+                'description' => "Memperbarui User: {$user->nama_lengkap}",
                 'old_value' => json_encode($oldValue),
                 'new_value' => json_encode($user),
             ]);
@@ -867,7 +867,7 @@ class MasterDataController extends Controller
             $user->delete();
 
             $this->logActivity($oldValue, 'Delete', [
-                'description' => "Deleted User: {$oldValue->nama_lengkap}",
+                'description' => "Menghapus User: {$oldValue->nama_lengkap}",
                 'old_value' => json_encode($oldValue),
             ]);
 
@@ -901,8 +901,15 @@ class MasterDataController extends Controller
         ]);
 
         try {
-            Excel::import(new InitialStockImport, $request->file('file'));
-            // ...
+            $importer = new InitialStockImport;
+            Excel::import($importer, $request->file('file'));
+            
+            if (count($importer->errors) > 0) {
+                return redirect()->back()->with([
+                    'error' => 'Terdapat beberapa kesalahan saat import data.',
+                    'import_errors' => $importer->errors
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Data stok berhasil diimport!');
         } catch (\Exception $e) {

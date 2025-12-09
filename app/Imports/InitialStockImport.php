@@ -19,13 +19,17 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
     private $bins = [];
     private $suppliers = [];
 
+    public $errors = [];
+    private $rowNumber = 0;
+
     public function limit(): int
     {
-        return 100; // Limit to 100 rows for testing
+        return 10; // Increased limit for production
     }
 
     public function model(array $row)
     {
+        $this->rowNumber++;
         try {
             // Log::info('Import Row Keys:', array_keys($row)); // Optional: Keep for debug if needed
             
@@ -33,7 +37,8 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
             $code = $row['code'] ?? $row['kode'] ?? null;
             $name = $this->sanitizeString($row['name'] ?? $row['product'] ?? 'Unknown Material');
             $uom = $this->sanitizeString($row['uom'] ?? 'PCS');
-            $category = $this->sanitizeString($row['kategori'] ?? 'General');
+            // User requested to map Excel 'kategori' to DB 'sub_kategori'
+            $subCategory = $this->sanitizeString($row['kategori'] ?? 'General');
             $location = $row['location'] ?? 'TEMP-IMPORT';
             $supplierName = $this->sanitizeString($row['supplier'] ?? null);
 
@@ -44,13 +49,14 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
 
             // 2. Find or Create Material (Cached)
             if (!isset($this->materials[$code])) {
-                $this->materials[$code] = Material::firstOrCreate(
+                $this->materials[$code] = Material::updateOrCreate(
                     ['kode_item' => $code],
                     [
                         'nama_material' => $name,
                         'satuan' => $uom,
-                        'kategori' => $category,
-                        'deskripsi' => 'Imported from Excel',
+                        'kategori' => 'Raw Material', // Default to a valid ENUM value
+                        'sub_kategori' => $subCategory, // Mapped from Excel
+                        // 'deskripsi' => 'Imported from Excel', // Optional: Don't overwrite description on update if preferred, but for now we sync
                         'status' => 'active'
                     ]
                 );
@@ -101,7 +107,8 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
             $qtyQrt = $this->sanitizeValue($row['qrt'] ?? 0);
             $qtyRelease = $this->sanitizeValue($row['release'] ?? 0);
             $qtyRiject = $this->sanitizeValue($row['riject'] ?? 0);
-            $qtyGeneral = $this->sanitizeValue($row['quantity'] ?? 0); // Handle single 'quantity' column
+            // Handle single 'quantity' or 'qty' column
+            $qtyGeneral = $this->sanitizeValue($row['quantity'] ?? $row['qty'] ?? 0); 
 
             // A. QRT
             if ($qtyQrt > 0) {
@@ -120,7 +127,7 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
 
             // D. General Quantity (Default to RELEASED if status not specified)
             if ($qtyGeneral > 0 && $qtyQrt == 0 && $qtyRelease == 0 && $qtyRiject == 0) {
-                 $createdStocks[] = $this->createStock($material, $bin, $batchLot, $qtyGeneral, 'RELEASED', $incomingDate);
+                    $createdStocks[] = $this->createStock($material, $bin, $batchLot, $qtyGeneral, 'RELEASED', $incomingDate);
             }
 
             // Update Bin Current Items
@@ -131,7 +138,12 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
             return null;
 
         } catch (\Exception $e) {
-            Log::error('Error importing row: ' . json_encode($row) . ' Error: ' . $e->getMessage());
+            $this->errors[] = [
+                'row' => $this->rowNumber,
+                'message' => $e->getMessage(),
+                'data' => json_encode($row)
+            ];
+            Log::error('Import Error Row ' . $this->rowNumber . ': ' . $e->getMessage());
             return null;
         }
     }
@@ -149,7 +161,7 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
         if (is_string($value) && str_starts_with($value, '=')) {
             return '-'; // Treat formulas as dash if not calculated
         }
-        return $value;
+        return trim($value); // Trim whitespace
     }
 
     private function createStock($material, $bin, $batchLot, $qty, $status, $date)
@@ -183,7 +195,8 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
         try {
             // 2. Only use excelToDateTimeObject if it's numeric
             if (is_numeric($value)) {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
+                $dateTime = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
+                return Carbon::instance($dateTime);
             }
             
             // 3. Otherwise try Carbon parse

@@ -15,6 +15,56 @@
           <p class="text-gray-500 mt-2">Memproses data warehouse, mohon tunggu.</p>
         </div>
       </div>
+
+      <!-- Error Modal -->
+      <div v-if="showErrorModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+          <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50 rounded-t-xl">
+            <div class="flex items-center gap-3">
+              <div class="bg-red-100 p-2 rounded-full">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">Import Errors</h3>
+                <p class="text-sm text-red-600">Terjadi kesalahan pada beberapa baris data</p>
+              </div>
+            </div>
+            <button @click="closeErrorModal" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <div v-for="(error, index) in importErrors" :key="index" class="bg-red-50 border border-red-100 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                  <span class="bg-red-200 text-red-800 text-xs font-bold px-2 py-1 rounded">Row {{ error.row }}</span>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-red-900">{{ error.message }}</p>
+                    <details class="mt-2">
+                      <summary class="text-xs text-red-600 cursor-pointer hover:underline">View Row Data</summary>
+                      <pre class="mt-2 text-xs bg-white p-2 rounded border border-red-100 overflow-x-auto">{{ error.data }}</pre>
+                    </details>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end">
+            <button 
+              @click="closeErrorModal"
+              class="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Close & Fix Data
+            </button>
+          </div>
+        </div>
+      </div>
       <!-- Header -->
       <div class="mb-6">
         <div class="flex justify-between items-center">
@@ -1657,6 +1707,21 @@ const triggerImport = () => {
 
 
 const isLoading = ref(false)
+const showErrorModal = ref(false)
+const importErrors = ref([])
+
+// Watch for flash messages with import errors
+watch(() => page.props.flash, (newFlash) => {
+    if (newFlash?.import_errors) {
+        importErrors.value = newFlash.import_errors
+        showErrorModal.value = true
+    }
+}, { deep: true, immediate: true })
+
+const closeErrorModal = () => {
+    showErrorModal.value = false
+    importErrors.value = []
+}
 
 const handleFileImport = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0]
@@ -1674,7 +1739,7 @@ const handleFileImport = (event: Event) => {
       },
       onError: (errors) => {
         console.error('Import error:', errors)
-        showMessage('error', 'Gagal mengimport file. Cek format data.')
+        // showMessage('error', 'Gagal mengimport file. Cek format data.') // Handled by modal now
       },
       onFinish: () => {
         isLoading.value = false // Stop loading

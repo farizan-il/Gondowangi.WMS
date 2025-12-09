@@ -20,63 +20,97 @@ use App\Traits\ActivityLogger;
 class GoodsReceiptController extends Controller
 {
     use ActivityLogger;
-    public function index()
+    public function index(Request $request)
     {
-        $incomingGoods = IncomingGood::with([
+        $query = IncomingGood::with([
             'purchaseOrder',
             'supplier',
-            'items.material', // Relasi ke Material sudah dimuat
+            'items.material',
             'receiver'
         ])
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($incoming) {
+        ->orderBy('created_at', 'desc');
 
-            // 1. Ambil semua item
-            $items = $incoming->items->map(function ($item) {
+        // Filter: Search (No PO, No SJ, No Kendaraan, Nama Driver)
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('incoming_number', 'LIKE', "%{$search}%")
+                  ->orWhere('no_surat_jalan', 'LIKE', "%{$search}%")
+                  ->orWhere('po_id', 'LIKE', "%{$search}%")
+                  ->orWhere('no_kendaraan', 'LIKE', "%{$search}%")
+                  ->orWhere('nama_driver', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // // Filter: Supplier (REMOVED as per request)
+        // if ($request->has('supplier_id') && $request->supplier_id != '') {
+        //     $query->where('supplier_id', $request->supplier_id);
+        // }
+
+        // Filter: Date Range
+        if ($request->has('date_start') && $request->date_start != '') {
+            $query->whereDate('tanggal_terima', '>=', $request->date_start);
+        }
+        if ($request->has('date_end') && $request->date_end != '') {
+            $query->whereDate('tanggal_terima', '<=', $request->date_end);
+        }
+
+        // Pagination with Dynamic Limit (Show Entries)
+        $limit = $request->input('limit', 10); // Default 10
+        // Jika limit 'all', kita bisa set ke angka besar atau handle khusus. 
+        // Namun paginate() butuh integer. Kita set 1000 jika 'all' atau user kirim angka besar.
+        if ($limit === 'all') {
+            $limit = 1000;
+        }
+
+        $incomingGoods = $query->paginate($limit)
+            ->withQueryString()
+            ->through(function ($incoming) {
+                // 1. Ambil semua item
+                $items = $incoming->items->map(function ($item) {
+                    return [
+                        'kodeItem' => $item->material->kode_item ?? '',
+                        'namaMaterial' => $item->material->nama_material ?? '',
+                        'satuanMaterial' => $item->material->satuan ?? '',
+                        'batchLot' => $item->batch_lot,
+                        'expDate' => $item->exp_date,
+                        'qtyWadah' => $item->qty_wadah,
+                        'qtyUnit' => $item->qty_unit,
+                        'kondisiBaik' => $item->kondisi_baik,
+                        'kondisiTidakBaik' => $item->kondisi_tidak_baik,
+                        'coaAda' => $item->coa_ada,
+                        'coaTidakAda' => $item->coa_tidak_ada,
+                        'labelMfgAda' => $item->label_mfg_ada,
+                        'labelMfgTidakAda' => $item->label_mfg_tidak_ada,
+                        'labelCoaSesuai' => $item->label_coa_sesuai,
+                        'labelCoaTidakSesuai' => $item->label_coa_tidak_sesuai,
+                        'pabrikPembuat' => $item->pabrik_pembuat,
+                        'statusQC' => $item->status_qc,
+                        'binTarget' => $item->bin_target,
+                        'isHalal' => $item->is_halal,
+                        'isNonHalal' => $item->is_non_halal,
+                        'qrCode' => $item->qr_code,
+                    ];
+                });
+
+                // 2. LOGIKA PENENTUAN STATUS GR BARU
+                $isStillToQC = $items->contains(fn($item) => $item['statusQC'] === 'To QC');
+                $finalStatus = $isStillToQC ? 'Proses' : 'Selesai';
+                
                 return [
-                    'kodeItem' => $item->material->kode_item ?? '',
-                    'namaMaterial' => $item->material->nama_material ?? '',
-                    'satuanMaterial' => $item->material->satuan ?? '', // BARU: Mengambil Satuan dari Material
-                    'batchLot' => $item->batch_lot,
-                    'expDate' => $item->exp_date,
-                    'qtyWadah' => $item->qty_wadah,
-                    'qtyUnit' => $item->qty_unit,
-                    'kondisiBaik' => $item->kondisi_baik,
-                    'kondisiTidakBaik' => $item->kondisi_tidak_baik,
-                    'coaAda' => $item->coa_ada,
-                    'coaTidakAda' => $item->coa_tidak_ada,
-                    'labelMfgAda' => $item->label_mfg_ada,
-                    'labelMfgTidakAda' => $item->label_mfg_tidak_ada,
-                    'labelCoaSesuai' => $item->label_coa_sesuai,
-                    'labelCoaTidakSesuai' => $item->label_coa_tidak_sesuai,
-                    'pabrikPembuat' => $item->pabrik_pembuat,
-                    'statusQC' => $item->status_qc,
-                    'binTarget' => $item->bin_target,
-                    'isHalal' => $item->is_halal,
-                    'isNonHalal' => $item->is_non_halal,
-                    'qrCode' => $item->qr_code,
+                    'id' => $incoming->id,
+                    'incomingNumber' => $incoming->incoming_number,
+                    'noPo' => $incoming->purchaseOrder->no_po ?? '',
+                    'noSuratJalan' => $incoming->no_surat_jalan,
+                    'supplier' => $incoming->supplier->nama_supplier ?? '',
+                    'tanggalTerima' => $incoming->tanggal_terima,
+                    'noKendaraan' => $incoming->no_kendaraan,
+                    'namaDriver' => $incoming->nama_driver,
+                    'kategori' => $incoming->kategori,
+                    'status' => $finalStatus, 
+                    'items' => $items,
                 ];
             });
-
-            // 2. LOGIKA PENENTUAN STATUS GR BARU
-            $isStillToQC = $items->contains(fn($item) => $item['statusQC'] === 'To QC');
-            $finalStatus = $isStillToQC ? 'Proses' : 'Selesai';
-            
-            return [
-                'id' => $incoming->id,
-                'incomingNumber' => $incoming->incoming_number,
-                'noPo' => $incoming->po_id ?? '',
-                'noSuratJalan' => $incoming->no_surat_jalan,
-                'supplier' => $incoming->supplier->nama_supplier ?? '',
-                'tanggalTerima' => $incoming->tanggal_terima,
-                'noKendaraan' => $incoming->no_kendaraan,
-                'namaDriver' => $incoming->nama_driver,
-                'kategori' => $incoming->kategori,
-                'status' => $finalStatus, 
-                'items' => $items,
-            ];
-        });
 
         $suppliers = Supplier::where('status', 'active')
             ->orderBy('nama_supplier')
@@ -91,7 +125,7 @@ class GoodsReceiptController extends Controller
                     'id' => $material->id,
                     'code' => $material->kode_item,
                     'name' => $material->nama_material,
-                    'unit' => $material->satuan, // BARU: Menambahkan Satuan ke daftar Material
+                    'unit' => $material->satuan,
                     'mfg' => $material->defaultSupplier->nama_supplier ?? '',
                     'qcRequired' => $material->qc_required,
                     'kategori' => $material->kategori,
@@ -102,6 +136,7 @@ class GoodsReceiptController extends Controller
             'shipments' => $incomingGoods,
             'suppliers' => $suppliers,
             'materials' => $materials,
+            'filters' => $request->only(['search', 'date_start', 'date_end', 'limit']), // Send filters back for UI state
         ]);
     }
 
@@ -391,11 +426,13 @@ class GoodsReceiptController extends Controller
 
                 // Log activity for each item
                 $this->logActivity($incoming, 'Create', [
-                    'description' => "Material {$material->nama_material} diterima dan masuk Bin {$itemData['binTarget']}. Total: {$totalQtyReceived} {$material->satuan}",
+                    'description' => "Penerimaan Material {$material->name} ({$material->code}) Batch {$itemData['batchLot']} ke Bin {$binTarget->location_code}. Qty: {$totalQtyReceived} {$material->uom}",
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
+                    'qty_before' => $inventory->qty_on_hand - $totalQtyReceived,
                     'qty_after' => $inventory->qty_on_hand, 
+                    'bin_to' => $binTarget->id,
                     'reference_document' => $incoming->no_surat_jalan,
                 ]);
             }

@@ -166,8 +166,8 @@
                 <option value="">Semua Status</option>
                 <option value="KARANTINA">Karantina</option>
                 <option value="RELEASED">Released</option>
-                <!-- <option value="HOLD">Hold</option>
-                <option value="REJECTED">Rejected</option> -->
+                <!-- <option value="HOLD">Hold</option> -->
+                <option value="REJECTED">Rejected</option>
               </select>
 
               <select v-model="filterType" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
@@ -183,16 +183,16 @@
               </select>
             </div>
 
-            <!-- Right Side - Actions -->
+            
             <div class="flex gap-2">
-              <button @click="openImportModal"
+              <!--<button @click="openImportModal"
                 class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <span>Import</span>
-              </button>
+              </button>  -->
 
               <button @click="exportData"
                 class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">

@@ -591,9 +591,9 @@ class QualityControlController extends Controller
             }
             
             // Log the QC activity
-            $activityDesc = $isReqc ? "[RE-QC] QC Check for {$incomingItem->material->nama_material}" : "QC Check for {$incomingItem->material->nama_material}";
+            $activityDesc = $isReqc ? "[RE-QC] Pemeriksaan QC untuk {$incomingItem->material->nama_material}" : "Pemeriksaan QC untuk {$incomingItem->material->nama_material}";
             $this->logActivity($qcChecklist, $validated['hasil_qc'], [
-                'description' => "{$activityDesc} resulted in {$validated['hasil_qc']}. Qty Tersisa: {$qtyAfterSample}.",
+                'description' => "{$activityDesc} dengan hasil {$validated['hasil_qc']}. Qty Tersisa: {$qtyAfterSample}.",
                 'material_id' => $incomingItem->material_id,
                 'batch_lot' => $incomingItem->batch_lot,
                 'qty_after' => $qtyAfterSample,

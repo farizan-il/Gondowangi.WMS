@@ -7,9 +7,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Traits\ActivityLogger;
 
 class AuthController extends Controller
 {
+    use ActivityLogger;
+
     public function showLogin()
     {
         return Inertia::render('Auth/Login');
@@ -42,6 +45,11 @@ class AuthController extends Controller
 
         if (Auth::attempt([$fieldType => $credentials['identifier'], 'password' => $credentials['password']], $request->remember)) {
             $request->session()->regenerate();
+
+            $this->logActivity(Auth::user(), 'Login', [
+                'description' => 'User berhasil Login ke sistem',
+            ]);
+
             return redirect()->intended('/dashboard');
         }
 
@@ -79,11 +87,21 @@ class AuthController extends Controller
 
         Auth::login($user);
 
+        $this->logActivity($user, 'Register', [
+            'description' => 'User baru registrasi dan login',
+        ]);
+
         return redirect('/dashboard');
     }
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            $this->logActivity(Auth::user(), 'Logout', [
+                'description' => 'User Logout dari sistem',
+            ]);
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -102,17 +102,15 @@
               <td class="border border-gray-300 p-2 text-left bg-gray-50 text-xs truncate max-w-[150px]" :title="item.product_name">
                   {{ item.product_name }}
               </td>
-              <td class="border border-gray-300 p-2 bg-gray-50 text-right">
-                  <div class="flex flex-col items-end justify-center">
-                      <span class="font-bold text-gray-800">
-                          {{ formatNumber(item.onhand) }} {{ item.uom }}
-                      </span>
-                      <span v-if="item.inventory_status" 
-                        class="text-[10px] px-1.5 py-0.5 rounded font-bold mt-1 border"
-                        :class="getStatusBadgeClass(item.inventory_status)">
-                        {{ item.inventory_status }}
-                      </span>
-                  </div>
+              <td class="border border-gray-300 p-2 bg-gray-50 text-right whitespace-nowrap">
+                  <span class="font-bold text-gray-800">
+                      {{ formatNumber(item.onhand) }} {{ item.uom }}
+                  </span>
+                  <span v-if="item.inventory_status" 
+                    class="ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold border"
+                    :class="getStatusBadgeClass(item.inventory_status)">
+                    {{ item.inventory_status }}
+                  </span>
               </td>
 
               <td class="border border-gray-300 p-2 bg-gray-50 font-bold">{{ item.location }}</td>

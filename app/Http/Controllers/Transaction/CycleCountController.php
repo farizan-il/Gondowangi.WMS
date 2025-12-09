@@ -15,9 +15,11 @@ use App\Models\Material;
 use App\Models\WarehouseBin;
 use App\Models\MaterialReqc;
 use App\Models\StockMovement;
+use App\Traits\ActivityLogger;
 
 class CycleCountController extends Controller
 {
+    use ActivityLogger;
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -115,35 +117,33 @@ class CycleCountController extends Controller
         }
 
         // DEFAULT VIEW (Tanpa Search)
-        // Get all cycle counts grouped by material and bin
-        // We only want to show the LATEST record per material-bin combination
-        $cycleCounts = CycleCount::with(['material', 'bin'])
-            ->orderBy('count_date', 'desc')
+        // Always fetch InventoryStock with qty > 0 (On Hand)
+        // This ensures we show ALL stock, not just what has been cycle counted.
+        $stocks = InventoryStock::with(['material', 'bin'])
+            ->where('qty_on_hand', '>', 0)
+            ->whereNotIn('status', ['REJECTED', 'REJECT']) // Exclude REJECTED
+            ->limit(50) // Limit for performance, maybe add pagination later
+            ->get();
+
+        // Also fetch active Cycle Counts (DRAFT/REVIEW_NEEDED) to merge
+        $activeCycleCounts = CycleCount::with(['material', 'bin'])
+            ->whereIn('status', ['DRAFT', 'REVIEW_NEEDED'])
             ->get()
-            ->groupBy(function($item) {
+            ->keyBy(function($item) {
                 return $item->material_id . '_' . $item->warehouse_bin_id;
-            })
-            ->map(function($group) {
-                // Return only the latest (first) record from each group
-                return $group->first();
-            })
-            ->values();
-
-        if ($cycleCounts->isEmpty()) {
-            $stocks = InventoryStock::with(['material', 'bin'])
-                ->where('qty_on_hand', '>', 0)
-                ->whereNotIn('status', ['REJECTED', 'REJECT']) // Exclude REJECTED
-                ->limit(10)
-                ->get();
-
-            $data = $stocks->map(function ($stock) {
-                return $this->mapStockToRow($stock);
             });
-        } else {
-            $data = $cycleCounts->map(function ($cc) {
-                return $this->mapCycleCountToRow($cc);
-            });
-        }
+
+        $data = $stocks->map(function ($stock) use ($activeCycleCounts) {
+            $key = $stock->material_id . '_' . $stock->bin_id;
+            
+            // If there is an active cycle count, use that data
+            if ($activeCycleCounts->has($key)) {
+                return $this->mapCycleCountToRow($activeCycleCounts[$key]);
+            }
+
+            // Otherwise, map the stock data
+            return $this->mapStockToRow($stock);
+        });
 
         return Inertia::render('CycleCount', [
             'initialStocks' => $data,
@@ -327,6 +327,18 @@ class CycleCountController extends Controller
             $cycleCount->status = 'APPROVED';
             $cycleCount->spv_note = $request->spv_note;
             $cycleCount->save();
+
+            // Log Activity
+            $diff = $cycleCount->physical_qty - $cycleCount->system_qty;
+            $this->logActivity($cycleCount, 'Approve', [
+                'description' => "Menyetujui Cycle Count untuk {$cycleCount->material->nama_material} di {$cycleCount->bin->bin_code}. System: {$cycleCount->system_qty}, Fisik: {$cycleCount->physical_qty}. Selisih: {$diff}.",
+                'material_id' => $cycleCount->material_id,
+                'batch_lot' => $cycleCount->cycle_number, 
+                'qty_before' => $cycleCount->system_qty,
+                'qty_after' => $cycleCount->physical_qty,
+                'bin_from' => $cycleCount->warehouse_bin_id,
+                'reference_document' => $cycleCount->cycle_number,
+            ]);
 
             return redirect()->back()->with('success', 'Data berhasil disetujui.');
         } catch (\Exception $e) {

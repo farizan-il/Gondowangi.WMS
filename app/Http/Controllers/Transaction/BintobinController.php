@@ -306,13 +306,13 @@ class BintobinController extends Controller
             // 5. Log activity
             if ($stock->relationLoaded('material')) {
                 $this->logActivity($movement, 'Move', [
-                    'description' => "Moved {$quantityToMove} {$stock->uom} of {$stock->material->nama_material} from {$fromBin->bin_code} to {$toBin->bin_code}.",
+                    'description' => "Memindahkan {$quantityToMove} {$stock->uom} {$stock->material->nama_material} dari {$fromBin->bin_code} ke {$toBin->bin_code}.",
                     'material_id' => $stock->material_id,
                     'batch_lot' => $stock->batch_lot,
                     'qty_before' => $stock->qty_on_hand + $quantityToMove,
                     'qty_after' => $newStock->qty_on_hand,
-                    'bin_from' => $fromBin->bin_code,
-                    'bin_to' => $toBin->bin_code,
+                    'bin_from' => $fromBin->id,
+                    'bin_to' => $toBin->id,
                     'reference_document' => $movementNumber,
                 ]);
             }

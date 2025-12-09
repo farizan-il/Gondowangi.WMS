@@ -13,6 +13,30 @@
         </button>
       </div>
 
+      <!-- Filter Section -->
+      <div class="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:items-center md:space-x-4">
+        <div class="md:w-1/6">
+           <select v-model="limit" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+             <option value="10">Show 10</option>
+             <option value="25">Show 25</option>
+             <option value="50">Show 50</option>
+             <option value="100">Show 100</option>
+             <option value="all">Show All</option>
+           </select>
+        </div>
+        <div class="flex-1">
+          <input v-model="search" type="text" placeholder="Cari No PO, SJ, Kendaraan..."
+            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <!-- Supplier Filter Removed -->
+        <div class="md:w-1/6">
+            <input v-model="dateStart" type="date" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Dari Tanggal">
+        </div>
+        <div class="md:w-1/6">
+            <input v-model="dateEnd" type="date" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Sampai Tanggal">
+        </div>
+      </div>
+
       <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
@@ -31,7 +55,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="shipment in shipments" :key="shipment.id" class="hover:bg-gray-50">
+              <tr v-for="shipment in shipments.data" :key="shipment.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noPo }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noSuratJalan }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.supplier }}</td>
@@ -64,7 +88,26 @@
             </tbody>
           </table>
         </div>
+        <!-- Pagnation was here -->
+         <!-- Pagination -->
+         <!-- Modified Pagination: Only showing totals, no links as per request "jangan ada pagination", but allowing limit selection above -->
+        <div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Menampilkan
+                        <span class="font-medium">{{ shipments.from }}</span>
+                        sampai
+                        <span class="font-medium">{{ shipments.to }}</span>
+                        dari
+                        <span class="font-medium">{{ shipments.total }}</span>
+                        hasil
+                    </p>
+                </div>
+            </div>
+        </div>
       </div>
+
 
       <div v-if="showDetailModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
@@ -761,22 +804,61 @@
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { router, usePage, Link } from '@inertiajs/vue3'
 import QRCode from 'qrcode'
 import axios from 'axios'
 
 
 // Props dari backend
 const props = defineProps({
-  shipments: Array,
+  shipments: Object, // Changed from Array to Object for Pagination
   purchaseOrders: Array,
   suppliers: Array,
-  materials: Array
+  materials: Array,
+  filters: Object // Receive filters from backend
 })
 
 // Data reaktif untuk Autocomplete
 const supplierSearchQuery = ref('')
 const filteredSuppliers = ref([])
+
+// Data reaktif untuk Filter Dashboard
+const search = ref(props.filters?.search || '')
+const dateStart = ref(props.filters?.date_start || '')
+const dateEnd = ref(props.filters?.date_end || '')
+  // const supplierFilter = ref(props.filters?.supplier_id || '') // Removed
+const limit = ref(props.filters?.limit || '10') // Default 10
+
+// Watchers untuk Filter Otomatis
+import { watch } from 'vue'
+// import { debounce } from 'lodash' // Removed as lodash is not installed
+
+// Custom debounce function jika lodash tidak tersedia
+function customDebounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
+const updateParams = customDebounce(() => {
+  router.get('/transaction/goods-receipt', { // Route disesuaikan dengan web.php
+    search: search.value,
+    date_start: dateStart.value,
+    date_end: dateEnd.value,
+    limit: limit.value
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true
+  })
+}, 500)
+
+watch([search, dateStart, dateEnd, limit], () => {
+  updateParams()
+})
 
 // Data reaktif
 const isSaving = ref(false)
@@ -1968,6 +2050,15 @@ const collectAllQRData = (shipment) => {
 };
 
 const showQRModal = (shipment) => {
+  // Calculating total wadah
+  const totalWadah = shipment.items.reduce((sum, item) => sum + parseFloat(item.qtyWadah || 0), 0);
+  
+  if (totalWadah > 20) {
+      if (!confirm(`Peringatan: Jumlah label QR melebihi 20 (${totalWadah} label). Membuka preview mungkin akan menyebabkan website melambat. Lanjutkan?`)) {
+          return;
+      }
+  }
+
   selectedShipment.value = shipment;
 
   // Kumpulkan data QR untuk setiap wadah dan simpan di selectedShipment

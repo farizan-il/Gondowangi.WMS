@@ -13,6 +13,7 @@ use App\Http\Controllers\Transaction\ReturnController;
 use App\Http\Controllers\Transaction\BintobinController;
 use App\Http\Controllers\Transaction\QualityControlController;
 use App\Http\Controllers\Transaction\CycleCountController;
+use App\Http\Controllers\WmsDashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -30,6 +31,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:incoming.view')
         ->name('dashboard');
+
+    // WMS Dashboard
+    Route::get('/wms-dashboard', [WmsDashboardController::class, 'index'])
+        ->name('wms-dashboard.index');
+    Route::get('/wms-dashboard/data', [WmsDashboardController::class, 'getData'])
+        ->name('wms-dashboard.data');
 
     // Re-QC for expired materials
     Route::post('/dashboard/reqc/initiate', [DashboardController::class, 'initiateReqcForExpiredMaterials'])
