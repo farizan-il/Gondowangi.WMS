@@ -11,8 +11,8 @@
             </div>
             <div class="box"></div>
           </div>
-          <h3 class="text-xl font-bold text-gray-800">Importing Stock Data...</h3>
-          <p class="text-gray-500 mt-2">Memproses data warehouse, mohon tunggu.</p>
+          <h3 class="text-xl font-bold text-gray-800">{{ loadingTitle || 'Processing...' }}</h3>
+          <p class="text-gray-500 mt-2">{{ loadingSubtitle || 'Please wait while we process your request.' }}</p>
         </div>
       </div>
 
@@ -1479,8 +1479,9 @@ const printQRCode = () => {
 
 const printAllQRCodes = async () => {
   try {
-    // Show loading message
-    showMessage('success', 'Memuat semua QR Codes...')
+    isLoading.value = true
+    loadingTitle.value = 'Preparing QR Codes...'
+    loadingSubtitle.value = 'Generating printable QR codes for all bins. This may take a moment.'
     
     // Fetch ALL bin locations from backend (not just current page)
     const binsResponse = await fetch('/master-data/bins', {
@@ -1501,9 +1502,6 @@ const printAllQRCodes = async () => {
       showMessage('error', 'Tidak ada bin location untuk di-print')
       return
     }
-    
-    showMessage('success', `Memuat ${bins.length} QR Codes...`)
-    
     
     // Fetch QR code data for all bins
     const qrPromises = bins.map(bin => 
@@ -1542,27 +1540,33 @@ const printAllQRCodes = async () => {
       return
     }
     
-    // Generate HTML content with page-based layout (4 QR codes per page)
+    // Generate HTML content - Flow layout (more items per page if they fit)
+    // A4 (210mm width) - 10mm padding L/R = 190mm usable width.
+    // 70mm item width * 2 = 140mm. Fits 2 columns easily.
+    // A4 (297mm height). 80mm height * 3 = 240mm. Fits 3 rows easily.
+    // So we can fit 2 * 3 = 6 items per page comfortably.
+    
     let pagesHTML = ''
-    for (let i = 0; i < validQRData.length; i += 4) {
-      const pageItems = validQRData.slice(i, i + 4)
+    const itemsPerPage = 6 
+    
+    for (let i = 0; i < validQRData.length; i += itemsPerPage) {
+      const pageItems = validQRData.slice(i, i + itemsPerPage)
       
       pagesHTML += `
         <div class="page">
-          <div class="qr-container">
             ${pageItems.map(qr => `
               <div class="qr-item">
                 <img src="${qr.image}" alt="QR Code" class="qr-image">
-                <div class="info">Bin Name: ${qr.bin_name}</div>
-                <div class="info">Zone: ${qr.zone_name}</div>
+                <div class="info-container">
+                    <div class="info">${qr.bin_name}</div>
+                    <div class="info zone">${qr.zone_name}</div>
+                </div>
               </div>
             `).join('')}
-          </div>
         </div>
       `
     }
-    
-    const htmlContent = `
+         const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -1582,49 +1586,56 @@ const printAllQRCodes = async () => {
           
           .page {
             width: 210mm;
-            height: 297mm;
-            padding: 12mm;
+            /* height: 297mm;  Removed fixed height to avoid overflow */
+            padding: 5mm; /* Reduced padding */
             page-break-after: always;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 5mm; /* Reduced gap */
           }
           
           .page:last-child {
             page-break-after: auto;
           }
           
-          .qr-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 8mm;
-            width: 100%;
-            height: 100%;
-          }
-          
           .qr-item {
-            text-align: center;
-            padding: 3mm;
-            border: 1px solid #ddd;
+            width: 70mm;
+            height: 80mm;
+            border: 1px dashed #ccc;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            text-align: center;
+            overflow: hidden;
+            padding-top: 2mm;
+            page-break-inside: avoid; /* Prevent item splitting */
           }
           
           .qr-image {
-            width: 70mm;
-            height: 70mm;
-            margin-bottom: 3mm;
+            width: 60mm;
+            height: 60mm;
+            margin-bottom: 1mm;
           }
           
+          .info-container {
+             height: 18mm;
+             display: flex;
+             flex-direction: column;
+             justify-content: center;
+          }
+
           .info {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
-            margin: 1mm 0;
-            line-height: 1.3;
+            line-height: 1.2;
+            word-break: break-all;
+          }
+          
+          .info.zone {
+              font-size: 9px;
+              color: #555;
           }
           
           @media print {
@@ -1632,15 +1643,11 @@ const printAllQRCodes = async () => {
               margin: 0;
               padding: 0;
             }
-            
-            @page {
-              size: A4 portrait;
-              margin: 0;
-            }
-            
             .page {
               margin: 0;
-              padding: 10mm;
+              padding: 5mm;
+              height: auto; 
+              min-height: 0; /* Removing min-height */
             }
           }
         </style>
@@ -1707,6 +1714,8 @@ const triggerImport = () => {
 
 
 const isLoading = ref(false)
+const loadingTitle = ref('')
+const loadingSubtitle = ref('')
 const showErrorModal = ref(false)
 const importErrors = ref([])
 
