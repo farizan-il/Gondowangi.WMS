@@ -103,6 +103,7 @@ class DashboardController extends Controller
                     'qr_type' => $item->status, 
                     'requiresPutAway' => $requiresPutAway,
                     'requiresQC' => $requiresQC,
+                    'entry_date' => $item->created_at->toISOString(), // Added for sorting (Newest/Oldest)
                 ];
             });
         

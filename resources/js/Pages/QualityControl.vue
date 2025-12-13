@@ -5,7 +5,7 @@
       <div class="flex justify-between items-center">
         <h2 class="text-2xl font-bold text-gray-900">Daftar QC (Quality Control)</h2>
         <div class="text-sm text-gray-600">
-          Total item menunggu QC: {{ itemsToQC.length }}
+          Total item menunggu QC: {{ itemsToQC.total }}
         </div>
         <button @click="openQRScanner"
           class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
@@ -15,6 +15,50 @@
           </svg>
           Scan QR Code
         </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <div class="flex flex-col md:flex-row gap-4">
+          <!-- Status Filter -->
+           <div class="w-48">
+            <select v-model="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+              <option value="">Semua Status</option>
+              <option value="To QC">Menunggu QC</option>
+              <option value="Completed">Sudah QC (Pass/Reject)</option>
+              <option value="PASS">Lolos QC (PASS)</option>
+              <option value="REJECT">Tidak Lolos (REJECT)</option>
+            </select>
+          </div>
+
+          <!-- Search -->
+          <div class="flex-grow">
+            <input v-model="search" type="text" placeholder="Cari No Shipment, PO, Surat Jalan, Material..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          </div>
+
+          <!-- Date Range -->
+          <div class="flex gap-2">
+            <input v-model="dateStart" type="date"
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              title="Tanggal Mulai">
+            <span class="self-center text-gray-500">-</span>
+            <input v-model="dateEnd" type="date"
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              title="Tanggal Akhir">
+          </div>
+
+          <!-- Limit -->
+          <div class="w-24">
+             <select v-model="limit" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all">Semua</option>
+             </select>
+          </div>
+        </div>
       </div>
 
       <!-- Tabel Daftar QC -->
@@ -37,7 +81,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in itemsToQC" :key="item.id" class="hover:bg-gray-50">
+              <tr v-for="item in itemsToQC.data" :key="item.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div>{{ item.shipmentNumber }}</div>
                   <div class="text-xs text-gray-500">{{ item.noPo }}</div>
@@ -102,6 +146,9 @@
               </tr>
             </tbody>
           </table>
+        </div>
+         <div class="px-6 py-4 border-t border-gray-200">
+            <Pagination :links="itemsToQC.links" />
         </div>
       </div>
 
@@ -484,7 +531,8 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import Pagination from '@/Components/Pagination.vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import { Html5Qrcode } from 'html5-qrcode'
@@ -495,10 +543,45 @@ import QRCode from 'qrcode';
 let qrScanner = null
 
 const props = defineProps({
-  itemsToQC: Array
+  itemsToQC: Object, // Changed to Object for Pagination
+  filters: Object
 })
 
-// ... (semua deklarasi variabel reaktif, computed, dan isProcessing)
+// Custom debounce function
+function customDebounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
+// Filter Refs
+const search = ref(props.filters?.search || '')
+const dateStart = ref(props.filters?.date_start || '')
+const dateEnd = ref(props.filters?.date_end || '')
+const limit = ref(props.filters?.limit || '10')
+const status = ref(props.filters?.status || '') // Default: All
+
+// Update Params Logic
+const updateParams = customDebounce(() => {
+  router.get('/transaction/quality-control', {
+    search: search.value,
+    date_start: dateStart.value,
+    date_end: dateEnd.value,
+    limit: limit.value,
+    status: status.value
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true
+  })
+}, 500)
+
+watch([search, dateStart, dateEnd, limit, status], () => {
+  updateParams()
+})
 
 // Data reaktif
 const showDetailModal = ref(false)

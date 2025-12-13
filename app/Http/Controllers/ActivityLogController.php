@@ -86,13 +86,67 @@ class ActivityLogController extends Controller
                 ];
             });
 
+        // 6. Online Users (Last 5 minutes)
+        $onlineUsers = \App\Models\User::where('last_seen_at', '>=', Carbon::now()->subMinutes(5))
+            ->orderByDesc('last_seen_at')
+            ->get(['id', 'name', 'role_id', 'last_seen_at', 'email']);
+
+        // 7. Recent Activities Feed (Merged from all sources)
+        // Helper to fetch latest 5 from a model
+        $fetchLatest = function($model) {
+            return $model::with(['user:id,name', 'material:id,kode_item,nama_material'])
+                ->latest()
+                ->limit(5)
+                ->get();
+        };
+
+        $recentLogs = collect()
+            ->concat($fetchLatest(IncomingActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'Incoming')))
+            ->concat($fetchLatest(QcActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'QC')))
+            ->concat($fetchLatest(ReservationActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'Reservation')))
+            ->concat($fetchLatest(ReturnActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'Return')))
+            ->concat($fetchLatest(WarehouseActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'Warehouse')))
+            ->concat($fetchLatest(StockMovement::class)->map(fn($l) => $this->formatLogForFeed($l, 'Stock Movement')))
+            ->concat($fetchLatest(ActivityLog::class)->map(fn($l) => $this->formatLogForFeed($l, 'Master Data')))
+            ->sortByDesc('created_at')
+            ->take(10)
+            ->values();
+
         return Inertia::render('ITDashboard', [
             'stats' => $stats,
             'activeUsers' => $activeUsersCount,
+            'onlineUsers' => $onlineUsers,
             'moduleStats' => $moduleStats,
             'hourlyStats' => array_values($chartData),
             'topUsers' => $topUsers,
+            'recentActivities' => $recentLogs,
         ]);
+    }
+
+    private function formatLogForFeed($log, $module)
+    {
+        // Handle StockMovement which might use 'executedBy' instead of 'user'
+        $user = $log->user ?? $log->executedBy ?? null;
+        $userName = $user ? ($user->name ?? $user->nama_lengkap ?? 'System') : 'System';
+        
+        // Handle Action/Description
+        $action = $log->action ?? $log->movement_type ?? 'Unknown';
+        $desc = $log->description ?? $log->remarks ?? '';
+
+        if ($module === 'Stock Movement') {
+            $desc = "{$log->qty} {$log->uom} moved";
+        }
+        
+        return [
+            'id' => $log->id,
+            'module' => $module,
+            'user' => $userName,
+            'action' => $action,
+            'description' => $desc,
+            'created_at' => $log->created_at->diffForHumans(), // Human readable time
+            'timestamp' => $log->created_at, // For sorting
+        ];
+
     }
 
     public function index()

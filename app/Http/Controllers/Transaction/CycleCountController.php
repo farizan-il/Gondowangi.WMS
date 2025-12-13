@@ -23,132 +23,145 @@ class CycleCountController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $status = $request->input('status');
+        $frequency = $request->input('frequency');
 
+        // --- 1. QUERY STOCK ---
+        $query = InventoryStock::with(['material', 'bin'])
+            ->where('qty_on_hand', '>', 0)
+            ->whereNotIn('status', ['REJECTED', 'REJECT']);
+
+        // Filter Search
         if ($search) {
-            // 1. Cari Material IDs
-            $materialIds = Material::where('kode_item', 'like', "%{$search}%")
-                ->orWhere('nama_material', 'like', "%{$search}%")
-                ->pluck('id');
-
-            // 2. Cari Stocks (Existing Logic)
-            $stockMatches = InventoryStock::with(['material', 'bin'])
-                ->where(function($q) use ($materialIds, $search) {
-                    $q->whereIn('material_id', $materialIds)
-                      ->orWhere('batch_lot', 'like', "%{$search}%");
-                })
-                ->where('qty_on_hand', '>', 0)
-                ->whereNotIn('status', ['REJECTED', 'REJECT']) // Exclude REJECTED
-                ->limit(20)
-                ->get();
-
-            // 3. Cari CycleCounts (Active/History) matching Search
-            $ccMatches = CycleCount::with(['material', 'bin'])
-                ->where(function($q) use ($materialIds, $search) {
-                    $q->whereIn('material_id', $materialIds)
-                      ->orWhere('cycle_number', 'like', "%{$search}%")
-                      ->orWhere('scanned_serial', 'like', "%{$search}%");
-                })
-                ->orderBy('count_date', 'desc')
-                ->limit(20)
-                ->get();
-
-            // 4. Merge Unique Keys (MaterialID_BinID)
-            $keys = collect();
-            foreach($stockMatches as $s) {
-                $keys->push($s->material_id . '_' . $s->bin_id);
-            }
-            foreach($ccMatches as $c) {
-                $keys->push($c->material_id . '_' . $c->warehouse_bin_id);
-            }
-            $uniqueKeys = $keys->unique();
-
-            // 5. Build Data
-            $data = $uniqueKeys->map(function($key) use ($stockMatches, $ccMatches) {
-                [$matId, $binId] = explode('_', $key);
-                
-                // A. Check for Active Cycle Count (DRAFT/REVIEW_NEEDED)
-                $activeCC = CycleCount::with(['material', 'bin'])
-                    ->where('material_id', $matId)
-                    ->where('warehouse_bin_id', $binId)
-                    ->whereIn('status', ['DRAFT', 'REVIEW_NEEDED'])
-                    ->latest('count_date')
-                    ->first();
-
-                if ($activeCC) {
-                    return $this->mapCycleCountToRow($activeCC);
-                }
-
-                // B. Check for Stock
-                // Try to find in matches first
-                $stock = $stockMatches->first(function($s) use ($matId, $binId) {
-                    return $s->material_id == $matId && $s->bin_id == $binId;
-                });
-                
-                // If not in matches, fetch fresh (if we found this via CC search)
-                if (!$stock) {
-                    $stock = InventoryStock::with(['material', 'bin'])
-                        ->where('material_id', $matId)
-                        ->where('bin_id', $binId)
-                        ->whereNotIn('status', ['REJECTED', 'REJECT']) // Exclude REJECTED
-                        ->first();
-                }
-
-                if ($stock) {
-                    return $this->mapStockToRow($stock);
-                }
-
-                // C. If no Stock (e.g. 0 qty) but we found a CC match (History)
-                // Show the latest CC
-                $latestCC = $ccMatches->first(function($c) use ($matId, $binId) {
-                    return $c->material_id == $matId && $c->warehouse_bin_id == $binId;
-                });
-                
-                if ($latestCC) {
-                     return $this->mapCycleCountToRow($latestCC);
-                }
-
-                return null;
-            })->filter()->values();
-
-            return Inertia::render('CycleCount', [
-                'initialStocks' => $data,
-                'filters' => $request->only(['search'])
-            ]);
+            $query->where(function($q) use ($search) {
+                $q->whereHas('material', function($m) use ($search) {
+                    $m->where('kode_item', 'like', "%{$search}%")
+                      ->orWhere('nama_material', 'like', "%{$search}%");
+                })->orWhere('batch_lot', 'like', "%{$search}%");
+            });
         }
 
-        // DEFAULT VIEW (Tanpa Search)
-        // Always fetch InventoryStock with qty > 0 (On Hand)
-        // This ensures we show ALL stock, not just what has been cycle counted.
-        $stocks = InventoryStock::with(['material', 'bin'])
-            ->where('qty_on_hand', '>', 0)
-            ->whereNotIn('status', ['REJECTED', 'REJECT']) // Exclude REJECTED
-            ->limit(50) // Limit for performance, maybe add pagination later
-            ->get();
+        // Filter Frequency
+        if ($frequency) {
+            if ($frequency === 'never') $query->doesntHave('cycleCounts');
+            elseif ($frequency === 'rare') $query->has('cycleCounts', '<', 2);
+            elseif ($frequency === 'often') $query->has('cycleCounts', '>', 5);
+        }
 
-        // Also fetch active Cycle Counts (DRAFT/REVIEW_NEEDED) to merge
+        // --- 2. EKSEKUSI PAGINATION (GANTI LIMIT DENGAN PAGINATE) ---
+        // Kita gunakan paginate(100). Ini akan otomatis mendeteksi ?page=1, ?page=2 dst.
+        $stocks = $query->withCount(['cycleCounts' => function($q) {
+             $q->where('status', 'APPROVED'); 
+        }])
+        ->orderBy('material_id') // Penting! Tambahkan order agar urutan konsisten antar halaman
+        ->paginate(100); 
+
+        // --- 3. SIAPKAN CYCLE COUNT AKTIF (Hanya untuk item di halaman ini agar ringan) ---
+        // Kita ambil list Material ID & Bin ID dari stocks halaman ini saja
+        $stockKeys = $stocks->map(function($s) {
+            return $s->material_id . '-' . $s->bin_id;
+        });
+
+        // Ambil Active Cycle Count yang RELEVAN saja
         $activeCycleCounts = CycleCount::with(['material', 'bin'])
-            ->whereIn('status', ['DRAFT', 'REVIEW_NEEDED'])
+            ->where(function($q) {
+                 $q->whereIn('status', ['DRAFT', 'REVIEW_NEEDED', 'APPROVED'])
+                   ->orWhere(function($sub) {
+                       $sub->where('status', 'APPROVED')
+                           ->whereDate('updated_at', Carbon::today());
+                   });
+            })
+            // Filter tambahan: Hanya ambil yang material & bin-nya ada di stock halaman ini
+            // (Opsional, tapi bagus untuk performa jika data ribuan)
             ->get()
             ->keyBy(function($item) {
                 return $item->material_id . '_' . $item->warehouse_bin_id;
             });
 
-        $data = $stocks->map(function ($stock) use ($activeCycleCounts) {
+        // --- 4. MAPPING DATA ---
+        // Kita mapping items yang ada di dalam paginator ($stocks->items())
+        $mappedItems = collect($stocks->items())->map(function ($stock) use ($activeCycleCounts, $status) {
             $key = $stock->material_id . '_' . $stock->bin_id;
             
-            // If there is an active cycle count, use that data
+            $mappedItem = null;
             if ($activeCycleCounts->has($key)) {
-                return $this->mapCycleCountToRow($activeCycleCounts[$key]);
+                $mappedItem = $this->mapCycleCountToRow($activeCycleCounts[$key]);
+            } else {
+                $mappedItem = $this->mapStockToRow($stock);
             }
-
-            // Otherwise, map the stock data
-            return $this->mapStockToRow($stock);
+            $mappedItem['total_counted_times'] = $stock->cycle_counts_count ?? 0;
+            return $mappedItem;
         });
 
+        // Filter Status Post-Mapping
+        if ($status) {
+            $mappedItems = $mappedItems->filter(function($item) use ($status) {
+                return $item['status'] === $status;
+            })->values();
+        }
+
+        // --- 5. RETURN RESPONSE ---
+        
+        // JIKA REQUEST ADALAH "LOAD MORE" (Ajax/JSON)
+        if ($request->wantsJson()) {
+            return response()->json([
+                'data' => $mappedItems,
+                'next_page_url' => $stocks->nextPageUrl()
+            ]);
+        }
+
+        // JIKA HALAMAN AWAL (Inertia)
+        $stats = $this->getStatistics();
+
         return Inertia::render('CycleCount', [
-            'initialStocks' => $data,
-            'filters' => $request->only(['search'])
+            'initialStocks' => $mappedItems, // Kirim data yang sudah dimapping
+            'nextPageUrl' => $stocks->nextPageUrl(), // Kirim URL halaman selanjutnya
+            'filters' => $request->only(['search', 'status', 'frequency']),
+            'statistics' => $stats
         ]);
+    }
+
+    /**
+     * Private Helper: Menghitung Statistik Dashboard
+     */
+    private function getStatistics() 
+    {
+        $currentMonth = Carbon::now()->month;
+        $currentYear = Carbon::now()->year;
+
+        // 1. Total SKU Aktif (Stock > 0)
+        $totalSku = InventoryStock::where('qty_on_hand', '>', 0)
+            ->whereNotIn('status', ['REJECTED', 'REJECT'])
+            ->count();
+
+        // 2. Item Sudah Opname Bulan Ini (Unique Material)
+        $countedThisMonth = CycleCount::where('status', 'APPROVED')
+            ->whereMonth('count_date', $currentMonth)
+            ->whereYear('count_date', $currentYear)
+            ->distinct('material_id')
+            ->count('material_id');
+
+        // 3. Item Belum Pernah Opname Sama Sekali
+        $neverCounted = InventoryStock::where('qty_on_hand', '>', 0)
+            ->whereNotIn('status', ['REJECTED', 'REJECT'])
+            ->doesntHave('cycleCounts') // Butuh relasi di model InventoryStock
+            ->count();
+
+        // 4. Rata-rata Akurasi (Bulan Ini)
+        // Rumus: (Fisik / System) * 100
+        $avgAccuracy = CycleCount::where('status', 'APPROVED')
+            ->whereMonth('count_date', $currentMonth)
+            ->where('system_qty', '>', 0) // Hindari pembagian dengan nol
+            ->selectRaw('AVG((physical_qty / system_qty) * 100) as avg_acc')
+            ->value('avg_acc');
+
+        return [
+            'total_sku' => $totalSku,
+            'counted_items' => $countedThisMonth,
+            'progress_percentage' => $totalSku > 0 ? round(($countedThisMonth / $totalSku) * 100, 1) : 0,
+            'never_counted' => $neverCounted,
+            'avg_accuracy' => round($avgAccuracy ?? 0, 2)
+        ];
     }
 
     private function mapStockToRow($stock)
@@ -244,6 +257,76 @@ class CycleCountController extends Controller
             'is_expired' => false,
             'inventory_stock_id' => null,
         ];
+    }
+
+    public function bulkRepeat(Request $request)
+    {
+        $request->validate([
+            'targets' => 'required|array',
+            'targets.*.material_id' => 'required|exists:materials,id',
+            'targets.*.bin_id' => 'required|exists:warehouse_bins,id'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $countCreated = 0;
+
+            foreach ($request->targets as $target) {
+                // 1. Ambil info Stock saat ini untuk material & bin tersebut
+                $stock = InventoryStock::with(['material'])
+                    ->where('material_id', $target['material_id'])
+                    ->where('bin_id', $target['bin_id'])
+                    ->first();
+
+                // Skip jika stock entah kenapa tidak ada (edge case)
+                if (!$stock) continue;
+
+                // 2. Logika Pembuatan
+                // Kita akan membuat CycleCount baru berstatus DRAFT.
+                // Jika sudah ada yang DRAFT (aktif), kita akan RESET saja datanya.
+                
+                $activeCC = CycleCount::where('material_id', $target['material_id'])
+                    ->where('warehouse_bin_id', $target['bin_id'])
+                    ->whereIn('status', ['DRAFT', 'REVIEW_NEEDED'])
+                    ->first();
+
+                if ($activeCC) {
+                    // RESET yang aktif
+                    $activeCC->update([
+                        'system_qty' => $stock->qty_on_hand,
+                        'physical_qty' => null,
+                        'scanned_serial' => null,
+                        'scanned_bin' => null,
+                        'status' => 'DRAFT',
+                        'count_date' => Carbon::now(),
+                        'spv_note' => 'Bulk Repeat by SPV (Reset)',
+                    ]);
+                } else {
+                    // BUAT BARU (Karena yang lama sudah Approved/Done)
+                    CycleCount::create([
+                        'cycle_number' => $stock->batch_lot ?? ($stock->material->kode_item . '-' . uniqid()),
+                        'material_id' => $stock->material_id,
+                        'warehouse_bin_id' => $stock->bin_id,
+                        'system_qty' => $stock->qty_on_hand,
+                        'physical_qty' => null,
+                        'scanned_serial' => null,
+                        'scanned_bin' => null,
+                        'count_date' => Carbon::now(),
+                        'status' => 'DRAFT',
+                        'spv_note' => 'Bulk Repeat by SPV'
+                    ]);
+                }
+                
+                $countCreated++;
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', "Berhasil membuat/reset {$countCreated} cycle count.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses bulk repeat: ' . $e->getMessage());
+        }
     }
 
     /**

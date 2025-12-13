@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Traits\ActivityLogger;
+use Illuminate\Support\Facades\Log;
 
 class PickingListController extends Controller
 {
@@ -67,6 +68,8 @@ class PickingListController extends Controller
             'requester' => $requesterName, 
             'departemen' => $departemen,
             'status' => $request->status, 
+            'pickingStartedAt' => $request->picking_started_at,
+            'pickingCompletedAt' => $request->picking_completed_at, 
             
             // PERUBAHAN UTAMA: Items sekarang adalah DETAIL ALOKASI BATCH (Reservations)
             'items' => $request->reservations
@@ -221,7 +224,16 @@ class PickingListController extends Controller
                 $finalStatus = $hasShortPick ? 'Short-Pick' : 'Completed';
             }
             
-            $reservationRequest->update(['status' => $finalStatus]);
+            $updateData = ['status' => $finalStatus];
+            
+            Log::info("DEBUG STORE PICKING: Final Status: {$finalStatus}, Current End: {$reservationRequest->picking_completed_at}");
+
+            if (($finalStatus === 'Completed' || $finalStatus === 'Short-Pick') && is_null($reservationRequest->picking_completed_at)) {
+                $updateData['picking_completed_at'] = now();
+                Log::info("DEBUG STORE PICKING: Setting picking_completed_at to " . now());
+            }
+            
+            $reservationRequest->update($updateData);
 
             DB::commit();
             
@@ -251,7 +263,16 @@ class PickingListController extends Controller
         
         try {
             $reservationRequest = ReservationRequest::findOrFail($id);
-            $reservationRequest->update(['status' => $request->status]);
+            
+            Log::info("DEBUG UPDATE STATUS: Current Status: {$reservationRequest->status}, New Status: {$request->status}, Current Start: {$reservationRequest->picking_started_at}");
+
+            $updateData = ['status' => $request->status];
+            if ($request->status === 'In Progress' && is_null($reservationRequest->picking_started_at)) {
+                $updateData['picking_started_at'] = now();
+                Log::info("DEBUG UPDATE STATUS: Setting picking_started_at to " . now());
+            }
+            
+            $reservationRequest->update($updateData);
 
             $this->logActivity($reservationRequest, 'Update Picking Status', [
                 'description' => "Picking Task status diubah menjadi {$request->status} oleh " . Auth::user()->name,

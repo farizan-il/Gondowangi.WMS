@@ -181,6 +181,13 @@
                 <option value="">Semua Lokasi</option>
                 <option v-for="location in uniqueLocations" :key="location" :value="location">{{ location }}</option>
               </select>
+
+              <!-- Sort Filter -->
+              <select v-model="sortOption" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
+                 <option value="default">Default Sort (Kode)</option>
+                 <option value="newest">Terbaru (Newest)</option>
+                 <option value="oldest">Terlama (Oldest)</option>
+              </select>
             </div>
 
             
@@ -254,14 +261,14 @@
                 <td class="px-4 py-3 whitespace-nowrap text-sm space-x-2 flex items-center">
     
                 <template v-if="item.requiresPutAway">
-                    <button @click.stop="openBinToBinModal(item)"
-                        class="px-2 py-1 text-xs font-semibold bg-indigo-500 text-white rounded hover:bg-indigo-700 transition-colors flex items-center space-x-1" 
-                        title="Put Away Cepat ke lokasi permanen">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        <span>Put Away</span>
-                    </button>
+                    <button @click.stop="router.get('/transaction/putaway-transfer')"
+                      class="px-2 py-1 text-xs font-semibold bg-indigo-500 text-white rounded hover:bg-indigo-700 transition-colors flex items-center space-x-1" 
+                      title="Put Away Cepat ke lokasi permanen">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span>Put Away</span>
+                  </button>
 
                     <button @click.stop="openQRDetailModal(item)" 
                         class="text-blue-600 hover:text-blue-900 transition-colors ml-2" 
@@ -680,7 +687,7 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 import QRCode from 'qrcode'
@@ -709,6 +716,7 @@ interface MaterialItem {
   qr_type: 'Karantina' | 'Released' | 'Waiting QC' | 'Reject'
   qr_data?: string // Added for consistency
   qr_image_url?: string // Added to store generated image URL
+  entry_date?: string // Added for sorting
 }
 
 interface HistoryItem {
@@ -757,6 +765,21 @@ const showBinToBinModal = ref(false)
 const showQRDetailModal = ref(false)
 const qrItem = ref<MaterialItem | null>(null)
 const localAlerts = ref<Alert[]>([...props.alerts]);
+const sortOption = ref<string>('default'); // Sort Option Ref
+
+// Watch Sort Option
+watch(sortOption, (newVal) => {
+    if (newVal === 'newest') {
+        sortColumn.value = 'entry_date';
+        sortDirection.value = 'desc';
+    } else if (newVal === 'oldest') {
+        sortColumn.value = 'entry_date';
+        sortDirection.value = 'asc';
+    } else {
+        sortColumn.value = 'kode';
+        sortDirection.value = 'asc';
+    }
+});
 
 // Transfer Data
 const transferData = ref<TransferData>({
@@ -781,8 +804,8 @@ onMounted(async () => {
 
 // Table columns
 const tableColumns = [
-  { key: 'type', label: 'RM/PM' },
-  { key: 'sub_kategori', label: 'Sub Kategori' },
+  { key: 'type', label: 'Sub Kategori' },
+  { key: 'sub_kategori', label: 'Kategori' },
   { key: 'kode', label: 'Kode' },
   { key: 'nama', label: 'Nama Material' },
   { key: 'lot', label: 'Serial/Lot' },
@@ -945,8 +968,8 @@ const initiateReqc = () => {
   router.post('/dashboard/reqc/initiate', {
     inventory_stock_ids: selectedExpiredMaterials.value
   }, {
-    preserveState: false,
-    preserveScroll: false,
+    preserveState: true,
+    preserveScroll: true,
     onStart: () => {
       console.log('📤 Re-QC request started...')
     },
@@ -1090,10 +1113,10 @@ const formatDateTime = (date: string) => {
 }
 
 const generateQRUrl = async (item: MaterialItem) => {
-    // Format: LOT|KODE|STATUS|QTY|EXP_DATE
+    // Format: KODE|STATUS|LOT|QTY|EXP_DATE
     // Status harus uppercase untuk konsistensi
     const status = item.status.toUpperCase();
-    const qrContent = `${item.lot}|${item.kode}|${status}|${item.qty}|${item.expiredDate}`;
+    const qrContent = `${item.kode}|${status}|${item.lot}|${item.qty}|${item.expiredDate}`;
     
     // Simpan data QR string ke item jika belum ada
     item.qr_data = qrContent;

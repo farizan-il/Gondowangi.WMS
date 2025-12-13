@@ -35,8 +35,10 @@ Route::middleware('auth')->group(function () {
     // WMS Dashboard
     Route::get('/wms-dashboard', [WmsDashboardController::class, 'index'])
         ->name('wms-dashboard.index');
-    Route::get('/wms-dashboard/data', [WmsDashboardController::class, 'getData'])
-        ->name('wms-dashboard.data');
+    Route::get('/wms-dashboard/data', [WmsDashboardController::class, 'getData'])->name('wms-dashboard.data');
+
+// Material Lookup for Return
+Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transaction\ReturnController::class, 'getMaterial']);
 
     // Re-QC for expired materials
     Route::post('/dashboard/reqc/initiate', [DashboardController::class, 'initiateReqcForExpiredMaterials'])
@@ -117,6 +119,8 @@ Route::middleware('auth')->group(function () {
 
     // Transaction Routes with Permission Protection
     Route::prefix('transaction')->name('transaction.')->group(function () {
+        Route::post('/cycle-count/bulk-repeat', [CycleCountController::class, 'bulkRepeat']);
+
         Route::get('/cycle-count', [CycleCountController::class, 'index'])
             ->name('cycle-count.index');
 
@@ -264,6 +268,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/picking-list', [PickingListController::class, 'getPickingList'])
             ->middleware('permission:picking.view')
             ->name('api.picking-list');
+        
+        Route::post('/picking-list/update-status/{id}', [PickingListController::class, 'updateStatus'])
+            ->middleware('permission:picking.create')
+            ->name('picking-list.update-status');
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])

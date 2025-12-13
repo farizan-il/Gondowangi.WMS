@@ -138,19 +138,64 @@ class QualityControlController extends Controller
         return $finalItems;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         // Get items that need QC or have completed QC
-        $itemsToQCCollection = IncomingGoodsItem::with([
+        $query = IncomingGoodsItem::with([
             'incomingGood',
             'incomingGood.purchaseOrder',
             'incomingGood.supplier',
             'material',
             'qcChecklist',
             'qcChecklist.qcChecklistDetail'
-        ])
-        ->whereIn('status_qc', ['To QC', 'PASS', 'REJECT'])
-        ->orderBy('created_at', 'desc')
+        ]);
+
+        // --- FILTERING ---
+        // 1. Status Filter (Modified Default)
+        if ($request->has('status') && $request->status != '') {
+            $status = $request->status;
+            if ($status === 'To QC') {
+                $query->where('status_qc', 'To QC');
+            } elseif ($status === 'PASS') {
+                $query->where('status_qc', 'PASS');
+            } elseif ($status === 'REJECT') {
+                $query->where('status_qc', 'REJECT');
+            } elseif ($status === 'Completed') {
+                $query->whereIn('status_qc', ['PASS', 'REJECT']);
+            }
+        } else {
+             // Default: Show All relevant statuses
+             $query->whereIn('status_qc', ['To QC', 'PASS', 'REJECT']);
+        }
+
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('batch_lot', 'LIKE', "%{$search}%")
+                  ->orWhereHas('material', function($q2) use ($search) {
+                      $q2->where('kode_item', 'LIKE', "%{$search}%")
+                         ->orWhere('nama_material', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('incomingGood', function($q3) use ($search) {
+                      $q3->where('incoming_number', 'LIKE', "%{$search}%")
+                         ->orWhere('no_surat_jalan', 'LIKE', "%{$search}%")
+                         ->orWhereHas('purchaseOrder', function($q4) use ($search) {
+                             $q4->where('no_po', 'LIKE', "%{$search}%");
+                         });
+                  });
+            });
+        }
+
+        if ($request->has('date_start') && $request->date_start != '') {
+             $query->whereHas('incomingGood', fn($q) => $q->whereDate('tanggal_terima', '>=', $request->date_start));
+        }
+        
+        if ($request->has('date_end') && $request->date_end != '') {
+             $query->whereHas('incomingGood', fn($q) => $q->whereDate('tanggal_terima', '<=', $request->date_end));
+        }
+        // ----------------
+
+        $itemsToQCCollection = $query->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($item) {
 
@@ -256,11 +301,27 @@ class QualityControlController extends Controller
             return $statusOrder[$a['displayStatusQC']] - $statusOrder[$b['displayStatusQC']];
         });
         
-        // Log::info('Grouped Items:', $itemsToQC); // Debugging
+        // --- MANUAL PAGINATION ---
+        $page = $request->input('page', 1);
+        $perPage = $request->input('limit', 10);
+        if ($perPage === 'all') $perPage = 1000;
+        
+        $offset = ($page * $perPage) - $perPage;
+        $itemsToSlice = array_values($itemsToQC); 
+        $itemsForCurrentPage = array_slice($itemsToSlice, $offset, $perPage, true);
+        
+        $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
+            $itemsForCurrentPage, 
+            count($itemsToQC), 
+            $perPage, 
+            $page, 
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+        // -------------------------
 
         return Inertia::render('QualityControl', [
-            // Gunakan hasil pengelompokan
-            'itemsToQC' => $itemsToQC, 
+            'itemsToQC' => $paginatedItems, 
+            'filters' => $request->only(['search', 'date_start', 'date_end', 'limit', 'status']),
         ]);
     }
 
@@ -483,7 +544,7 @@ class QualityControlController extends Controller
                 'material_id' => $incomingItem->material_id,
                 'bin_id' => $quarantineBin->id,
                 'batch_lot' => $incomingItem->batch_lot,
-                'status' => 'KARANTINA', // Status yang dicari dari proses GR
+                // 'status' => 'KARANTINA', // REMOVED: Re-QC items might be RELEASED but in QRT bin
             ])->first(); 
 
             if (!$inventoryStockQRT) {
@@ -686,7 +747,7 @@ class QualityControlController extends Controller
 
     private function createSampleMovement($incomingItem, $inventoryStock, $qtySample, $qcChecklistId, $movementNumber)
     {
-        $movementNumber = $this->generateMovementNumber();
+        // $movementNumber passed from argument, do not regenerate!
         
         StockMovement::create([
             'movement_number' => $movementNumber,

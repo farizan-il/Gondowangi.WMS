@@ -330,10 +330,10 @@
                         <div>Batch: {{ labelData.batchLot }}</div>
                         <div>Wadah Ke: **{{ labelData.wadahKe }}** / {{ labelData.qtyWadah }}</div>
                         <div>Qty: {{ labelData.qtyUnit }}</div>
-                        <div>Exp: {{ labelData.expDate }}</div>
+                        <div>Exp: {{ formatDateOnly(labelData.expDate) }}</div>
                       </div>
                       <div class="bg-gray-100 p-2 rounded font-mono text-xs text-gray-800 mt-3">
-                        <strong>QR Content:</strong><br>{{ labelData.qrContent }}
+                        <strong>QR Content:</strong><br>{{ labelData.qrContent.split('|')[2] }}
                       </div>
                       <div class="flex space-x-2 mt-3">
                         <button @click="printSingleQR(labelData)"
@@ -569,7 +569,8 @@
                             @focus="item.showSuggestions = true"
                             @blur="setTimeout(() => { item.showSuggestions = false }, 200)" type="text"
                             placeholder="Cari Kode/Nama SKU"
-                            class="w-32 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" />
+                            class="w-32 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900"
+                            :class="{'border-red-500 ring-1 ring-red-500 bg-red-50': !item.kodeItem && item.skuSearch}" />
                         </div>
                         <div v-if="item.showSuggestions && item.filteredMaterials.length > 0"
                           class="absolute z-20 w-80 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
@@ -748,10 +749,10 @@
                         <div class="text-sm text-gray-600 space-y-1">
                           <div>Batch: {{ item.batchLot }}</div>
                           <div>Qty: {{ item.qtyUnit }}</div>
-                          <div>Exp: {{ item.expDate }}</div>
+                          <div>Exp: {{ formatDateOnly(item.expDate) }}</div>
                         </div>
                         <div class="bg-gray-100 p-2 rounded font-mono text-xs text-gray-800 mt-3">
-                          <strong>QR Content:</strong><br>{{ item.qrCode }}
+                          <strong>QR Content:</strong><br>{{ item.qrCode ? item.qrCode.split('|')[2] : '-' }}
                         </div>
                         <div class="flex space-x-2 mt-3">
                           <button @click="downloadQR(item)"
@@ -976,17 +977,24 @@ const processErpPdf = async () => {
 
     const parsedData = response.data
 
-    // PEMBERSIHAN DATA ITEM LAMA SEBELUM DIMASUKKAN DATA BARU
+    // 1. Reset Items
     newShipment.value.items = []
 
-    // 1. Isi data header
-    newShipment.value.incomingNumber = parsedData.incoming_number || '' // IN/27577
-    newShipment.value.noSuratJalan = parsedData.no_surat_jalan || '' // DO-25-09791
-    newShipment.value.noPo = parsedData.no_po || '' // P064945
-    newShipment.value.noKendaraan = parsedData.no_truck || '' // ''
-    newShipment.value.namaDriver = parsedData.driver_name || '' // ''
+    // 2. Isi Header
+    newShipment.value.incomingNumber = parsedData.incoming_number || ''
+    newShipment.value.noSuratJalan = (parsedData.no_surat_jalan && parsedData.no_surat_jalan !== 'N/A') 
+        ? parsedData.no_surat_jalan 
+        : 'N/A'
+    newShipment.value.noPo = parsedData.no_po || ''
 
-    // 2. Cari dan set Supplier
+    newShipment.value.noKendaraan = parsedData.no_truck || '-' 
+    newShipment.value.namaDriver = parsedData.driver_name || '-'
+    
+    if (parsedData.tanggal_terima) {
+         newShipment.value.tanggalTerima = parsedData.tanggal_terima
+    }
+
+    // 3. Set Supplier
     const foundSupplier = props.suppliers.find(s =>
       s.nama_supplier.toLowerCase().includes(parsedData.supplier_name.toLowerCase()) ||
       s.kode_supplier.toLowerCase() === parsedData.supplier_code.toLowerCase()
@@ -995,55 +1003,83 @@ const processErpPdf = async () => {
     if (foundSupplier) {
       newShipment.value.supplier = foundSupplier.id
       newShipment.value.supplierName = foundSupplier.nama_supplier
-      supplierSearchQuery.value = foundSupplier.nama_supplier // Update autocomplete field
+      supplierSearchQuery.value = foundSupplier.nama_supplier
     } else {
       newShipment.value.supplier = ''
-      newShipment.value.supplierName = `*Supplier tidak ditemukan: ${parsedData.supplier_name}`
-      supplierSearchQuery.value = `*Supplier tidak ditemukan: ${parsedData.supplier_name}`
+      newShipment.value.supplierName = parsedData.supplier_name ? `*${parsedData.supplier_name}` : ''
+      supplierSearchQuery.value = parsedData.supplier_name || ''
     }
 
-    // 3. Proses detail item
+    // 4. Proses Items (Looping)
+    // Backend sekarang mengembalikan array items yang lengkap (meski ada duplikat kode)
     parsedData.items.forEach(itemData => {
-      // Cari Material/SKU
-      const materialDetail = props.materials.find(m => m.code === itemData.kode_material)
+      
+      // Cari Material di Master Data berdasarkan Kode Item (misal: 30015)
+      const materialDetail = props.materials.find(m => m.code == itemData.kode_material)
 
-      let statusQC = 'Karantina' // Default status
+      let statusQC = 'Karantina'
       if (materialDetail && materialDetail.qcRequired === false) {
         statusQC = 'Direct Putaway'
       }
 
       newShipment.value.items.push({
-        kodeItem: materialDetail ? materialDetail.id : '', // ID Material
-        kodeItemDisplay: itemData.kode_material, // Kode yang ada di PDF ([23515])
-        namaMaterial: materialDetail ? materialDetail.name : itemData.description, // Nama dari master data atau deskripsi PDF
-        batchLot: '', // PDF tidak menyediakan Batch/Lot, biarkan kosong
-        expDate: '', // PDF tidak menyediakan ED, biarkan kosong
-        qtyWadah: itemData.quantity, // Quantity dari PDF dianggap Qty Wadah (1.400,0000)
-        qtyUnit: '1', // Asumsi: jika Qty Wadah = 1.400, maka Qty Unit = 1 (Total = 1.400)
-        pabrikPembuat: materialDetail ? materialDetail.mfg : '',
+        kodeItem: materialDetail ? materialDetail.id : '', 
+        kodeItemDisplay: itemData.kode_material, 
+        namaMaterial: materialDetail ? materialDetail.name : itemData.description, 
+        batchLot: '', 
+        expDate: '', 
+        qtyWadah: itemData.quantity, // 4995 untuk baris 1, 1008 untuk baris 2
+        qtyUnit: '1', 
+        pabrikPembuat: newShipment.value.supplierName || '', 
         skuSearch: itemData.kode_material,
         filteredMaterials: [],
         showSuggestions: false,
-        kondisiBaik: true, // Asumsi default baik
+        kondisiBaik: true,
         kondisiTidakBaik: false,
-        coaAda: false,
-        coaTidakAda: true, // Asumsi default tidak ada
-        labelMfgAda: false,
-        labelMfgTidakAda: true, // Asumsi default tidak ada
-        labelCoaSesuai: false,
-        labelCoaTidakSesuai: true, // Asumsi default tidak sesuai
+        coaAda: true,
+        coaTidakAda: false,
+        labelMfgAda: true,
+        labelMfgTidakAda: false,
+        labelCoaSesuai: true,
+        labelCoaTidakSesuai: false,
         statusQC: statusQC,
-        binTarget: 'QRT-HALAL', // Asumsi default bin karantina
-        isHalal: true, // Asumsi default halal
+        binTarget: 'QRT-HALAL',
+        isHalal: true,
         isNonHalal: false,
       })
     })
 
+
+
     newShipment.value.isErpDataLoaded = true;
+    
+    // --- VALIDASI MATERIAL HILANG ---
+    const missingMaterials = newShipment.value.items
+        .filter(item => !item.kodeItem && item.skuSearch)
+        .map(item => item.skuSearch);
+        
+    // Hapus duplikat
+    const uniqueMissing = [...new Set(missingMaterials)];
+
+    if (uniqueMissing.length > 0) {
+        let msg = `PERHATIAN: Ditemukan ${uniqueMissing.length} material yang BELUM ada di Master Data:\n\n`;
+        uniqueMissing.forEach(code => {
+            msg += `- ${code}\n`;
+        });
+        msg += `\nMohon tambahkan material tersebut di Menu Master Data -> Material agar bisa disimpan.`;
+        alert(msg);
+    } else {
+        alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`);
+    }
+    // --------------------------------
 
   } catch (error) {
     console.error('Error processing ERP PDF:', error)
-    alert(`Gagal memproses file ERP. Error: ${error.message || 'Server error'}`)
+    if (error.response && error.response.data && error.response.data.error) {
+        alert(error.response.data.error);
+    } else {
+        alert('Gagal memproses file. Pastikan format PDF sesuai.');
+    }
   } finally {
     isProcessingErp.value = false
   }
@@ -1068,31 +1104,53 @@ const resetForm = () => {
 }
 
 const addNewItem = () => {
-  newShipment.value.items.push({
-    kodeItem: '',
-    kodeItemDisplay: '',
-    namaMaterial: '',
-    batchLot: '',
-    expDate: '',
-    qtyWadah: '',
-    qtyUnit: '',
-    pabrikPembuat: '',
-    skuSearch: '',
-    filteredMaterials: [],
-    showSuggestions: false,
-    kondisiBaik: false,
-    kondisiTidakBaik: false,
-    coaAda: false,
-    coaTidakAda: false,
-    labelMfgAda: false,
-    labelMfgTidakAda: false,
-    labelCoaSesuai: false,
-    labelCoaTidakSesuai: false,
-    statusQC: 'Karantina',
-    binTarget: '',
-    isHalal: false,
-    isNonHalal: false,
-  })
+  const items = newShipment.value.items;
+
+  // Cek jika sudah ada baris data sebelumnya
+  if (items.length > 0) {
+    // Ambil data dari baris terakhir
+    const lastItem = items[items.length - 1];
+
+    // Lakukan Deep Copy menggunakan JSON parse/stringify
+    // Ini penting agar referensi object terputus (edit baris baru tidak mengubah baris lama)
+    const clonedItem = JSON.parse(JSON.stringify(lastItem));
+
+    // Reset Qty agar user bisa langsung input jumlah baru
+    // (Hapus 2 baris di bawah ini jika ingin Qty juga ikut tercopy persis)
+    clonedItem.qtyWadah = '';
+    clonedItem.qtyUnit = '';
+
+    // Masukkan hasil cloning ke array
+    newShipment.value.items.push(clonedItem);
+
+  } else {
+    // Jika belum ada baris sama sekali (kosong), buat baris default baru
+    newShipment.value.items.push({
+      kodeItem: '',
+      kodeItemDisplay: '',
+      namaMaterial: '',
+      batchLot: '',
+      expDate: '',
+      qtyWadah: '',
+      qtyUnit: '',
+      pabrikPembuat: newShipment.value.supplierName || '', // Default ikut supplier juga
+      skuSearch: '',
+      filteredMaterials: [],
+      showSuggestions: false,
+      kondisiBaik: true, // Default Baik
+      kondisiTidakBaik: false,
+      coaAda: true, // Default Ada
+      coaTidakAda: false,
+      labelMfgAda: true, // Default Ada
+      labelMfgTidakAda: false,
+      labelCoaSesuai: true, // Default Sesuai
+      labelCoaTidakSesuai: false,
+      statusQC: 'Karantina',
+      binTarget: 'QRT-HALAL',
+      isHalal: true,
+      isNonHalal: false,
+    })
+  }
 }
 
 const qrtBins = [

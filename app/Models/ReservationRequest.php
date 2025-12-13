@@ -26,6 +26,8 @@ class ReservationRequest extends Model
         'rejected_by',
         'rejected_at',
         'rejection_reason',
+        'picking_started_at',
+        'picking_completed_at',
     ];
 
     protected $casts = [
@@ -33,6 +35,8 @@ class ReservationRequest extends Model
         'besar_bets' => 'decimal:2',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'picking_started_at' => 'datetime',
+        'picking_completed_at' => 'datetime',
     ];
 
     public function requestedBy(): BelongsTo

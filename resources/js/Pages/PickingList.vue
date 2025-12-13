@@ -53,13 +53,14 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requester / Departemen</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="filteredTasks.length === 0">
-              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+              <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
                 Tidak ada Picking Task yang ditemukan untuk status {{ filterStatus === 'ALL' ? 'apapun' : filterStatus }}.
               </td>
             </tr>
@@ -77,6 +78,9 @@
                 <span :class="getStatusClass(task.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                   {{ task.status }}
                 </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ getDuration(task) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div class="flex space-x-2">
@@ -739,6 +743,24 @@ const formatDateTime = (dateString) => {
     }
 }
 
+const getDuration = (task) => {
+    if (!task.pickingStartedAt) return '-'
+    
+    const start = new Date(task.pickingStartedAt)
+    const end = task.pickingCompletedAt ? new Date(task.pickingCompletedAt) : new Date()
+    
+    const diffMs = end - start
+    if (diffMs < 0) return '-' 
+    
+    const diffSeconds = Math.floor(diffMs / 1000)
+    const hours = Math.floor(diffSeconds / 3600)
+    const minutes = Math.floor((diffSeconds % 3600) / 60)
+    
+    if (hours > 0) return `${hours} jam ${minutes} menit`
+    if (minutes > 0) return `${minutes} menit`
+    return '< 1 menit'
+}
+
 const viewReservation = (noReservasi) => {
     console.log(`Melihat detail reservasi: ${noReservasi}`)
 }
@@ -750,8 +772,8 @@ const viewDetail = (task) => {
 
 const startPicking = async (task) => {
     selectedTask.value = JSON.parse(JSON.stringify(task)) // Deep clone the task
-    // Update status ke In Progress jika masih Reserved/Pending
-    if (task.status === 'Reserved' || task.status === 'Pending' || task.status === 'Ready to Pick') {
+    // Update status ke In Progress jika masih Reserved/Pending atau In Progress (untuk set start time jika belum)
+    if (task.status === 'Reserved' || task.status === 'Pending' || task.status === 'Ready to Pick' || task.status === 'In Progress') {
         try {
             // [TAMBAH API CALL untuk update status header ke In Progress]
             await axios.post(route('transaction.picking-list.update-status', task.id), {

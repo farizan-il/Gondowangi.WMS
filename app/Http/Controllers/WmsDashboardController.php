@@ -45,6 +45,14 @@ class WmsDashboardController extends Controller
             ->whereBetween('header.created_at', [$startDate, $endDate])
             ->select('m.kategori', DB::raw('count(*) as total'))
             ->groupBy('m.kategori')
+            ->orderByDesc('total')
+            ->get();
+
+        // 3b. Incoming by Type (RM vs PM) - from incoming_goods table
+        $incomingByType = DB::table('incoming_goods')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->select('kategori', DB::raw('count(*) as total'))
+            ->groupBy('kategori')
             ->get();
 
         // 4. Lead Time (Picking Duration)
@@ -53,26 +61,20 @@ class WmsDashboardController extends Controller
         // but for now let's get a general average and try to split if possible.
         // To split RM/PM, we'd need to join tables. Let's do a simplified version first.
         
-        $completedRequests = ReservationRequest::with('items') // assuming items relates to reservation_request_items which has material type info? or we check reservation items
-            ->whereIn('status', ['Completed', 'Short-Pick'])
-            ->whereBetween('updated_at', [$startDate, $endDate])
+        $completedRequests = ReservationRequest::whereIn('status', ['Completed', 'Short-Pick'])
+            ->whereNotNull('picking_started_at')
+            ->whereNotNull('picking_completed_at')
+            ->whereBetween('picking_completed_at', [$startDate, $endDate])
             ->get();
 
         $leadTimeData = $completedRequests->map(function($req) {
-            $created = Carbon::parse($req->created_at);
-            $completed = Carbon::parse($req->updated_at);
-            $durationMinutes = $completed->diffInMinutes($created);
-            
-            // Determine type (RM/PM) based on first item
-            // This is an estimation. 
-            // We need to check reservation items -> material -> type?
-            // Let's assume 'items' relation gives us access to material info if mapped correctly,
-            // otherwise we might need to query deep.
-            // For efficiency, let's just use a simple heuristic or fetch 1 related item.
+            $started = Carbon::parse($req->picking_started_at);
+            $completed = Carbon::parse($req->picking_completed_at);
+            $durationMinutes = $completed->diffInMinutes($started);
             
             return [
                 'duration' => $durationMinutes,
-                'type' => 'General' // Placeholder, will refine if we can easily detect type
+                'type' => 'General' 
             ];
         });
 
@@ -142,19 +144,91 @@ class WmsDashboardController extends Controller
         // 6. SKU On Hand (Total Sku that has Stock > 0)
         // This is a snapshot, not really time-bound, but usually "Current On Hand".
         // Use standard InventoryStock query.
+        // 6. SKU On Hand (Total Sku that has Stock > 0)
         $skuOnHand = InventoryStock::where('qty_on_hand', '>', 0)
             ->distinct('material_id')
             ->count('material_id');
+
+        // --- TREND CHARTS DATA ---
+        
+        // A. Incoming Trend (Daily)
+        $incomingTrend = IncomingGood::whereBetween('created_at', [$startDate, $endDate])
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as value'))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // B. Outgoing Trend (Daily)
+        $outgoingTrend = ReservationRequest::whereIn('status', ['Completed', 'Short-Pick'])
+            ->whereBetween('updated_at', [$startDate, $endDate]) // Use updated_at or picking_completed_at? picking_completed_at IS safer.
+            ->whereNotNull('picking_completed_at')
+            ->select(DB::raw('DATE(picking_completed_at) as date'), DB::raw('count(*) as value'))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // C. Lead Time Trend (Daily Avg)
+        // using raw sql for diff
+        $leadTimeTrend = ReservationRequest::whereIn('status', ['Completed', 'Short-Pick'])
+            ->whereNotNull('picking_started_at')
+            ->whereNotNull('picking_completed_at')
+            ->whereBetween('picking_completed_at', [$startDate, $endDate])
+            ->select(
+                DB::raw('DATE(picking_completed_at) as date'), 
+                DB::raw('AVG(TIMESTAMPDIFF(MINUTE, picking_started_at, picking_completed_at)) as value')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // D. Accuracy Trend (Daily Avg)
+        // This is complex because accuracy is calc per item. Average of (phys/sys).
+        // Let's do it via collection from the query we already have ($cycleCounts) to reuse logic.
+        $accuracyTrend = $cycleCounts->groupBy(function($item) {
+            return Carbon::parse($item->count_date)->format('Y-m-d');
+        })->map(function($dayGroup) {
+            $totalAcc = 0;
+            foreach($dayGroup as $cc) {
+                $sys = (float)$cc->system_qty;
+                $phys = (float)$cc->physical_qty;
+                if ($sys > 0) {
+                     $totalAcc += ($phys / $sys) * 100;
+                } else {
+                     $totalAcc += ($phys == 0 ? 100 : 0);
+                }
+            }
+            return round($totalAcc / $dayGroup->count(), 2);
+        })->map(function($value, $date) {
+            return ['date' => $date, 'value' => $value];
+        })->values();
+
+        // E. SKU On Hand Breakdown (Top 5 Categories) - For Chart
+        $skuByCategory = DB::table('inventory_stock as s')
+            ->join('materials as m', 's.material_id', '=', 'm.id')
+            ->where('s.qty_on_hand', '>', 0)
+            ->select('m.kategori', DB::raw('count(DISTINCT s.material_id) as value'))
+            ->groupBy('m.kategori')
+            ->orderByDesc('value')
+            ->limit(5)
+            ->get();
 
 
         return response()->json([
             'totalIncoming' => $totalIncoming,
             'totalOutgoing' => $totalOutgoing,
             'incomingByCategory' => $incomingByCategory,
+            'incomingByType' => $incomingByType,
             'leadTime' => $leadTimeFormatted,
             'leadTimeRaw' => $avgLeadTimeVal, // minutes
             'stockAccuracy' => $avgAccuracy,
             'skuOnHand' => $skuOnHand,
+            'trends' => [
+                'incoming' => $incomingTrend,
+                'outgoing' => $outgoingTrend,
+                'leadTime' => $leadTimeTrend,
+                'accuracy' => $accuracyTrend,
+                'skuCategory' => $skuByCategory
+            ],
             'period' => [
                 'start' => $startDate->format('Y-m-d'),
                 'end' => $endDate->format('Y-m-d'),

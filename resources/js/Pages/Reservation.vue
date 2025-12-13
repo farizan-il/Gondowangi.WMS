@@ -295,11 +295,13 @@
                 </div>
               </div>
 
-              <div v-if="selectedCategory === 'packaging'" class="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <!-- File Upload Section (Available for ALL categories) -->
+              <div class="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Import dari Production Order (PDF) 
-                  <span v-if="selectedCategory === 'raw-material'">(Hanya mengambil bahan dengan UoM Kg)</span>
-                  <span v-else-if="selectedCategory === 'packaging'">(Hanya mengambil bahan selain UoM Kg)</span>
+                  Import dari PDF (Otomatisisi Daftar Material)
+                  <span v-if="selectedCategory === 'raw-material'">(Mengambil bahan-bahan)</span>
+                  <span v-else-if="selectedCategory === 'packaging'">(Mengambil material packaging)</span>
+                  <span v-else-if="selectedCategory === 'foh-rs'">(Mengambil item FOH/RS)</span>
                 </label>
                 
                 <div class="flex items-center gap-3">
@@ -382,9 +384,6 @@
                           <th
                             class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap min-w-[150px]">
                             Jumlah Kebutuhan & Stok Tersedia</th>
-                          <th
-                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                            Jumlah Kirim</th>
                         </template>
 
                         <!-- ADD Headers -->
@@ -533,10 +532,7 @@
                               Permintaan melebihi stok!
                             </p>
                           </td>
-                          <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model.number="item.jumlahKirim" type="number"
-                              class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          </td>
+                          
                         </template>
 
                         <!-- ADD Row -->
@@ -702,7 +698,6 @@
                       <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kode Bahan</th>
                       <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Bahan</th>
                       <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kebutuhan</th>
-                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Jumlah Kirim</th>
                     </template>
                     <template v-else-if="selectedRequest.type === 'packaging'">
                       <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama Material</th>
@@ -868,9 +863,9 @@ const uploadFileAndParse = async () => {
         return;
     }
 
-    // 2. Cek Kategori Yang Sesuai (Raw Material atau Packaging)
-    if (selectedCategory.value !== 'raw-material' && selectedCategory.value !== 'packaging') {
-        uploadStatus.value = { type: 'error', message: '❌ Mohon pilih kategori "Request Raw Material" atau "Request Packaging Material" di bagian atas form.' };
+    // 2. Cek Kategori Yang Sesuai (Valid untuk semua sekarang)
+    if (!selectedCategory.value) {
+        uploadStatus.value = { type: 'error', message: '❌ Mohon pilih kategori terlebih dahulu.' };
         return;
     }
 
@@ -906,13 +901,22 @@ const uploadFileAndParse = async () => {
                         satuan: m.satuan,
                         stokAvailable: m.stokAvailable,
                     };
-                } else if (selectedCategory.value === 'packaging') {
+                } else if (selectedCategory.value === 'packaging' || selectedCategory.value === 'add') {
                     return {
                         // ... mapping field packaging material ...
                         kodePM: m.kodePM,
                         namaMaterial: m.namaMaterial,
                         jumlahPermintaan: m.jumlahPermintaan,
                         satuan: m.satuan,
+                        stokAvailable: m.stokAvailable,
+                    };
+                } else if (selectedCategory.value === 'foh-rs') {
+                    return {
+                        // ... mapping field foh-rs ...
+                        kodeItem: m.kodeItem,
+                        keterangan: m.keterangan || m.namaMaterial,
+                        qty: m.qty,
+                        uom: m.uom,
                         stokAvailable: m.stokAvailable,
                     };
                 }
@@ -1565,7 +1569,6 @@ const printForm = (request) => {
               <th>Kode Bahan</th>
               <th>Nama Bahan</th>
               <th>Jumlah Kebutuhan</th>
-              <th>Jumlah Kirim</th>
             </tr>
           </thead>
           <tbody>

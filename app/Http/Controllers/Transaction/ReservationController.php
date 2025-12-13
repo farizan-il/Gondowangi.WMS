@@ -192,7 +192,7 @@ class ReservationController extends Controller
         try {
             $request->validate([
                 'file' => 'required|file|mimes:pdf|max:10240', 
-                'request_type' => 'required|string|in:raw-material,packaging', 
+                'request_type' => 'required|string|in:raw-material,packaging,foh-rs,add', 
             ]);
         } catch (ValidationException $e) {
             return response()->json(['message' => '❌ Gagal Validasi: Periksa file atau tipe request.', 'errors' => $e->errors()], 422);
@@ -218,7 +218,7 @@ class ReservationController extends Controller
                 $allParsedMaterials = $this->parseProductionOrderContent($pdfText);
                 
                 if (empty($allParsedMaterials)) {
-                     throw new \Exception("Tidak ada material Raw/Packaging yang berhasil diekstrak. Cek Regex."); 
+                     throw new \Exception("Tidak ada material yang berhasil diekstrak. Cek Regex atau format PDF."); 
                 }
             } else {
                 throw new \Exception("Tipe file selain PDF saat ini belum didukung untuk parsing otomatis.");
@@ -227,7 +227,14 @@ class ReservationController extends Controller
             // --- 3. FASE FILTERING DAN DB LOOKUP ---
             $resultMaterials = [];
             $notFoundMaterials = [];
-            $materialCategoryWMS = ($requestType === 'raw-material') ? 'Raw Material' : 'Packaging Material';
+            
+            // Tentukan kategori WMS berdasarkan request_type
+            $materialCategoryWMS = match ($requestType) {
+                'raw-material' => 'Raw Material',
+                'foh-rs' => 'FOH & RS',
+                'add', 'packaging' => 'Packaging Material',
+                default => 'Packaging Material',
+            };
 
             foreach ($allParsedMaterials as $parsedItem) {
                 // ... (Logika filtering, DB lookup, dan penentuan $resultMaterials / $notFoundMaterials) ...
@@ -239,8 +246,18 @@ class ReservationController extends Controller
                 
                 if (!$materialCode || $requestedQty <= 0) continue; 
 
-                $isRawMaterial = ($uom === 'kg');
-                if (($requestType === 'raw-material' && !$isRawMaterial) || ($requestType === 'packaging' && $isRawMaterial)) {
+                // Filter logika filtering berdasarkan UoM (kg vs non-kg)
+                // Raw Material biasanya KG, Packaging/FOH biasanya PCS/Unit
+                // Tapi kita buat lebih fleksibel untuk foh-rs/add
+                $isRawMaterialUom = ($uom === 'kg');
+                
+                if ($requestType === 'raw-material' && !$isRawMaterialUom) {
+                    continue; // Skip jika raw material tapi bukan kg (misal ada packaging nyasar)
+                }
+                
+                // Untuk foh-rs, packaging, add -> biasanya non-kg, tapi bisa saja ada kg? 
+                // Asumsi saat ini: behavior lama packaging skip kg. Kita pertahankan untuk packaging.
+                if ($requestType === 'packaging' && $isRawMaterialUom) {
                     continue; 
                 }
 
@@ -250,11 +267,19 @@ class ReservationController extends Controller
                     // KODE DITEMUKAN DI MASTER
 
                     $item = $materialData;
+                    
+                    // Mapping jumlah permintaan ke field yang sesuai
                     if ($requestType === 'raw-material') {
                          $item['jumlahKebutuhan'] = $requestedQty;
                          $item['jumlahKirim'] = null;
-                    } elseif ($requestType === 'packaging') {
+                    } elseif ($requestType === 'packaging' || $requestType === 'add') {
                          $item['jumlahPermintaan'] = $requestedQty;
+                    } elseif ($requestType === 'foh-rs') {
+                         $item['qty'] = $requestedQty;
+                         // foh-rs butuh 'keterangan' dan 'uom'
+                         $item['keterangan'] = $materialData['namaMaterial']; // Default keterangan = nama material
+                         $item['uom'] = $materialData['satuan'];
+                         $item['kodeItem'] = $materialData['kodeBahan']; // map dari kodeBahan/kodePM
                     }
                     
                     // Cek ketersediaan stok
@@ -262,8 +287,8 @@ class ReservationController extends Controller
                         $notFoundMaterials[] = [
                             'kode' => $materialCode,
                             'nama' => $materialData['namaBahan'] ?? $materialData['namaMaterial'],
-                            'satuan' => $item['satuan'],
-                            'message' => "Stok tersedia hanya {$materialData['stokAvailable']} {$item['satuan']}. (Diperlukan: {$requestedQty})",
+                            'satuan' => $item['satuan'] ?? $uom,
+                            'message' => "Stok tersedia hanya " . $materialData['stokAvailable'] . " " . ($item['satuan'] ?? $uom) . ". (Diperlukan: {$requestedQty})",
                         ];
                         // Karena stok kurang, kita tidak akan memasukkannya ke $resultMaterials.
                         continue;
@@ -276,7 +301,7 @@ class ReservationController extends Controller
                         'kode' => $materialCode,
                         'nama' => $materialName,
                         'satuan' => $uom,
-                        'message' => 'Tidak ditemukan di master inventory WMS.'
+                        'message' => 'Tidak ditemukan di master inventory WMS (Kategori: ' . $materialCategoryWMS . ').'
                     ];
                     
                     $item = ['satuan' => $uom, 'stokAvailable' => 0];
@@ -285,10 +310,15 @@ class ReservationController extends Controller
                         $item['kodeBahan'] = $materialCode;
                         $item['namaBahan'] = $materialName; 
                         $item['jumlahKebutuhan'] = $requestedQty;
-                    } elseif ($requestType === 'packaging') {
+                    } elseif ($requestType === 'packaging' || $requestType === 'add') {
                         $item['kodePM'] = $materialCode;
                         $item['namaMaterial'] = $materialName;
                         $item['jumlahPermintaan'] = $requestedQty;
+                    } elseif ($requestType === 'foh-rs') {
+                        $item['kodeItem'] = $materialCode;
+                        $item['keterangan'] = $materialName;
+                        $item['qty'] = $requestedQty;
+                        $item['uom'] = $uom;
                     }
                     $resultMaterials[] = $item;
                 }
@@ -356,14 +386,16 @@ class ReservationController extends Controller
             return response()->json([]);
         }
 
-        // Tentukan kategori material yang dicari berdasarkan tipe request
-        $materialCategory = '';
+        // Filter Setup: Gunakan field 'Gudang' untuk RM/PM, 'kategori' untuk FOH
+        $categoryFilter = null;
+        $gudangFilter = null;
+
         if ($type === 'foh-rs') {
-            $materialCategory = 'FOH & RS';
+            $categoryFilter = 'FOH & RS';
         } elseif ($type === 'packaging' || $type === 'add') {
-            $materialCategory = 'Packaging Material';
+            $gudangFilter = 'PACKAGING MATERIAL';
         } elseif ($type === 'raw-material') {
-            $materialCategory = 'Raw Material';
+            $gudangFilter = 'RAW MATERIAL';
         } else {
             return response()->json([]);
         }
@@ -379,7 +411,9 @@ class ReservationController extends Controller
             )
             // Menjumlahkan qty_available dari semua baris stok material yang sama
             ->selectRaw('SUM(inventory_stock.qty_available) as total_available_stock')
-            ->where('materials.kategori', $materialCategory)
+            // Apply Filters (Gudang or Category)
+            ->when($categoryFilter, fn($q) => $q->where('materials.kategori', $categoryFilter))
+            ->when($gudangFilter, fn($q) => $q->where('materials.Gudang', $gudangFilter))
             ->where(function ($q) use ($query) {
                 // Mencari berdasarkan kode item atau nama material
                 $q->where('materials.kode_item', 'like', '%' . $query . '%')

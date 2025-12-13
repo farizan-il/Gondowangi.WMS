@@ -88,4 +88,9 @@ class InventoryStock extends Model
     {
         return $this->belongsTo(IncomingGood::class, 'gr_id');
     }
+
+    public function cycleCounts()
+    {
+        return $this->hasMany(CycleCount::class, 'material_id', 'material_id');
+    }
 }

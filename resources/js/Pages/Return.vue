@@ -197,9 +197,9 @@
                   >
                     <option value="">Pilih {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Departemen' }}</option>
                     <template v-if="newReturn.type === 'Supplier'">
-                      <option value="PT. Supplier A">PT. Supplier A</option>
-                      <option value="PT. Supplier B">PT. Supplier B</option>
-                      <option value="PT. Supplier C">PT. Supplier C</option>
+                      <option v-for="sup in suppliers" :key="sup.id" :value="sup.nama_supplier">
+                        {{ sup.nama_supplier }}
+                      </option>
                     </template>
                     <template v-else>
                       <option value="Production Line 1">Production Line 1</option>
@@ -216,9 +216,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Pilih (Opsional)</option>
-                    <option value="SHP240919001">SHP240919001</option>
-                    <option value="RES240919002">RES240919002</option>
-                    <option value="PO240919003">PO240919003</option>
+                     <option v-for="ship in shipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                        {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
+                     </option>
                   </select>
                 </div>
               </div>
@@ -253,6 +253,7 @@
                         <td class="px-4 py-3">
                           <input 
                             v-model="item.itemCode"
+                            @change="fetchMaterial(index)"
                             type="text" 
                             placeholder="ITM001"
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
@@ -263,7 +264,8 @@
                             v-model="item.itemName"
                             type="text" 
                             placeholder="Nama material"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
+                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-gray-100 text-gray-900 focus:ring-1 focus:ring-blue-500"
+                            readonly
                           >
                         </td>
                         <td class="px-4 py-3">
@@ -498,6 +500,11 @@ interface NewReturnItem {
   reason: string
 }
 
+const props = defineProps({
+  suppliers: Array,
+  shipments: Array
+})
+
 // Reactive data
 const isDarkMode = ref(false)
 const returns = ref<ReturnItem[]>([])
@@ -522,7 +529,7 @@ const newReturn = ref({
 
 const message = ref<{ type: 'success' | 'error', text: string } | null>(null)
 
-// Computed properties
+// ... computed properties ...
 const filteredReturns = computed(() => {
   return returns.value.filter(item => {
     const matchesSearch = !searchQuery.value ||
@@ -617,6 +624,26 @@ const addItem = () => {
     uom: 'PCS',
     reason: ''
   })
+}
+
+// Material Lookup
+const fetchMaterial = async (index: number) => {
+  const itemCode = newReturn.value.items[index].itemCode
+  if (!itemCode) return
+
+  try {
+    const response = await fetch(`/transaction/return/material/${itemCode}`)
+    if (response.ok) {
+        const data = await response.json()
+        newReturn.value.items[index].itemName = data.nama_material
+        newReturn.value.items[index].uom = data.satuan || 'PCS'
+    } else {
+        // Optional: clear if not found or show simple toast
+        // newReturn.value.items[index].itemName = '' 
+    }
+  } catch (e) {
+      console.error('Error fetching material', e)
+  }
 }
 
 const removeItem = (index: number) => {

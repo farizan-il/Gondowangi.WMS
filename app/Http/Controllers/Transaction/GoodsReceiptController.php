@@ -142,118 +142,112 @@ class GoodsReceiptController extends Controller
 
     public function parseErpPdf(Request $request)
     {
-        // ... (Validasi File tetap sama)
+        $request->validate([
+            'erp_pdf' => 'required|mimes:pdf|max:5120',
+        ]);
+        
         $pdfFile = $request->file('erp_pdf');
 
-        // --- INI ADALAH LOGIKA PARSING PDF SESUNGGUHNYA ---
         try {
             $parser = new Parser();
             $pdf = $parser->parseFile($pdfFile->getPathname());
             $text = $pdf->getText();
-            $text = preg_replace('/\s+/', ' ', $text); 
+            
+            // 1. NORMALISASI TEKS
+            // Ubah semua newline, tab, dan spasi ganda menjadi SATU spasi tunggal.
+            $text = preg_replace('/\s+/', ' ', $text);
+            $text = trim($text);
 
             $extractedData = [
                 'incoming_number' => '',
-                'no_surat_jalan' => '',
+                'no_surat_jalan' => 'N/A', // <--- DEFAULT VALUE (Permintaan Anda)
                 'no_po' => '',
                 'date' => '',
-                'no_truck' => '', 
-                'driver_name' => '', 
-                'supplier_name' => '', 
-                'supplier_code' => '',
                 'items' => [],
+                'supplier_name' => '',
+                'supplier_code' => '',
             ];
             
-            // =======================================================
-            // 2. EKSTRAKSI DATA HEADER MENGGUNAKAN REGEX
-            // =======================================================
-
-            // A. Incoming Shipment Number (IN/27576)
-            if (preg_match('/Incoming Shipment : ([A-Z]{2}\/[0-9]+)/', $text, $matches)) {
+            // 2. HEADER EXTRACTION
+            
+            // Incoming Number
+            if (preg_match('/Incoming Shipment\s*[:]\s*([A-Z]{2}\/[0-9]+)/i', $text, $matches)) {
                 $extractedData['incoming_number'] = trim($matches[1]);
+                if (IncomingGood::where('incoming_number', $extractedData['incoming_number'])->exists()) {
+                     return response()->json(['error' => "Nomor {$extractedData['incoming_number']} sudah ada."], 422);
+                }
             }
             
-            // B. No SJ dan No PO (Mendukung pola yang diunggah)
-            // Pola yang DICARI: No SJ (SJ2511000171), Order(Origin) (P064943), Date/Time
-            // Kita mencari teks di sekitar baris "No SJ" dan "Order(Origin)"
-            // Pola 1: Mencari di sekitar teks 'No SJ'
-            if (preg_match('/No SJ\s+Order\(Origin\)\s+Date\s+Input by\s+No Truck\s+Driver Name\s+([A-Z0-9]+)\s+([A-Z0-9]+)\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $matches)) {
-                $extractedData['no_surat_jalan'] = trim($matches[1]); // SJ
-                $extractedData['no_po'] = trim($matches[2]);          // PO
-                $extractedData['date'] = trim("{$matches[3]} {$matches[4]}");
-            } 
-            // Pola 2 (Fallback untuk PDF lama jika ada): Mencari di baris setelah header tabel
-            else if (preg_match('/(SJ[0-9]+|DO-[0-9]{2}-[0-9]+)\s+(P[0-9]+)\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $matches)) {
-                $extractedData['no_surat_jalan'] = trim($matches[1]);
-                $extractedData['no_po'] = trim($matches[2]);
-                $extractedData['date'] = trim("{$matches[3]} {$matches[4]}");
-            }
-            
-            // C. Supplier Name
-            if (preg_match('/Supplier Address : ([A-Za-z\s.,]+?)\s+Komp Industri/', $text, $matches)) {
-                // Mencoba mengambil nama supplier yang paling dekat dengan 'Supplier Address :'
-                // Pola untuk: Universal Lestari Grafika, PT
-                $extractedData['supplier_name'] = trim($matches[1]);
-            } else if (preg_match('/Supplier Address : ([A-Z]+\s*[A-Za-z\s]+\s*),/', $text, $matches)) {
-                // Coba pola alternatif (seperti di PDF lama)
-                $extractedData['supplier_name'] = trim($matches[1]);
-            }
-
-
-            // =======================================================
-            // 3. EKSTRAKSI DETAIL ITEM (Pola: [CODE] Description UoM Quantity)
-            // =======================================================
-
-            // Pola yang diperbarui: [CODE] Deskripsi... UoM Quantity.
-            // Deskripsi sekarang bisa berisi koma dan spasi panjang (misal: Almond & Ginseng Oil 60 ml - R23)
-            // Pattern: \[([0-9]+)\]\s+(.*?)\s+([A-Za-z]{2,5})\s+([0-9\.,]+)
-            $itemPattern = '/\[([0-9]+)\]\s+([A-Za-z0-9\s,&._-]+)\s+([A-Za-z]{2,5})\s+([0-9\.,]+)/';
-
-
-            if (preg_match_all($itemPattern, $text, $matches, PREG_SET_ORDER)) {
-                foreach ($matches as $match) {
-                    // Konversi '5.000,0000' ke '5000.0000'
-                    $quantity = str_replace(['.', ','], ['', '.'], $match[4]); 
+            // No PO (Anchor utama kita)
+            if (preg_match('/(PO[0-9]+)/', $text, $poMatch)) {
+                $extractedData['no_po'] = $poMatch[1];
+                
+                // --- LOGIKA BARU UNTUK NO SURAT JALAN ---
+                // Idenya: No SJ pasti berada tepat SEBELUM No PO.
+                // Regex: Ambil string ([A-Z0-9\/\.\-]+) sebelum spasi dan kata PO...
+                // Kita gunakan preg_match dengan logika lookahead posisi PO
+                
+                // Cari kata apa saja (huruf/angka/garis miring/strip) tepat sebelum PO yang ditemukan
+                // Pattern: KataSpasiPO -> ambil Katanya
+                $escapedPO = preg_quote($poMatch[1], '/');
+                if (preg_match('/([A-Z0-9\/\.\-]+)\s+' . $escapedPO . '/', $text, $sjMatch)) {
+                    $candidateSJ = trim($sjMatch[1]);
                     
+                    // Filter: Karena teks di-flatten, bisa jadi kata sebelumnya adalah Header Kolom
+                    // Daftar kata yang MUNGKIN muncul jika No SJ kosong:
+                    $blacklistWords = ['Order(Origin)', 'Origin)', 'Origin', 'Date', 'SJ', 'No', 'Input', 'Name', 'Truck'];
+                    
+                    // Jika kata yang ditemukan TIDAK ada di blacklist, berarti itu No SJ beneran
+                    if (!in_array($candidateSJ, $blacklistWords) && strlen($candidateSJ) > 2) {
+                        $extractedData['no_surat_jalan'] = $candidateSJ;
+                    }
+                }
+                // -----------------------------------------
+            }
+
+            // Tanggal
+            if (preg_match('/([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $dateMatch)) {
+                $extractedData['date'] = trim("{$dateMatch[1]} {$dateMatch[2]}");
+            }
+            
+            // Supplier
+            if (preg_match('/Supplier Address\s*:\s*(.*?)(?=\s+(?:Contact|Address|Kp\.|Jl\.|Komp|Jalan|Desa|Kecamatan|, PT))/i', $text, $matches)) {
+                 $extractedData['supplier_name'] = trim($matches[1]);
+            }
+
+            // 3. ITEM EXTRACTION (Global Scan)
+            $globalPattern = '/\[(\d+)\]\s+(.*?)\s+([A-Za-z]{1,10})\s+([\d\.,]+)/';
+
+            if (preg_match_all($globalPattern, $text, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $qtyString = str_replace('.', '', $match[4]); 
+                    $qtyString = str_replace(',', '.', $qtyString); 
+
                     $extractedData['items'][] = [
                         'kode_material' => trim($match[1]), 
                         'description' => trim($match[2]),
                         'uom' => trim($match[3]),
-                        'quantity' => floatval($quantity),
+                        'quantity' => floatval($qtyString),
                     ];
                 }
             }
 
-
-            // =======================================================
-            // 4. PEMROSESAN AKHIR (Pencocokan Supplier dan Konversi Tanggal)
-            // =======================================================
-            
-            // A. Konversi Tanggal ke format ISO untuk Vue
-            // ... (Logika konversi tanggal tetap sama)
+            // 4. FINALISASI
+            // Format Tanggal
             if (!empty($extractedData['date'])) {
                 try {
-                    $date = \DateTime::createFromFormat('d/m/Y H:i:s', $extractedData['date']);
-            
-                    if ($date) {
-                        $extractedData['tanggal_terima'] = $date->format('Y-m-d\TH:i'); 
-                    } else {
-                        $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
-                    }
-            
-                } catch (\Exception $e) {
-                    $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
-                }
+                    $dateObj = \DateTime::createFromFormat('d/m/Y H:i:s', $extractedData['date']);
+                    if (!$dateObj) $dateObj = \DateTime::createFromFormat('d/m/Y', $extractedData['date']);
+                    $extractedData['tanggal_terima'] = $dateObj ? $dateObj->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i');
+                } catch (\Exception $e) { $extractedData['tanggal_terima'] = now()->format('Y-m-d\TH:i'); }
             } else {
-                $extractedData['tanggal_terima'] = now()->toDateTimeLocalString('minute');
+                $extractedData['tanggal_terima'] = now()->format('Y-m-d\TH:i');
             }
 
-
-            // B. Cari Supplier di database
-            if (!empty($extractedData['supplier_name'])) {
-                $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . $extractedData['supplier_name'] . '%')
-                                    ->orWhere('nama_supplier', trim($extractedData['supplier_name']))
-                                    ->first();
+            // Lookup Supplier
+             if (!empty($extractedData['supplier_name'])) {
+                $searchName = explode(',', $extractedData['supplier_name'])[0]; 
+                $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . $searchName . '%')->first();
                 if ($supplier) {
                     $extractedData['supplier_name'] = $supplier->nama_supplier;
                     $extractedData['supplier_code'] = $supplier->kode_supplier;
@@ -263,10 +257,7 @@ class GoodsReceiptController extends Controller
             return response()->json($extractedData);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Gagal memproses PDF. Pastikan file dalam format ERP yang didukung.',
-                'details' => $e->getMessage()
-            ], 500); 
+            return response()->json(['error' => 'Gagal memproses PDF.', 'details' => $e->getMessage()], 500); 
         }
     }
 
@@ -322,11 +313,24 @@ class GoodsReceiptController extends Controller
                 }
             }
 
-            // Create incoming good record
+            $purchaseOrder = PurchaseOrder::firstOrCreate(
+                ['no_po' => $validated['noPo']], // Kriteria pencarian
+                [
+                    // Data default jika PO baru dibuat
+                    'supplier_id' => $validated['supplier'], 
+                    'tanggal_po' => now(), 
+                    'status' => 'Open', 
+                    'created_by' => Auth::id() ?? 1
+                ]
+            );
+
+            // 2. Gunakan ID ($purchaseOrder->id), BUKAN string ($validated['noPo'])
             $incoming = IncomingGood::create([
                 'incoming_number' => $incomingNumber,
                 'no_surat_jalan' => $validated['noSuratJalan'],
-                'po_id' => $validated['noPo'],
+                
+                'po_id' => $purchaseOrder->id, // <--- UBAH INI (Pakai ID dari database)
+                
                 'supplier_id' => $validated['supplier'],
                 'no_kendaraan' => $validated['noKendaraan'],
                 'nama_driver' => $validated['namaDriver'],
@@ -371,24 +375,24 @@ class GoodsReceiptController extends Controller
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
-                    'qty_wadah' => $jumlahWadah,
-                    'qty_unit' => $qtyPerWadah, 
+                    'qty_wadah' => $qtyPerWadah,
+                    'qty_unit' => $jumlahWadah, 
 
                     'satuan' => $material->satuan,
                     
                     // Semua field checklist kondisi/coa/label
-                    'kondisi_baik' => $itemData['kondisiBaik'] ?? false,
-                    'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? false,
-                    'coa_ada' => $itemData['coaAda'] ?? false,
-                    'coa_tidak_ada' => $itemData['coaTidakAda'] ?? false,
-                    'label_mfg_ada' => $itemData['labelMfgAda'] ?? false,
-                    'label_mfg_tidak_ada' => $itemData['labelMfgTidakAda'] ?? false,
-                    'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? false,
-                    'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
+                    'kondisi_baik' => $itemData['kondisiBaik'] ?? true,
+                    'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? true,
+                    'coa_ada' => $itemData['coaAda'] ?? true,
+                    'coa_tidak_ada' => $itemData['coaTidakAda'] ?? true,
+                    'label_mfg_ada' => $itemData['labelMfgAda'] ?? true,
+                    'label_mfg_tidak_ada' => $itemData['labelMfgTidakAda'] ?? true,
+                    'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? true,
+                    'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? true,
 
                     'bin_target' => $itemData['binTarget'],
-                    'is_halal' => $itemData['isHalal'] ?? false,
-                    'is_non_halal' => $itemData['isNonHalal'] ?? false,
+                    'is_halal' => $itemData['isHalal'] ?? true,
+                    'is_non_halal' => $itemData['isNonHalal'] ?? true,
                     
                     'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
                     'status_qc' => 'To QC',

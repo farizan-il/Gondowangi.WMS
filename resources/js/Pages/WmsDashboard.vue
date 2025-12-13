@@ -90,19 +90,69 @@
         </div>
       </div>
 
+      <!-- Detailed Metrics Charts -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        
+        <!-- Incoming Trend -->
+        <div class="bg-white p-5 rounded-xl shadow">
+           <h4 class="text-sm font-semibold text-gray-600 mb-2">Incoming Trend (Daily)</h4>
+           <div class="h-48 relative">
+              <Line v-if="chartData.trends.incoming.labels.length" :data="chartData.trends.incoming" :options="lineChartOptions" />
+              <div v-else class="flex h-full items-center justify-center text-gray-400 text-xs">No Data</div>
+           </div>
+        </div>
+
+        <!-- Outgoing Trend -->
+        <div class="bg-white p-5 rounded-xl shadow">
+           <h4 class="text-sm font-semibold text-gray-600 mb-2">Outgoing Trend (Daily)</h4>
+           <div class="h-48 relative">
+              <Line v-if="chartData.trends.outgoing.labels.length" :data="chartData.trends.outgoing" :options="lineChartOptions" />
+              <div v-else class="flex h-full items-center justify-center text-gray-400 text-xs">No Data</div>
+           </div>
+        </div>
+
+        <!-- Lead Time Trend -->
+        <div class="bg-white p-5 rounded-xl shadow">
+           <h4 class="text-sm font-semibold text-gray-600 mb-2">Lead Time Trend (Avg Mins)</h4>
+           <div class="h-48 relative">
+              <Bar v-if="chartData.trends.leadTime.labels.length" :data="chartData.trends.leadTime" :options="verticalBarOptions" />
+              <div v-else class="flex h-full items-center justify-center text-gray-400 text-xs">No Data</div>
+           </div>
+        </div>
+
+        <!-- Stock Accuracy Trend -->
+        <div class="bg-white p-5 rounded-xl shadow">
+           <h4 class="text-sm font-semibold text-gray-600 mb-2">Stock Accuracy Trend (%)</h4>
+           <div class="h-48 relative">
+              <Line v-if="chartData.trends.accuracy.labels.length" :data="chartData.trends.accuracy" :options="lineChartOptions" />
+              <div v-else class="flex h-full items-center justify-center text-gray-400 text-xs">No Data</div>
+           </div>
+        </div>
+      </div>
+
        <!-- Charts Section -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Incoming Breakdown Chart -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Incoming Breakdown Chart (Horizontal Bar) -->
         <div class="bg-white p-6 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4">Incoming by Category (Chart)</h3>
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Incoming by Category</h3>
           <div class="h-64 relative">
-             <Pie v-if="chartData.incoming.labels.length" :data="chartData.incoming" :options="chartOptions" />
+             <Bar v-if="chartData.incoming.labels.length" :data="chartData.incoming" :options="barChartOptions" />
              <div v-else class="flex h-full items-center justify-center text-gray-400">No Data Available</div>
           </div>
         </div>
 
-         <!-- Detailed Material List Table -->
-         <div class="bg-white p-6 rounded-lg shadow">
+        <!-- RM vs PM Comparison (Pie) -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Material Breakdown (RM vs PM)</h3>
+          <div class="h-64 relative">
+             <Pie v-if="chartData.typeBreakdown.labels.length" :data="chartData.typeBreakdown" :options="chartOptions" />
+             <div v-else class="flex h-full items-center justify-center text-gray-400">No Data Available</div>
+          </div>
+        </div>
+      </div>
+
+       <!-- Detailed Material List Table (Below Charts) -->
+       <div class="bg-white p-6 rounded-lg shadow">
           <div class="flex justify-between items-center mb-4">
              <h3 class="text-lg font-semibold text-gray-800">Incoming By Category Details</h3>
              <select v-model="sortOrder" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -131,7 +181,6 @@
              </table>
           </div>
         </div>
-      </div>
 
     </div>
   </AppLayout>
@@ -141,10 +190,10 @@
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ref, onMounted, reactive, computed } from 'vue';
 import axios from 'axios';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
-import { Pie } from 'vue-chartjs'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
+import { Pie, Bar, Line } from 'vue-chartjs'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
+ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement)
 
 const filters = reactive({
   date_start: new Date().toISOString().slice(0, 8) + '01', // First day of current month
@@ -163,18 +212,39 @@ const rawCategoryData = ref([]);
 const sortOrder = ref('high');
 
 const chartData = ref({
-  incoming: {
-    labels: [],
-    datasets: [{
-      backgroundColor: ['#41B883', '#E46651', '#00D8FF', '#DD1B16'],
-      data: []
-    }]
+  incoming: { labels: [], datasets: [] },
+  typeBreakdown: { labels: [], datasets: [] },
+  trends: {
+    incoming: { labels: [], datasets: [] },
+    outgoing: { labels: [], datasets: [] },
+    leadTime: { labels: [], datasets: [] },
+    accuracy: { labels: [], datasets: [] },
   }
 });
 
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false
+}
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: 'y', // Horizontal Bar
+}
+
+const verticalBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+}
+
+const lineChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    tension: 0.3, // Curve
+    scales: {
+        y: { beginAtZero: true }
+    }
 }
 
 const fetchData = async () => {
@@ -195,17 +265,60 @@ const fetchData = async () => {
     // Save Raw Category Data
     rawCategoryData.value = data.incomingByCategory;
 
-    // Update Chart
+    // Update Existing Charts (Main)
     const labels = data.incomingByCategory.map(item => item.kategori || 'Uncategorized');
     const values = data.incomingByCategory.map(item => item.total);
     
     chartData.value.incoming = {
       labels: labels,
       datasets: [{
-        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1'],
+        label: 'Total Items',
+        backgroundColor: '#3B82F6', 
         data: values
       }]
     };
+
+    if (data.incomingByType) {
+       const typeLabels = data.incomingByType.map(item => item.kategori || 'Other');
+       const typeValues = data.incomingByType.map(item => item.total);
+       
+       chartData.value.typeBreakdown = {
+         labels: typeLabels,
+         datasets: [{
+           backgroundColor: ['#F59E0B', '#10B981', '#3B82F6', '#EF4444'], 
+           data: typeValues
+         }]
+       };
+    }
+
+    // --- POPULATE TREND CHARTS ---
+    if (data.trends) {
+        // Helper to map trend
+        const mapTrend = (trendData, label, color) => ({
+            labels: trendData.map(d => d.date),
+            datasets: [{
+                label: label,
+                borderColor: color,
+                backgroundColor: color,
+                data: trendData.map(d => d.value),
+                fill: false
+            }]
+        });
+
+        const mapBar = (trendData, label, color) => ({
+             labels: trendData.map(d => d.date),
+             datasets: [{
+                 label: label,
+                 backgroundColor: color,
+                 data: trendData.map(d => d.value)
+             }]
+        });
+
+        chartData.value.trends.incoming = mapTrend(data.trends.incoming, 'Incoming Items', '#3B82F6');
+        chartData.value.trends.outgoing = mapTrend(data.trends.outgoing, 'Completed Picking', '#10B981'); // Green
+        chartData.value.trends.leadTime = mapBar(data.trends.leadTime, 'Avg Minutes', '#8B5CF6'); // Purple
+        chartData.value.trends.accuracy = mapTrend(data.trends.accuracy, 'Accuracy %', '#F59E0B'); // Yellow
+    }
     
   } catch (error) {
     console.error("Failed to fetch dashboard data", error);

@@ -17,7 +17,32 @@ class ReturnController extends Controller
     use ActivityLogger;
     public function index()
     {
-        return Inertia::render('Return');
+        $suppliers = \App\Models\Supplier::select('nama_supplier')->orderBy('nama_supplier')->get();
+        // Fetch shipments (Incoming Goods) for reference
+        $shipments = \App\Models\IncomingGood::select('incoming_number', 'no_surat_jalan')
+            ->orderBy('created_at', 'desc')
+            ->limit(50) // Limit to recent 50 for performance
+            ->get();
+
+        return Inertia::render('Return', [
+            'suppliers' => $suppliers,
+            'shipments' => $shipments
+        ]);
+    }
+
+    public function getMaterial($code)
+    {
+        $material = \App\Models\Material::where('kode_item', $code)->first();
+
+        if (!$material) {
+            return response()->json(['message' => 'Material not found'], 404);
+        }
+
+        return response()->json([
+            'nama_material' => $material->nama_material,
+            'satuan' => $material->satuan,
+            'id' => $material->id
+        ]);
     }
 
     /**

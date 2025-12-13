@@ -21,6 +21,7 @@ class Material extends Model
         'abc_class',
         'default_supplier_id',
         'status',
+        'Gudang' //RAW MATERIAL dan PACKAGING MATERIAL
     ];
 
     protected $casts = [

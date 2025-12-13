@@ -130,7 +130,74 @@
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Online Users & recent Activities Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Online Users -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Online Users</h3>
+                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full animate-pulse">
+                    {{ onlineUsers.length }} Active
+                </span>
+            </div>
+            
+            <div v-if="onlineUsers.length > 0" class="space-y-4 max-h-96 overflow-y-auto">
+                <div v-for="user in onlineUsers" :key="user.id" class="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="relative">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            {{ user.name.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
+                        <p class="text-xs text-gray-500">{{ user.email }}</p>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="text-center py-8 text-gray-500 text-sm">
+                No users currently online.
+            </div>
+        </div>
+
+        <!-- Recent Activities Feed -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+             <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Recent Activity Feed</h3>
+                <Link href="/activity-log" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">View All</Link>
+            </div>
+
+            <div class="space-y-4">
+                <div v-for="activity in recentActivities" :key="activity.id + activity.module" class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex-shrink-0 mt-1">
+                        <span v-if="activity.module === 'Incoming'" class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">IN</span>
+                        <span v-else-if="activity.module === 'QC'" class="bg-purple-100 text-purple-600 p-1.5 rounded-lg text-xs">QC</span>
+                        <span v-else-if="activity.module === 'Stock Movement'" class="bg-orange-100 text-orange-600 p-1.5 rounded-lg text-xs">MV</span>
+                        <span v-else-if="activity.module === 'Master Data'" class="bg-gray-200 text-gray-700 p-1.5 rounded-lg text-xs">MD</span>
+                        <span v-else class="bg-gray-100 text-gray-600 p-1.5 rounded-lg text-xs">{{ activity.module.substring(0,2).toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900">
+                            <span class="font-bold">{{ activity.user }}</span> 
+                            <span class="font-normal text-gray-600"> performed </span>
+                            <span class="text-blue-600">{{ activity.action }}</span>
+                        </p>
+                        <p class="text-xs text-gray-500 mt-0.5 truncate">{{ activity.description }}</p>
+                    </div>
+                    <div class="text-xs text-gray-400 whitespace-nowrap">
+                        {{ activity.created_at }}
+                    </div>
+                </div>
+                
+                <div v-if="recentActivities.length === 0" class="text-center py-8 text-gray-500">
+                    No recent activities found.
+                </div>
+            </div>
+        </div>
+      </div>
+      
+      </div>
   </AppLayout>
 </template>
 
@@ -168,10 +235,14 @@ ChartJS.register(
 const props = defineProps({
   stats: Object,
   activeUsers: Number,
+  onlineUsers: Array,
   moduleStats: Object,
   hourlyStats: Array,
-  topUsers: Array
+  topUsers: Array,
+  recentActivities: Array
 })
+
+// ... chart configs ...
 
 // Chart Data Configuration
 
