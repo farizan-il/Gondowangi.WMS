@@ -1112,7 +1112,7 @@ const printPickingList = (task) => {
                             <td style="vertical-align: middle;">${item.namaMaterial}</td>
                             <td style="text-align: center; vertical-align: middle;">${item.lotSerial}</td>
                             <td style="text-align: center; vertical-align: middle;">${item.sourceBin}</td>
-                            <td style="text-align: center; vertical-align: middle;">${item.destBin}</td>
+                            <td style="text-align: center; vertical-align: middle;">Production Area</td>
                             <td style="text-align: center; vertical-align: middle;">${item.qtyDiminta}</td>
                             <td style="text-align: center; vertical-align: middle;">${item.uom}</td>
                             <td style="text-align: center; vertical-align: middle;">${item.qtyPicked || ''}</td>

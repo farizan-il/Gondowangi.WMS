@@ -1408,13 +1408,16 @@ const printChecklist = (shipment) => {
   let itemsHTML = ''
   let currentWadahStart = 1;
   let totalWadah = 0;
+  let grandTotalQty = 0;
 
   shipment.items.forEach((item, index) => {
     // Pastikan qtyWadah adalah integer yang valid
     const qtyWadah = parseInt(item.qtyWadah || '0');
+    const qtyUnit = parseInt(item.qtyUnit || '0');
 
     // 2. LAKUKAN PENJUMLAHAN KUMULATIF
     totalWadah += qtyWadah;
+    grandTotalQty += (qtyWadah * qtyUnit);
 
     // Nomor wadah awal adalah nilai kumulatif sebelumnya
     const wadahStart = currentWadahStart;
@@ -1424,6 +1427,15 @@ const printChecklist = (shipment) => {
 
     // Lanjutkan: Perbarui nilai kumulatif untuk baris berikutnya
     currentWadahStart = wadahEnd + 1;
+
+    // Get UoM
+    let uom = 'PCS';
+    if (item.kodeItem) {
+        // Since kodeItem stored in DB might be ID, we try to find by ID first
+        // But props.materials might be accessible here
+        const mat = props.materials.find(m => m.id == item.kodeItem || m.code == item.kodeItem);
+        if (mat) uom = mat.unit;
+    }
 
     // --- Perhitungan Wadah untuk Tampilan ---
     let wadahDisplay;
@@ -1455,7 +1467,7 @@ const printChecklist = (shipment) => {
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
                     ${item.labelMfgTidakAda ? '✓' : ''}
                 </td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">PCS</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">${uom}</td>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">N/A</td>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">N/A</td>
                 <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle;">${item.qtyUnit ? parseInt(item.qtyUnit) : ''}</td>
@@ -1834,6 +1846,10 @@ const printChecklist = (shipment) => {
                     <tr>
                         <td class="field-label">Jumlah Wadah</td>
                         <td class="field-value">${totalWadah}</td>
+                    </tr>
+                    <tr>
+                        <td class="field-label">Total Quantity</td>
+                        <td class="field-value">${grandTotalQty}</td>
                     </tr>
                     <tr>
                         <td class="field-label">Tgl. Diterima</td>
@@ -2347,7 +2363,7 @@ const printSingleQR = (labelData) => {
             <body>
                 <div class="label-container">
                     <div class="header">
-                        <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" alt="Logo Gondowangi" class="logo-img">
+                        <img src="https://gondowangi.com/assets/logo/Logo-gondowangi-berwarna.png" alt="Logo Gondowangi" class="logo-img">
                         
                         <div class="status-box">KARANTINA</div>
                     </div>
@@ -2433,7 +2449,7 @@ const printAllQR = () => {
   // Ditetapkan menjadi 6 label per halaman (2 kolom x 3 baris)
   const LABELS_PER_PAGE = 6;
 
-  const LOGO_URL = "https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png";
+  const LOGO_URL = "https://gondowangi.com/assets/logo/Logo-gondowangi-berwarna.png";
   let pagesHTML = '';
 
   for (let i = 0; i < allLabels.length; i += LABELS_PER_PAGE) {
@@ -2442,21 +2458,26 @@ const printAllQR = () => {
 
     pageLabels.forEach((labelData, labelIndex) => {
       const globalIndex = i + labelIndex;
-      // Perhatikan: Dalam skenario cetak semua, canvas QR harus di-render terlebih dahulu
-      // pada dokumen utama sebelum dipanggil di sini.
+      
+      // Ambil canvas berdasarkan index global
       const canvas = document.querySelector(`canvas[data-qr-canvas="${globalIndex}"]`);
       let qrDataURL = '';
 
-      // Asumsi QR hanya dicetak untuk wadah pertama
-      const isFirstWadah = labelData.wadahKe === 1;
-
-      if (isFirstWadah && canvas) {
+      // --- PERBAIKAN DI SINI ---
+      // Sebelumnya ada pengecekan: const isFirstWadah = labelData.wadahKe === 1;
+      // Pengecekan itu dihapus agar SEMUA wadah mendapatkan gambar QR-nya masing-masing.
+      
+      if (canvas) {
+        // Ambil data gambar dari canvas yang sudah digenerate di modal
         qrDataURL = canvas.toDataURL('image/png');
       }
 
-      const qrContentHtml = isFirstWadah ?
+      // Jika qrDataURL ada, tampilkan gambar. Jika tidak (error generate), tampilkan placeholder.
+      const qrContentHtml = qrDataURL ?
         `<img src="${qrDataURL}" class="qr-code" alt="QR Code">` :
-        `<div class="qr-placeholder">NO QR</div>`;
+        `<div class="qr-placeholder">ERROR</div>`;
+
+      // -------------------------
 
       const formattedTglDatang = formatDateOnly(selectedShipment.value.tanggalTerima);
       const formattedExpDate = formatDateOnly(labelData.expDate);
@@ -2579,19 +2600,19 @@ const printAllQR = () => {
                 }
                 
                 /* ===========================================
-                   GAYA DARI printSingleQR (Diselaraskan)
+                   GAYA LABEL
                    =========================================== */
 
                 .label-container {
                     width: 100%; 
                     height: 100%; 
                     border: 2px solid #000;
-                    padding: 5px; /* Padding mirip single QR */
+                    padding: 5px; 
                     box-sizing: border-box;
                     background-color: #fff;
                     display: flex;
                     flex-direction: column;
-                    font-size: 10px; /* Font size dinaikkan agar mirip single QR */
+                    font-size: 10px; 
                 }
                 .header {
                     display: flex;
@@ -2602,13 +2623,13 @@ const printAllQR = () => {
                     margin-bottom: 5px; 
                 }
                 .logo-img {
-                    width: 130px; /* Ukuran logo dikembalikan ke single QR */
+                    width: 130px; 
                     height: auto;
                     margin-bottom: 5px;
                 }
                 .status-box {
                     margin-top: 5px;
-                    border-top: 0.8px solid #000; /* Menggunakan 2px agar tebal seperti border header/footer */
+                    border-top: 0.8px solid #000; 
                     border-bottom: none;
                     border-left: none;
                     border-right: none;
@@ -2625,7 +2646,7 @@ const printAllQR = () => {
                     display: flex;
                     flex-grow: 1;
                     padding-top: 5px;
-                    gap: 10px; /* Jarak dikembalikan ke single QR */
+                    gap: 10px; 
                 }
                 .info-section {
                     flex: 1;
@@ -2639,7 +2660,7 @@ const printAllQR = () => {
                     align-items: baseline;
                 }
                 .info-label {
-                    width: 80px; /* Lebar label teks dikembalikan ke single QR */
+                    width: 80px; 
                     min-width: 80px;
                     font-weight: normal;
                     flex-shrink: 0;
@@ -2655,7 +2676,7 @@ const printAllQR = () => {
                 }
 
                 .qr-section {
-                    width: 80px; /* Ukuran QR Code dikembalikan ke single QR */
+                    width: 80px; 
                     height: 80px; 
                     display: flex;
                     flex-direction: column;
@@ -2668,7 +2689,7 @@ const printAllQR = () => {
                     height: 100%;
                     border: 1px solid #ccc;
                 }
-                .qr-placeholder { /* Gaya untuk NO QR */
+                .qr-placeholder { 
                     width: 100%;
                     height: 100%;
                     border: 1px dashed #999;
@@ -2683,7 +2704,7 @@ const printAllQR = () => {
                 .footer {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 10px; /* Font footer dikembalikan ke single QR */
+                    font-size: 10px; 
                     border-top: 2px solid #000;
                     padding-top: 25px;
                     margin-top: 5px;

@@ -8,17 +8,6 @@
             <h1 class="text-3xl font-bold text-gray-900">Central Data WMS</h1>
             <p class="text-gray-600 mt-1">Kelola semua material di gudang</p>
           </div>
-          <div class="flex items-center space-x-4">
-            <!-- QR Scanner -->
-            <button @click="openQRScanner"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5a3 3 0 000 6H4V4zm3 2h.01M8 16h.01" />
-              </svg>
-              <span>Scan QR</span>
-            </button>
-          </div>
         </div>
 
         <!-- Alerts/Notifications -->
@@ -82,8 +71,8 @@
                   </div>
                   <!-- Info -->
                   <div>
-                    <h3 class="text-2xl font-bold mb-1">{{ expiredMaterialsCount }} Material Expired!</h3>
-                    <p class="text-red-100 text-sm">Pilih material yang sudah di bin QRT untuk proses Re-QC</p>
+                    <h3 class="text-2xl font-bold mb-1">{{ expiredMaterialsCount }} Material Expired / Near Expiry!</h3>
+                    <p class="text-red-100 text-sm">Pilih material yang sudah/hampir expired (H-30) di bin QRT untuk proses Re-QC</p>
                     <p class="text-red-100 text-xs mt-1">Bin QRT: QRT-HALAL, QRT-NON HALAL, QRT-HALAL-AC</p>
                   </div>
                 </div>
@@ -910,12 +899,16 @@ const filteredItems = computed(() => {
   return filtered
 })
 
-// Expired Materials Computed
+// Expired Materials Computed (Includes Near Expiry 30 Days)
 const expiredMaterials = computed(() => {
   const now = new Date()
+  const thirtyDaysFromNow = new Date()
+  thirtyDaysFromNow.setDate(now.getDate() + 30)
+  
   return props.materialItems.filter(item => {
     const expiredDate = new Date(item.expiredDate)
-    return expiredDate < now
+    // Allow Re-QC for items that are Expired OR Expiring within 30 days
+    return expiredDate <= thirtyDaysFromNow
   })
 })
 

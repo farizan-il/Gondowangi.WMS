@@ -181,9 +181,9 @@ class DashboardController extends Controller
             $processedCount = 0;
 
             foreach ($stocks as $stock) {
-                // Validate material is expired
-                if (!$stock->isExpired()) {
-                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) belum expired.";
+                // Validate material is expired or near expiry (30 days)
+                if (!$stock->isExpiringSoon(30)) {
+                    $errors[] = "Material {$stock->material->nama_material} (Batch: {$stock->batch_lot}) belum mendekati expired (masih > 30 hari).";
                     continue;
                 }
 
@@ -235,7 +235,7 @@ class DashboardController extends Controller
                     'reqc_number' => $this->generateReqcNumber(),
                     'old_status' => $oldStatus,
                     'old_exp_date' => $stock->exp_date,
-                    'reason' => 'Material Expired',
+                    'reason' => 'Material Expired / Near Expiry',
                     'initiated_by' => auth()->id(),
                     'initiated_at' => now(),
                     'status' => 'PENDING',

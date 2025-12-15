@@ -58,7 +58,8 @@ class PickingListController extends Controller
         
         // $request di sini adalah objek Model ReservationRequest
         $requesterName = optional($request->requestedBy)->name ?? 'Requester Missing';
-        $departemen = $request->departemen ?? '-';
+        // Fallback ke departemen user jika di request kosong
+        $departemen = $request->departemen ?? optional($request->requestedBy)->departement ?? '-';
 
         return [
             'id' => $request->id,

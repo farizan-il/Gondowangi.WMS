@@ -63,4 +63,12 @@ class StockMovement extends Model
     {
         return $this->belongsTo(User::class, 'executed_by');
     }
+
+    /**
+     * Alias for executedBy relationship to support generic generic eager loading
+     */
+    public function user(): BelongsTo
+    {
+        return $this->executedBy();
+    }
 }
