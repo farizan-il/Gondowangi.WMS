@@ -258,7 +258,7 @@ const fetchData = async () => {
     // Update Metrics
     metrics.value.totalIncoming = data.totalIncoming;
     metrics.value.totalOutgoing = data.totalOutgoing;
-    metrics.value.leadTime = data.leadTime;
+    metrics.value.leadTime = data.leadTime.toString().replace('-', '');
     metrics.value.stockAccuracy = data.stockAccuracy;
     metrics.value.skuOnHand = data.skuOnHand;
 

@@ -278,6 +278,10 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
             ->middleware('permission:return.view')
             ->name('return');
         
+        Route::post('/return/parse-pdf', [ReturnController::class, 'parsePdf'])
+             ->middleware('permission:return.create') // Assuming create permission is appropriate
+             ->name('return.parse-pdf');
+        
 
         // Cycle Count
         // Route::prefix('cycle-count')->name('cycle-count.')->group(function () {

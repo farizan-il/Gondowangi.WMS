@@ -82,7 +82,7 @@ class DashboardController extends Controller
                     'id' => 'INV-' . $item->id,
                     'source_table' => 'inventory_stock',
                     'type' => $item->material->kategori,
-                    'sub_kategori' => $item->material->sub_kategori,
+                    'subkategori' => $item->material->subkategori,
                     'kode' => $item->material->kode_item,
                     'nama' => $item->material->nama_material,
                     'lot' => $item->batch_lot,

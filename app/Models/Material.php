@@ -12,8 +12,7 @@ class Material extends Model
     protected $fillable = [
         'kode_item',
         'nama_material',
-        'kategori',
-        'sub_kategori',
+        'subkategori',
         'satuan',
         'deskripsi',
         'qc_required',
@@ -21,7 +20,7 @@ class Material extends Model
         'abc_class',
         'default_supplier_id',
         'status',
-        'Gudang' //RAW MATERIAL dan PACKAGING MATERIAL
+        'kategori' //RAW MATERIAL dan PACKAGING MATERIAL
     ];
 
     protected $casts = [

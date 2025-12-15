@@ -176,6 +176,37 @@
                 </div>
               </div>
 
+              <!-- PDF Upload Section for Production Return -->
+              <div v-if="newReturn.type === 'Production'" class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label class="block text-sm font-medium text-blue-900 mb-2">Upload PDF ERP (Return dari Produksi)</label>
+                <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <input 
+                        type="file" 
+                        accept="application/pdf"
+                        @change="handleFileUpload"
+                        class="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-100 file:text-blue-700
+                            hover:file:bg-blue-200"
+                    />
+                    <button 
+                        @click="processErpPdf" 
+                        :disabled="!erpPdfFile || isProcessingErp"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap min-w-[140px]"
+                    >
+                        <svg v-if="isProcessingErp" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span v-if="isProcessingErp">Memproses...</span>
+                        <span v-else>Proses PDF</span>
+                    </button>
+                </div>
+                <p class="text-xs text-blue-600 mt-2">Upload file PDF "Internal Shipment" (Return) untuk mengisi form otomatis.</p>
+              </div>
+
               <!-- Header Info -->
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -471,7 +502,7 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-
+import axios from 'axios'
 import { ref, computed, onMounted } from 'vue'
 
 // Types
@@ -516,7 +547,12 @@ const reasonFilter = ref('')
 // Modals
 const showAddModal = ref(false)
 const showDetailModal = ref(false)
+
 const selectedReturn = ref<ReturnItem | null>(null)
+
+// PDF Upload State
+const erpPdfFile = ref<File | null>(null)
+const isProcessingErp = ref(false)
 
 // Form data
 const newReturn = ref({
@@ -625,6 +661,66 @@ const addItem = () => {
     reason: ''
   })
 }
+
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  erpPdfFile.value = target.files ? target.files[0] : null;
+}
+
+const processErpPdf = async () => {
+  if (!erpPdfFile.value) return;
+  isProcessingErp.value = true;
+  
+  try {
+    const formData = new FormData();
+    formData.append('erp_pdf', erpPdfFile.value);
+    
+    // Gunakan axios untuk upload file
+    const response = await axios.post('/transaction/return/parse-pdf', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    
+    const data = response.data;
+    
+    // 1. Set Date
+    if (data.formatted_date) {
+        newReturn.value.date = data.formatted_date;
+    }
+    
+    // 2. Set Items
+    newReturn.value.items = []; // Reset existing
+    
+    data.items.forEach((item: any) => {
+        // Cek jika Qty valid
+        if (item.qty > 0) {
+            newReturn.value.items.push({
+                itemCode: item.item_code,
+                itemName: item.description, // Sementara pakai deskripsi dari PDF
+                lotBatch: '', // PDF return produksi kadang tidak mencantumkan batch spesifik per baris
+                qty: item.qty,
+                uom: 'PCS', // Default, nanti diupdate fetchMaterial
+                reason: 'Excess Production' // Default reason
+            });
+        }
+    });
+
+    // 3. Sync Item Details (Name & UoM) with Master Data
+    newReturn.value.items.forEach((_, index) => {
+        fetchMaterial(index);
+    });
+
+    alert(`Berhasil memuat ${newReturn.value.items.length} item dari PDF.`);
+    
+  } catch (error: any) {
+    console.error('Error processing PDF:', error);
+    alert('Gagal memproses file PDF: ' + (error.response?.data?.error || error.message));
+  } finally {
+    isProcessingErp.value = false;
+  }
+}
+
 
 // Material Lookup
 const fetchMaterial = async (index: number) => {

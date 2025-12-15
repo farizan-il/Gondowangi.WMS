@@ -155,21 +155,33 @@ class ReservationController extends Controller
      */
     private function getMaterialAndStock($materialCode, $materialCategory, $uom)
     {
-        // Logika DB lookup harus ada di sini (tetap sama)
+        // 1. Coba pencarian KETAT terlebih dahulu (Kode + Kategori + Satuan)
         $material = Material::where('kode_item', $materialCode)
                             ->where('kategori', $materialCategory)
                             ->where('satuan', 'LIKE', $uom) 
                             ->first();
 
+        // 2. Jika gagal, coba (Kode + Kategori) saja
         if (!$material) {
             $material = Material::where('kode_item', $materialCode)
                                 ->where('kategori', $materialCategory)
                                 ->first();
-            if (!$material) {
-                return null;
-            }
         }
 
+        // 3. Fallback TERAKHIR: Cari hanya berdasarkan KODE ITEM (abaikan kategori/satuan)
+        // Ini untuk menangani kasus di mana kategori di PDF berbeda dengan di Sistem
+        if (!$material) {
+             $material = Material::where('kode_item', $materialCode)->first();
+             
+             // Opsional: Log warning jika ditemukan via fallback
+             if ($material) {
+                 \Log::warning("Material found via fallback (Code Only): {$materialCode}. Expected Cat: {$materialCategory}, Actual: {$material->kategori}");
+             } else {
+                 return null; // Benar-benar tidak ada
+             }
+        }
+
+        // Ambil stok dari inventory stock
         $totalAvailableStock = InventoryStock::where('material_id', $material->id)->sum('qty_available');
 
         return [
@@ -179,6 +191,7 @@ class ReservationController extends Controller
             'namaMaterial' => $material->nama_material,
             'satuan' => $material->satuan, 
             'stokAvailable' => (float) $totalAvailableStock,
+            'kategori' => $material->kategori // Sertakan kategori asli untuk referensi
         ];
     }
     
@@ -412,8 +425,20 @@ class ReservationController extends Controller
             // Menjumlahkan qty_available dari semua baris stok material yang sama
             ->selectRaw('SUM(inventory_stock.qty_available) as total_available_stock')
             // Apply Filters (Gudang or Category)
-            ->when($categoryFilter, fn($q) => $q->where('materials.kategori', $categoryFilter))
-            ->when($gudangFilter, fn($q) => $q->where('materials.Gudang', $gudangFilter))
+            // Apply Filters (Gudang or Category) - RELAXED VERSION
+            // Hanya filter jika benar-benar spesifik, tapi ijinkan pencarian global jika query ada
+            ->when($categoryFilter, function($q) use ($categoryFilter, $query) {
+                 // Jika ada query search, kita bisa lebih toleran (cari global)
+                 // TAPI untuk list default (tanpa query), gunakan filter
+                 if (!$query) { 
+                     $q->where('materials.kategori', $categoryFilter); 
+                 }
+            })
+            ->when($gudangFilter, function($q) use ($gudangFilter, $query) {
+                 if (!$query) {
+                    $q->where('materials.Gudang', $gudangFilter);
+                 }
+            })
             ->where(function ($q) use ($query) {
                 // Mencari berdasarkan kode item atau nama material
                 $q->where('materials.kode_item', 'like', '%' . $query . '%')

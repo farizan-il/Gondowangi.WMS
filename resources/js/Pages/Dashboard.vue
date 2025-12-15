@@ -232,7 +232,7 @@
                     {{ item.type }}
                   </span>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.sub_kategori || '-' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.subkategori || '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.kode }}</td>
                 <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.lot }}</td>
@@ -692,7 +692,7 @@ const props = defineProps<{
 interface MaterialItem {
   id: string
   type: 'Raw Material' | 'Packaging Material'
-  sub_kategori?: string
+  subkategori?: string
   kode: string
   nama: string
   lot: string
@@ -793,8 +793,8 @@ onMounted(async () => {
 
 // Table columns
 const tableColumns = [
-  { key: 'type', label: 'Sub Kategori' },
-  { key: 'sub_kategori', label: 'Kategori' },
+  { key: 'type', label: 'kategori' },
+  { key: 'subkategori', label: 'Sub Kategori' },
   { key: 'kode', label: 'Kode' },
   { key: 'nama', label: 'Nama Material' },
   { key: 'lot', label: 'Serial/Lot' },
