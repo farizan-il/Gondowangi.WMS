@@ -33,7 +33,7 @@ class MasterDataController extends Controller
 
     public function index()
     {
-        $skuPaginator = Material::with('defaultSupplier')->paginate(self::PER_PAGE);
+        $skuPaginator = Material::paginate(self::PER_PAGE);
         $supplierPaginator = Supplier::paginate(self::PER_PAGE);
         $binPaginator = WarehouseBin::with('zone')->paginate(self::PER_PAGE);
         $userPaginator = User::with('role')->paginate(self::PER_PAGE);
