@@ -275,12 +275,26 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])
-            ->middleware('permission:return.view')
+             //->middleware('permission:return.view')
             ->name('return');
         
         Route::post('/return/parse-pdf', [ReturnController::class, 'parsePdf'])
-             ->middleware('permission:return.create') // Assuming create permission is appropriate
+             // ->middleware('permission:return.create')  Assuming create permission is appropriate
              ->name('return.parse-pdf');
+        
+        // Return from Production endpoints
+        Route::get('/return/dept-reservations', [ReturnController::class, 'getDeptReservations'])
+            // ->middleware('permission:return.view')
+            ->name('return.dept-reservations');
+
+        Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails'])
+            // ->middleware('permission:return.view')
+            ->name('return.reservation-details');
+        
+        // Store Return (General)
+        Route::post('/return', [ReturnController::class, 'store'])
+            // ->middleware('permission:return.create') // Or appropriate permission
+            ->name('return.store');
         
 
         // Cycle Count

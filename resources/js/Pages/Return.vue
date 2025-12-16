@@ -52,11 +52,12 @@
               <select v-model="reasonFilter"
                 class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm col-span-2 sm:col-span-1">
                 <option value="">Semua Reason</option>
-                <option value="QC Reject">QC Reject</option>
-                <option value="Expired">Expired</option>
-                <option value="Damage">Damage</option>
-                <option value="Excess Production">Excess Production</option>
-                <option value="Wrong Delivery">Wrong Delivery</option>
+                <option value="Gagal QC">Gagal QC</option>
+                <option value="Kadaluarsa">Kadaluarsa</option>
+                <option value="Rusak">Rusak</option>
+                <option value="Kelebihan Produksi">Kelebihan Produksi</option>
+                <option value="Salah Kirim">Salah Kirim</option>
+                <option value="Lainnya">Lainnya</option>
               </select>
             </div>
           </div>
@@ -82,7 +83,7 @@
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="returnItem in filteredReturns" :key="returnItem.id" class="hover:bg-gray-50">
-                  <!-- <td class="px-6 py-4 whitespace-nowrap">
+                  <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">{{ returnItem.returnNumber }}</div>
                     <div class="text-sm text-gray-500">{{ returnItem.type }}</div>
                   </td>
@@ -127,7 +128,7 @@
                     >
                       Cetak Slip
                     </button>
-                  </td> -->
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -136,7 +137,7 @@
 
         <!-- Modal Add Return -->
         <div v-if="showAddModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-          <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200">
+          <div class="bg-white rounded-lg p-6 w-full max-w-7xl max-h-screen overflow-y-auto border border-gray-200">
             <div class="flex justify-between items-center mb-6">
               <h3 class="text-xl font-semibold text-gray-900">Buat Return Baru</h3>
               <button 
@@ -223,33 +224,44 @@
                     {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
                   </label>
                   <select 
+                    v-if="newReturn.type === 'Supplier'"
                     v-model="newReturn.supplier" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Pilih {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Departemen' }}</option>
-                    <template v-if="newReturn.type === 'Supplier'">
-                      <option v-for="sup in suppliers" :key="sup.id" :value="sup.nama_supplier">
-                        {{ sup.nama_supplier }}
-                      </option>
-                    </template>
-                    <template v-else>
-                      <option value="Production Line 1">Production Line 1</option>
-                      <option value="Production Line 2">Production Line 2</option>
-                      <option value="Assembly Department">Assembly Department</option>
-                    </template>
+                    <option value="">Pilih Supplier</option>
+                    <option v-for="sup in suppliers" :key="sup.nama_supplier" :value="sup.nama_supplier">
+                      {{ sup.nama_supplier }}
+                    </option>
                   </select>
+                  <input 
+                    v-else
+                    :value="userDept"
+                    readonly
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                  >
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">No Shipment / Reservasi</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                     No Shipment {{ newReturn.type == 'Production' ? '/ Reservasi' : '' }}
+                  </label>
                   <select 
                     v-model="newReturn.shipmentNo" 
+                    @change="newReturn.type === 'Production' ? fetchReservationDetails() : null"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Pilih (Opsional)</option>
-                     <option v-for="ship in shipments" :key="ship.incoming_number" :value="ship.incoming_number">
-                        {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
-                     </option>
+                    <option value="">Pilih</option>
+                    <template v-if="newReturn.type === 'Supplier'">
+                         <option v-for="ship in shipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                            {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
+                         </option>
+                    </template>
+                    <template v-else>
+                         <option v-for="res in deptReservations" :key="res" :value="res">
+                            {{ res }}
+                         </option>
+                    </template>
                   </select>
                 </div>
               </div>
@@ -273,6 +285,7 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot/Batch</th>
+                        <th v-if="newReturn.type === 'Production'" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Diberikan</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Return</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
@@ -307,6 +320,15 @@
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
                           >
                         </td>
+                         <!-- New Column: Qty Diberikan (Original) -->
+                        <td v-if="newReturn.type === 'Production'" class="px-4 py-3">
+                            <input 
+                            :value="item.originalQty || '-'"
+                            type="text" 
+                            readonly
+                            class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                          >
+                        </td>
                         <td class="px-4 py-3">
                           <input 
                             v-model="item.qty"
@@ -316,27 +338,25 @@
                           >
                         </td>
                         <td class="px-4 py-3">
-                          <select 
+                          <input 
                             v-model="item.uom" 
+                            type="text"
+                            placeholder="Satuan"
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
                           >
-                            <option value="PCS">PCS</option>
-                            <option value="BOX">BOX</option>
-                            <option value="KG">KG</option>
-                            <option value="LITER">LITER</option>
-                          </select>
                         </td>
                         <td class="px-4 py-3">
                           <select 
                             v-model="item.reason" 
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
                           >
-                            <option value="">Pilih Reason</option>
-                            <option value="QC Reject">QC Reject</option>
-                            <option value="Expired">Expired</option>
-                            <option value="Damage">Damage</option>
-                            <option value="Excess Production">Excess Production</option>
-                            <option value="Wrong Delivery">Wrong Delivery</option>
+                            <option value="">Pilih Alasan</option>
+                            <option value="Gagal QC">Gagal QC</option>
+                            <option value="Kadaluarsa">Kadaluarsa</option>
+                            <option value="Rusak">Rusak</option>
+                            <option value="Kelebihan Produksi">Kelebihan Produksi</option>
+                            <option value="Salah Kirim">Salah Kirim</option>
+                            <option value="Lainnya">Lainnya</option>
                           </select>
                         </td>
                         <td class="px-4 py-3">
@@ -503,7 +523,8 @@
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
 import axios from 'axios'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
 
 // Types
 interface ReturnItem {
@@ -529,11 +550,14 @@ interface NewReturnItem {
   qty: number
   uom: string
   reason: string
+  originalQty?: number
 }
 
 const props = defineProps({
   suppliers: Array,
-  shipments: Array
+  shipments: Array,
+  userDept: String,
+  initialReturns: Array
 })
 
 // Reactive data
@@ -549,6 +573,7 @@ const showAddModal = ref(false)
 const showDetailModal = ref(false)
 
 const selectedReturn = ref<ReturnItem | null>(null)
+const deptReservations = ref<string[]>([]) // Store reservation numbers
 
 // PDF Upload State
 const erpPdfFile = ref<File | null>(null)
@@ -562,6 +587,17 @@ const newReturn = ref({
   shipmentNo: '',
   items: [] as NewReturnItem[]
 })
+
+watch(() => newReturn.value.type, (newType) => {
+    if (newType === 'Production') {
+        newReturn.value.supplier = props.userDept || '';
+        fetchDeptReservations();
+    } else {
+        newReturn.value.supplier = '';
+        newReturn.value.shipmentNo = '';
+        newReturn.value.items = [];
+    }
+});
 
 const message = ref<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -588,7 +624,11 @@ const productionReturns = computed(() => returns.value.filter(r => r.type === 'P
 const pendingReturns = computed(() => returns.value.filter(r => r.status !== 'Completed').length)
 
 const canSaveReturn = computed(() => {
-  const hasBasicInfo = newReturn.value.type && newReturn.value.date && newReturn.value.supplier
+  // For Production, supplier field acts as Department (optional check) or validated by backend
+  const hasBasicInfo = newReturn.value.type && newReturn.value.date
+  
+  if (newReturn.value.type === 'Supplier' && !newReturn.value.supplier) return false
+
   const hasValidItems = newReturn.value.items.length > 0 &&
     newReturn.value.items.every(item =>
       item.itemCode && item.itemName && item.lotBatch && item.qty > 0 && item.uom && item.reason
@@ -597,6 +637,40 @@ const canSaveReturn = computed(() => {
 })
 
 // Methods
+const fetchDeptReservations = async () => {
+    try {
+        const response = await axios.get('/transaction/return/dept-reservations');
+        deptReservations.value = response.data;
+    } catch (e) {
+        console.error('Error fetching department reservations', e);
+    }
+}
+
+const fetchReservationDetails = async () => {
+    if (!newReturn.value.shipmentNo) return;
+    
+    try {
+        const response = await axios.get('/transaction/return/reservation-details', {
+            params: { no: newReturn.value.shipmentNo }
+        });
+        const items = response.data;
+        
+        newReturn.value.items = items.map((item: any) => ({
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            lotBatch: item.batch_lot,
+            qty: 0, // Default return qty
+            uom: item.uom,
+            reason: 'Excess Production', // Default reason
+            originalQty: item.original_qty // New field to display original reserved qty
+        }));
+        
+    } catch (e) {
+        console.error('Error fetching reservation details', e);
+        alert('Gagal mengambil detail reservasi.');
+    }
+}
+
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value
   localStorage.setItem('darkMode', JSON.stringify(isDarkMode.value))
@@ -627,15 +701,15 @@ const getStatusClass = (status: string) => {
 const getReasonClass = (reason: string) => {
   const baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full'
   switch (reason) {
-    case 'QC Reject':
+    case 'Gagal QC':
       return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`
-    case 'Expired':
+    case 'Kadaluarsa':
       return `${baseClasses} bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400`
-    case 'Damage':
+    case 'Rusak':
       return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400`
-    case 'Excess Production':
+    case 'Kelebihan Produksi':
       return `${baseClasses} bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`
-    case 'Wrong Delivery':
+    case 'Salah Kirim':
       return `${baseClasses} bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400`
     default:
       return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`
@@ -764,42 +838,26 @@ const resetForm = () => {
 const saveReturn = () => {
   if (!canSaveReturn.value) return
 
-  // Create return records for each item
-  newReturn.value.items.forEach((item, index) => {
-    const returnRecord: ReturnItem = {
-      id: `${Date.now()}_${index}`,
-      returnNumber: generateReturnNumber(),
-      date: newReturn.value.date,
-      type: newReturn.value.type as 'Supplier' | 'Production',
-      supplier: newReturn.value.supplier,
-      shipmentNo: newReturn.value.shipmentNo,
-      itemCode: item.itemCode,
-      itemName: item.itemName,
-      lotBatch: item.lotBatch,
-      qty: item.qty,
-      uom: item.uom,
-      reason: item.reason,
-      status: 'Submitted'
+  router.post('/transaction/return', newReturn.value, {
+    preserveScroll: true,
+    onSuccess: (page: any) => {
+      if (page.props.flash?.error) {
+          showMessage('error', page.props.flash.error)
+          console.error("Server Error:", page.props.flash.error)
+      } else {
+          closeAddModal()
+          showMessage('success', 'Return berhasil disimpan.')
+      }
+    },
+    onError: (errors: any) => {
+      console.error('Save Return Error:', errors)
+      let msg = 'Gagal menyimpan return.'
+      // Simple error handling
+      if (errors.shipmentNo) msg = errors.shipmentNo
+      if (errors.date) msg = errors.date
+      showMessage('error', msg)
     }
-
-    returns.value.unshift(returnRecord)
   })
-
-  // Simulate stock movement
-  const stockMovement = {
-    type: newReturn.value.type,
-    items: newReturn.value.items.map(item => ({
-      itemCode: item.itemCode,
-      qty: item.qty,
-      from: newReturn.value.type === 'Supplier' ? 'Reject Bin' : 'Production Bin',
-      to: newReturn.value.type === 'Supplier' ? 'Outbound (Supplier)' : 'Quarantine/Available Bin'
-    }))
-  }
-
-  console.log('Stock Movement:', stockMovement)
-
-  showMessage('success', `Return berhasil dibuat dengan ${newReturn.value.items.length} item`)
-  closeAddModal()
 }
 
 const viewDetail = (returnItem: ReturnItem) => {
@@ -918,83 +976,22 @@ onMounted(() => {
     isDarkMode.value = JSON.parse(savedDarkMode)
   }
 
-  // Initialize dummy data
-  returns.value = [
-    {
-      id: '1',
-      returnNumber: 'RET24091901',
-      date: '2024-09-19T00:00:00Z',
-      type: 'Supplier',
-      supplier: 'PT. Supplier A',
-      shipmentNo: 'SHP240919001',
-      itemCode: 'ITM001',
-      itemName: 'Raw Material A - Quality Issue',
-      lotBatch: 'LOT240915001',
-      qty: 25,
-      uom: 'PCS',
-      reason: 'QC Reject',
-      status: 'Submitted'
-    },
-    {
-      id: '2',
-      returnNumber: 'RET24091902',
-      date: '2024-09-19T00:00:00Z',
-      type: 'Production',
-      supplier: 'Production Line 1',
-      itemCode: 'ITM002',
-      itemName: 'Semi Finished Goods B',
-      lotBatch: 'LOT240918002',
-      qty: 15,
-      uom: 'BOX',
-      reason: 'Excess Production',
-      status: 'Completed'
-    },
-    {
-      id: '3',
-      returnNumber: 'RET24091903',
-      date: '2024-09-18T00:00:00Z',
-      type: 'Supplier',
-      supplier: 'PT. Supplier B',
-      shipmentNo: 'RES240918003',
-      itemCode: 'ITM003',
-      itemName: 'Chemical Component C',
-      lotBatch: 'LOT240910003',
-      qty: 50,
-      uom: 'LITER',
-      reason: 'Expired',
-      status: 'Completed'
-    },
-    {
-      id: '4',
-      returnNumber: 'RET24091904',
-      date: '2024-09-18T00:00:00Z',
-      type: 'Supplier',
-      supplier: 'PT. Supplier C',
-      itemCode: 'ITM004',
-      itemName: 'Packaging Material D',
-      lotBatch: 'LOT240917004',
-      qty: 100,
-      uom: 'PCS',
-      reason: 'Damage',
-      status: 'Submitted'
-    },
-    {
-      id: '5',
-      returnNumber: 'RET24091905',
-      date: '2024-09-17T00:00:00Z',
-      type: 'Production',
-      supplier: 'Assembly Department',
-      itemCode: 'ITM005',
-      itemName: 'Electronic Component E',
-      lotBatch: 'LOT240916005',
-      qty: 30,
-      uom: 'PCS',
-      reason: 'Wrong Delivery',
-      status: 'Draft'
-    }
-  ]
+  fetchDeptReservations();
+
+  if (props.initialReturns) {
+    returns.value = props.initialReturns as ReturnItem[]
+  }
+
+
 
   // Initialize with one item for demo
   addItem()
 })
+
+watch(() => props.initialReturns, (newVal) => {
+  if (newVal) {
+    returns.value = newVal as ReturnItem[]
+  }
+}, { immediate: true })
+
 </script>

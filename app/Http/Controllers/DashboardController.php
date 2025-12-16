@@ -81,7 +81,7 @@ class DashboardController extends Controller
                 return [
                     'id' => 'INV-' . $item->id,
                     'source_table' => 'inventory_stock',
-                    'type' => $item->material->kategori,
+                    'type' => ucwords(strtolower($item->material->kategori ?? '-')),
                     'subkategori' => $item->material->subkategori,
                     'kode' => $item->material->kode_item,
                     'nama' => $item->material->nama_material,

@@ -48,12 +48,19 @@ class WmsDashboardController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        // 3b. Incoming by Type (RM vs PM) - from incoming_goods table
-        $incomingByType = DB::table('incoming_goods')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->select('kategori', DB::raw('count(*) as total'))
-            ->groupBy('kategori')
-            ->get();
+        // 3b. Inventory Breakdown by Type (RM vs PM) - Current Stock Snapshot
+        // Source: inventory_stock table joined with materials
+        $incomingByType = DB::table('inventory_stock as i')
+            ->join('materials as m', 'i.material_id', '=', 'm.id')
+            ->where('i.qty_on_hand', '>', 0)
+            ->select(DB::raw('m.kategori as kategori'), DB::raw('count(*) as total')) // Count of Inventory Rows (Pallets/Lots)
+            ->groupBy('m.kategori')
+            ->get()
+            ->map(function($item) {
+                // Normalize category name (e.g. "Raw Material", "Packaging Material")
+                $item->kategori = ucwords(strtolower($item->kategori ?? 'Uncategorized'));
+                return $item;
+            });
 
         // 4. Lead Time (Picking Duration)
         // Avg duration from Request Created to Request Completed/Short-Pick
@@ -114,7 +121,7 @@ class WmsDashboardController extends Controller
             ->whereBetween('count_date', [$startDate, $endDate])
             ->get();
             
-        $avgAccuracy = 100;
+        $avgAccuracy = 0;
         if ($cycleCounts->count() > 0) {
             $totalAcc = 0;
             foreach($cycleCounts as $cc) {

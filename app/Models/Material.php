@@ -17,10 +17,10 @@ class Material extends Model
         'deskripsi',
         'qc_required',
         'expiry_required',
-        'abc_class',
-        'default_supplier_id',
+        'expiry_required',
         'status',
-        'kategori' //RAW MATERIAL dan PACKAGING MATERIAL
+        'kategori', //RAW MATERIAL dan PACKAGING MATERIAL
+        'halal_status'
     ];
 
     protected $casts = [
@@ -28,10 +28,7 @@ class Material extends Model
         'expiry_required' => 'boolean',
     ];
 
-    public function defaultSupplier()
-    {
-        return $this->belongsTo(Supplier::class, 'default_supplier_id');
-    }
+
 
     public function purchaseOrderItems()
     {

@@ -178,6 +178,9 @@
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Kategori</th>
+
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Halal</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Required</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -199,6 +202,14 @@
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                           {{ item.category }}
                         </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ item.subCategory || '-' }}</div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                         <span :class="item.halalStatus === 'Halal' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                           {{ item.halalStatus || '-' }}
+                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span :class="item.qcRequired ? 'text-green-600' : 'text-gray-400'">
@@ -520,6 +531,7 @@
                   <option value="PCS">PCS</option>
                   <option value="KG">KG</option>
                   <option value="LTR">LITER</option>
+                  <option value="LITER">LITER</option>
                   <option value="BOX">BOX</option>
                 </select>
               </div>
@@ -550,30 +562,27 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">ABC Class</label>
-                <select 
-                  v-model="formData.abcClass" 
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori</label>
+                <input 
+                  v-model="formData.subCategory"
+                  type="text" 
+                  placeholder="e.g. Botol, Karton, Chemical, etc"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Pilih ABC Class</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                </select>
               </div>
+
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Default</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Halal Status</label>
                 <select 
-                  v-model="formData.supplierDefault" 
+                  v-model="formData.halalStatus" 
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Pilih Supplier</option>
-                  <option value="PT. Supplier A">PT. Supplier A</option>
-                  <option value="PT. Supplier B">PT. Supplier B</option>
-                  <option value="PT. Supplier C">PT. Supplier C</option>
+                  <option value="">Pilih Status</option>
+                  <option value="Halal">Halal</option>
+                  <option value="Non Halal">Non Halal</option>
                 </select>
               </div>
               <div>
@@ -1209,6 +1218,7 @@ const resetForm = () => {
             name: '',
             uom: '',
             category: '',
+            subCategory: '',
             qcRequired: false,
             expiry: false,
             supplierDefault: '',

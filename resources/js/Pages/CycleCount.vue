@@ -160,7 +160,7 @@
            <thead class="bg-blue-200 text-gray-800 font-semibold text-center">
             <tr>
               <th rowspan="2" class="border border-blue-400 p-2 align-middle w-10">
-                  <input type="checkbox" @change="toggleSelectAll($event)" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                  <input type="checkbox" @change="toggleSelectAll($event)" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4" :disabled="form.items.every(i => !isRepeatable(i))">
               </th>
               
               <th rowspan="2" class="border border-blue-400 p-2 align-middle">Serial Number</th>
@@ -190,7 +190,8 @@
                    <input type="checkbox" 
                           :value="item" 
                           v-model="selectedItems" 
-                          class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer">
+                          :disabled="!isRepeatable(item)"
+                          class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               </td>
 
               <td class="border border-gray-300 p-2 bg-gray-50 text-xs font-mono font-bold text-blue-900">
@@ -484,8 +485,8 @@ const setFilterUncounted = () => {
 
 const toggleSelectAll = (event) => {
     if (event.target.checked) {
-        // Copy seluruh items ke selectedItems
-        selectedItems.value = [...form.items];
+        // Hanya select yang isRepeatable
+        selectedItems.value = form.items.filter(item => isRepeatable(item));
     } else {
         selectedItems.value = [];
     }
@@ -496,6 +497,12 @@ const isSelected = (item) => {
     return selectedItems.value.some(selected => 
         selected.material_id === item.material_id && selected.bin_id === item.bin_id
     );
+}
+
+const isRepeatable = (item) => {
+    // Item dianggap "sudah pernah cycle count" jika statusnya APPROVED
+    // ATAU memiliki history count > 0
+    return item.status === 'APPROVED' || (item.history_count && item.history_count > 0);
 }
 
 const openBulkModal = () => {
@@ -550,6 +557,7 @@ const scanningField = ref('');
 let scannerInstance = null;
 
 // Modal State
+const showBulkModal = ref(false); // Added missing ref
 const showErrorModal = ref(false);
 const errorMessage = ref('');
 

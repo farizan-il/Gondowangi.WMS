@@ -112,8 +112,12 @@ class ReservationController extends Controller
         
         // 🔥 PERBAIKAN REGEX UTAMA: Menggunakan preg_match_all untuk mencari pola di seluruh blok teks.
         // Pola: [KODE] [NAMA (non-greedy)] [KUANTITAS] [UOM]
-        // Modifier 's' (DOTALL) memungkinkan '.' mencocokkan newline, sangat penting untuk Smalot.
-        $globalPattern = '/(\d{5,6})\s+(.+?)\s+(\d+[,.]\d+)\s*(Kg|Rol|Pcs)/is'; 
+        // 🔥 PERBAIKAN REGEX FIXED: 
+        // 1. Code: \d{4,} (Minimal 4 digit)
+        // 2. Qty: [\d.,]+ 
+        // 3. UoM: [a-zA-Z]+? (Non-greedy) diikuti oleh lookahead (?=RM|Ready|Production|\s|$)
+        //    Ini mencegah capture 'PcsRM' menjadi satu kata UoM.
+        $globalPattern = '/(\d{4,})\s+(.+?)\s+([\d.,]+)\s*([a-zA-Z]+?)(?=RM|Ready|Production|\s|$)/is'; 
 
         // Mencoba mencocokkan semua pola sekaligus
         if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
@@ -122,8 +126,22 @@ class ReservationController extends Controller
                 // $m[1] = Kode, $m[2] = Nama, $m[3] = Qty, $m[4] = UoM
                 $code = trim($m[1]);
                 $name = trim($m[2]);
-                $qty = (float) str_replace(',', '.', $m[3]); 
-                $uom = trim($m[4]);
+                // Sanitasi Quantity (Format Indonesia: 1.000,00 -> 1000.00)
+                // 1. Hapus titik (ribuan)
+                $qtyClean = str_replace('.', '', $m[3]);
+                // 2. Ganti koma dengan titik (desimal)
+                $qtyClean = str_replace(',', '.', $qtyClean);
+                $qty = (float) $qtyClean; 
+                $qty = (float) $qtyClean; 
+                
+                // Logging untuk debug
+                // \Log::info("Parsed Item Raw: Code={$code}, Name={$name}, Qty={$m[3]}, UoM_Raw={$m[4]}");
+
+                // Sanitasi UoM: REGEX AGRESIF
+                // Hapus apapun yang dimulai dengan RM, Ready, atau Production (case insensitive) sampai akhir string
+                $uomRaw = trim($m[4]);
+                $uomClean = preg_replace('/(RM|Ready|Production).*/i', '', $uomRaw);
+                $uom = trim($uomClean);
 
                 $allMaterialsFromPdf[] = [
                     'code' => $code,
@@ -155,30 +173,15 @@ class ReservationController extends Controller
      */
     private function getMaterialAndStock($materialCode, $materialCategory, $uom)
     {
-        // 1. Coba pencarian KETAT terlebih dahulu (Kode + Kategori + Satuan)
-        $material = Material::where('kode_item', $materialCode)
-                            ->where('kategori', $materialCategory)
-                            ->where('satuan', 'LIKE', $uom) 
-                            ->first();
+        // USER REQUEST: "Jangan dibatasin kategorinya".
+        // Strategi Baru: Cari berdasarkan KODE ITEM sebagai prioritas utama.
+        // Abaikan kategori dan satuan untuk pencarian awal.
+        
+        $material = Material::where('kode_item', $materialCode)->first();
 
-        // 2. Jika gagal, coba (Kode + Kategori) saja
+        // Jika tidak ditemukan by Code, baru return null
         if (!$material) {
-            $material = Material::where('kode_item', $materialCode)
-                                ->where('kategori', $materialCategory)
-                                ->first();
-        }
-
-        // 3. Fallback TERAKHIR: Cari hanya berdasarkan KODE ITEM (abaikan kategori/satuan)
-        // Ini untuk menangani kasus di mana kategori di PDF berbeda dengan di Sistem
-        if (!$material) {
-             $material = Material::where('kode_item', $materialCode)->first();
-             
-             // Opsional: Log warning jika ditemukan via fallback
-             if ($material) {
-                 \Log::warning("Material found via fallback (Code Only): {$materialCode}. Expected Cat: {$materialCategory}, Actual: {$material->kategori}");
-             } else {
-                 return null; // Benar-benar tidak ada
-             }
+             return null;
         }
 
         // Ambil stok dari inventory stock
@@ -186,12 +189,13 @@ class ReservationController extends Controller
 
         return [
             'kodeBahan' => $material->kode_item,
-            'namaBahan' => $material->nama_material, 
+             // Gunakan nama dari material master data, bukan dari PDF (untuk konsistensi)
+            'namaBahan' => $material->nama_material,
             'kodePM' => $material->kode_item,
             'namaMaterial' => $material->nama_material,
             'satuan' => $material->satuan, 
             'stokAvailable' => (float) $totalAvailableStock,
-            'kategori' => $material->kategori // Sertakan kategori asli untuk referensi
+            'kategori' => $material->kategori 
         ];
     }
     
@@ -260,19 +264,18 @@ class ReservationController extends Controller
                 if (!$materialCode || $requestedQty <= 0) continue; 
 
                 // Filter logika filtering berdasarkan UoM (kg vs non-kg)
-                // Raw Material biasanya KG, Packaging/FOH biasanya PCS/Unit
-                // Tapi kita buat lebih fleksibel untuk foh-rs/add
+                // REMOVED: Kita hapus filter strict UoM ini agar semua item masuk.
+                /*
                 $isRawMaterialUom = ($uom === 'kg');
                 
                 if ($requestType === 'raw-material' && !$isRawMaterialUom) {
                     continue; // Skip jika raw material tapi bukan kg (misal ada packaging nyasar)
                 }
                 
-                // Untuk foh-rs, packaging, add -> biasanya non-kg, tapi bisa saja ada kg? 
-                // Asumsi saat ini: behavior lama packaging skip kg. Kita pertahankan untuk packaging.
                 if ($requestType === 'packaging' && $isRawMaterialUom) {
                     continue; 
                 }
+                */
 
                 $materialData = $this->getMaterialAndStock($materialCode, $materialCategoryWMS, $uom);
                 
@@ -399,16 +402,17 @@ class ReservationController extends Controller
             return response()->json([]);
         }
 
-        // Filter Setup: Gunakan field 'Gudang' untuk RM/PM, 'kategori' untuk FOH
+        // Filter Setup: Gunakan field 'kategori' untuk semua tipe 
         $categoryFilter = null;
-        $gudangFilter = null;
 
         if ($type === 'foh-rs') {
-            $categoryFilter = 'FOH & RS';
+             // Opsional: Filter kategori untuk FOH jika diketahui (misal 'Office Supply' / 'Spare Part')
+             // Saat ini dikosongkan agar tidak membatasi hasil pencarian FOH
+             $categoryFilter = null; 
         } elseif ($type === 'packaging' || $type === 'add') {
-            $gudangFilter = 'PACKAGING MATERIAL';
+            $categoryFilter = 'Packaging Material';
         } elseif ($type === 'raw-material') {
-            $gudangFilter = 'RAW MATERIAL';
+            $categoryFilter = 'Raw Material';
         } else {
             return response()->json([]);
         }
@@ -419,25 +423,16 @@ class ReservationController extends Controller
                 'materials.id as materialId', 
                 'materials.kode_item', 
                 'materials.nama_material', 
-                'materials.satuan', 
-                'materials.deskripsi'
+                'materials.satuan'
             )
             // Menjumlahkan qty_available dari semua baris stok material yang sama
             ->selectRaw('SUM(inventory_stock.qty_available) as total_available_stock')
-            // Apply Filters (Gudang or Category)
-            // Apply Filters (Gudang or Category) - RELAXED VERSION
-            // Hanya filter jika benar-benar spesifik, tapi ijinkan pencarian global jika query ada
-            ->when($categoryFilter, function($q) use ($categoryFilter, $query) {
-                 // Jika ada query search, kita bisa lebih toleran (cari global)
-                 // TAPI untuk list default (tanpa query), gunakan filter
-                 if (!$query) { 
-                     $q->where('materials.kategori', $categoryFilter); 
-                 }
-            })
-            ->when($gudangFilter, function($q) use ($gudangFilter, $query) {
-                 if (!$query) {
-                    $q->where('materials.Gudang', $gudangFilter);
-                 }
+            // Apply Status Filter: Hanya ambil yang RELEASED
+            ->where('inventory_stock.status', 'RELEASED')
+            
+            // Apply Filters (Category)
+            ->when($categoryFilter, function($q) use ($categoryFilter) {
+                 $q->where('materials.kategori', $categoryFilter); 
             })
             ->where(function ($q) use ($query) {
                 // Mencari berdasarkan kode item atau nama material
@@ -445,10 +440,10 @@ class ReservationController extends Controller
                   ->orWhere('materials.nama_material', 'like', '%' . $query . '%');
             })
             // Mengelompokkan berdasarkan material untuk mendapatkan total stok
-            ->groupBy('materials.id', 'materials.kode_item', 'materials.nama_material', 'materials.satuan', 'materials.deskripsi')
+            ->groupBy('materials.id', 'materials.kode_item', 'materials.nama_material', 'materials.satuan')
             // Hanya menampilkan material yang memiliki stok tersedia > 0
             ->having('total_available_stock', '>', 0) 
-            ->limit(10)
+            ->limit(100)
             ->get();
 
 
@@ -465,7 +460,8 @@ class ReservationController extends Controller
             if ($type === 'foh-rs') {
                 return [
                     ...$base,
-                    'keterangan' => $material->deskripsi,
+                    // FIX: Gunakan nama_material jika deskripsi tidak ada/bermasalah
+                    'keterangan' => $material->nama_material, 
                     'uom' => $material->satuan, // Menggunakan satuan sebagai uom
                 ];
             } elseif ($type === 'packaging' || $type === 'add') {
@@ -488,108 +484,108 @@ class ReservationController extends Controller
     }
     
     private function allocateStock(ReservationRequest $reservationRequest, array $validatedItems, string $requestType): void
-{
-    foreach ($validatedItems as $index => $item) {
-        $materialCodeKey = '';
-        $qtyKey = '';
+    {
+        foreach ($validatedItems as $index => $item) {
+            $materialCodeKey = '';
+            $qtyKey = '';
 
-        // Tentukan key kode material dan kuantitas permintaan
-        if ($requestType === 'foh-rs') {
-            $materialCodeKey = 'kodeItem';
-            $qtyKey = 'qty';
-        } elseif ($requestType === 'packaging' || $requestType === 'add') {
-            $materialCodeKey = 'kodePM';
-            $qtyKey = 'jumlahPermintaan';
-        } elseif ($requestType === 'raw-material') {
-            $materialCodeKey = 'kodeBahan';
-            $qtyKey = 'jumlahKebutuhan';
-        }
+            // Tentukan key kode material dan kuantitas permintaan
+            if ($requestType === 'foh-rs') {
+                $materialCodeKey = 'kodeItem';
+                $qtyKey = 'qty';
+            } elseif ($requestType === 'packaging' || $requestType === 'add') {
+                $materialCodeKey = 'kodePM';
+                $qtyKey = 'jumlahPermintaan';
+            } elseif ($requestType === 'raw-material') {
+                $materialCodeKey = 'kodeBahan';
+                $qtyKey = 'jumlahKebutuhan';
+            }
 
-        $materialCode = $item[$materialCodeKey] ?? null;
-        $requestedQty = (float) ($item[$qtyKey] ?? 0);
+            $materialCode = $item[$materialCodeKey] ?? null;
+            $requestedQty = (float) ($item[$qtyKey] ?? 0);
 
-        if (!$materialCode || $requestedQty <= 0) {
-            continue; // Skip jika tidak ada kode material atau kuantitas 0
-        }
-        
-        // 1. Dapatkan Material ID
-        $material = Material::where('kode_item', $materialCode)->firstOrFail();
-        
-        // 2. Dapatkan stok yang tersedia
-        $availableStocksQuery = InventoryStock::where('material_id', $material->id)
-            ->where('qty_available', '>', 0);
-        
-        // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
-        
-        // 2a. Prioritas 1: FEFO (First Expired First Out)
-        //    - Urutkan berdasarkan exp_date ASC (tercepat kedaluwarsa).
-        //    - Stok yang tidak punya exp_date (NULL) ditaruh di paling akhir.
-        $availableStocksQuery->orderByRaw('ISNULL(exp_date) ASC, exp_date ASC');
+            if (!$materialCode || $requestedQty <= 0) {
+                continue; // Skip jika tidak ada kode material atau kuantitas 0
+            }
+            
+            // 1. Dapatkan Material ID
+            $material = Material::where('kode_item', $materialCode)->firstOrFail();
+            
+            // 2. Dapatkan stok yang tersedia
+            $availableStocksQuery = InventoryStock::where('material_id', $material->id)
+                ->where('qty_available', '>', 0);
+            
+            // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
+            
+            // 2a. Prioritas 1: FEFO (First Expired First Out)
+            //    - Urutkan berdasarkan exp_date ASC (tercepat kedaluwarsa).
+            //    - Stok yang tidak punya exp_date (NULL) ditaruh di paling akhir.
+            $availableStocksQuery->orderByRaw('ISNULL(exp_date) ASC, exp_date ASC');
 
-        // 2b. Prioritas 2: FIFO (First In First Out)
-        //    - Jika exp_date SAMA, urutkan berdasarkan tanggal kedatangan di batch_lot.
-        //    - Asumsi format batch_lot: 14095 (5 char) + 131125 (6 char, dmy) + NP (sisa)
-        //    - (Ini adalah sintaks MySQL. Jika Anda pakai DB lain, sintaksnya mungkin beda)
-        try {
-            // Menggunakan SUBSTRING(batch_lot, 6, 6) untuk mengambil '131125' dari '14095131125NP'
-            // dan STR_TO_DATE untuk mengubahnya menjadi tanggal ('2025-11-13')
-            $availableStocksQuery->orderByRaw("STR_TO_DATE(SUBSTRING(batch_lot, 6, 6), '%d%m%y') ASC");
-        } catch (\Exception $e) {
-            // Fallback jika DB (cth: SQLite saat testing) tidak support STR_TO_DATE
-            // Ini tidak akan mengurutkan FIFO, tapi setidaknya tidak error.
-            Log::warning("Gagal mengurutkan FIFO di database (DB mungkin tidak support STR_TO_DATE): " . $e->getMessage());
-        }
+            // 2b. Prioritas 2: FIFO (First In First Out)
+            //    - Jika exp_date SAMA, urutkan berdasarkan tanggal kedatangan di batch_lot.
+            //    - Asumsi format batch_lot: 14095 (5 char) + 131125 (6 char, dmy) + NP (sisa)
+            //    - (Ini adalah sintaks MySQL. Jika Anda pakai DB lain, sintaksnya mungkin beda)
+            try {
+                // Menggunakan SUBSTRING(batch_lot, 6, 6) untuk mengambil '131125' dari '14095131125NP'
+                // dan STR_TO_DATE untuk mengubahnya menjadi tanggal ('2025-11-13')
+                $availableStocksQuery->orderByRaw("STR_TO_DATE(SUBSTRING(batch_lot, 6, 6), '%d%m%y') ASC");
+            } catch (\Exception $e) {
+                // Fallback jika DB (cth: SQLite saat testing) tidak support STR_TO_DATE
+                // Ini tidak akan mengurutkan FIFO, tapi setidaknya tidak error.
+                Log::warning("Gagal mengurutkan FIFO di database (DB mungkin tidak support STR_TO_DATE): " . $e->getMessage());
+            }
 
-        // 2c. Ambil data yang SUDAH TERURUT SEMPURNA dari DB
-        $availableStocks = $availableStocksQuery->get();
-        
-        // ** END: LOGIKA PENGURUTAN BARU **
-        
-        $remainingQtyToReserve = $requestedQty;
+            // 2c. Ambil data yang SUDAH TERURUT SEMPURNA dari DB
+            $availableStocks = $availableStocksQuery->get();
+            
+            // ** END: LOGIKA PENGURUTAN BARU **
+            
+            $remainingQtyToReserve = $requestedQty;
 
-        foreach ($availableStocks as $stock) {
-            if ($remainingQtyToReserve <= 0) break;
+            foreach ($availableStocks as $stock) {
+                if ($remainingQtyToReserve <= 0) break;
 
-            $qtyToDeduct = min($remainingQtyToReserve, (float) $stock->qty_available);
+                $qtyToDeduct = min($remainingQtyToReserve, (float) $stock->qty_available);
 
-            if ($qtyToDeduct > 0) {
-                // ** Lakukan perhitungan stok di PHP, bukan menggunakan DB::raw() **
-                $newAvailable = (float) $stock->qty_available - $qtyToDeduct;
-                $newReserved = (float) $stock->qty_reserved + $qtyToDeduct;
+                if ($qtyToDeduct > 0) {
+                    // ** Lakukan perhitungan stok di PHP, bukan menggunakan DB::raw() **
+                    $newAvailable = (float) $stock->qty_available - $qtyToDeduct;
+                    $newReserved = (float) $stock->qty_reserved + $qtyToDeduct;
 
-                // 3. Kurangi qty_available di InventoryStock (Assign nilai numerik)
-                $stock->qty_available = $newAvailable;
-                $stock->qty_reserved = $newReserved; // Tambahkan ke reserved
-                $stock->save();
-                
-                // 4. Catat Reservasi di tabel 'reservations'
-                // Ini mencatat alokasi stok per batch/lot ke request
-                Reservation::create([
-                    'reservation_no' => $reservationRequest->no_reservasi,
-                    'reservation_request_id' => $reservationRequest->id,
-                    'reservation_type' => $reservationRequest->request_type,
-                    'material_id' => $material->id,
-                    'warehouse_id' => $stock->warehouse_id,
-                    'bin_id' => $stock->bin_id,
-                    'batch_lot' => $stock->batch_lot,
-                    'qty_reserved' => $qtyToDeduct,
-                    'uom' => $stock->uom,
-                    'status' => 'Reserved',
-                    'reservation_date' => now(),
-                    'expiry_date' => $stock->exp_date, 
-                    'created_by' => Auth::id(),
-                ]);
+                    // 3. Kurangi qty_available di InventoryStock (Assign nilai numerik)
+                    $stock->qty_available = $newAvailable;
+                    $stock->qty_reserved = $newReserved; // Tambahkan ke reserved
+                    $stock->save();
+                    
+                    // 4. Catat Reservasi di tabel 'reservations'
+                    // Ini mencatat alokasi stok per batch/lot ke request
+                    Reservation::create([
+                        'reservation_no' => $reservationRequest->no_reservasi,
+                        'reservation_request_id' => $reservationRequest->id,
+                        'reservation_type' => $reservationRequest->request_type,
+                        'material_id' => $material->id,
+                        'warehouse_id' => $stock->warehouse_id,
+                        'bin_id' => $stock->bin_id,
+                        'batch_lot' => $stock->batch_lot,
+                        'qty_reserved' => $qtyToDeduct,
+                        'uom' => $stock->uom,
+                        'status' => 'Reserved',
+                        'reservation_date' => now(),
+                        'expiry_date' => $stock->exp_date, 
+                        'created_by' => Auth::id(),
+                    ]);
 
-                $remainingQtyToReserve -= $qtyToDeduct;
+                    $remainingQtyToReserve -= $qtyToDeduct;
+                }
+            }
+            
+            if ($remainingQtyToReserve > 0) {
+                // Seharusnya tidak terjadi jika validasi stok server-side bekerja
+                throw new \Exception("Gagal mengalokasikan stok penuh untuk material {$materialCode}. Sisa: {$remainingQtyToReserve}");
             }
         }
-        
-        if ($remainingQtyToReserve > 0) {
-            // Seharusnya tidak terjadi jika validasi stok server-side bekerja
-            throw new \Exception("Gagal mengalokasikan stok penuh untuk material {$materialCode}. Sisa: {$remainingQtyToReserve}");
-        }
     }
-}
 
     // ===================================================================
     // STORE METHOD (Updated)

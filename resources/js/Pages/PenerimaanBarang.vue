@@ -477,21 +477,15 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                <select v-model="newShipment.kategori"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                  <option value="">Pilih Kategori</option>
-                  <option value="Raw Material">Raw Material</option>
-                  <option value="Packaging Material">Packaging Material</option>
-                  <!-- <option value="Spare Part">Spare Part</option>
-                  <option value="Office Supply">Office Supply</option> -->
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori <span v-if="newShipment.kategori">(Otomatis)</span></label>
+                <input v-model="newShipment.kategori" type="text" readonly placeholder="Auto dari Material"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900 focus:outline-none">
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Dokumen</label>
-                <input type="file" multiple accept="image/*,.pdf"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori <span v-if="newShipment.subCategory">(Otomatis)</span></label>
+                <input v-model="newShipment.subCategory" type="text" readonly placeholder="Auto dari Material"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900 focus:outline-none">
               </div>
             </div>
 
@@ -797,6 +791,104 @@
           </div>
         </div>
       </div>
+      <!-- Modal Missing Materials Alert -->
+      <div v-if="showMissingMaterialsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+          style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border-l-4 border-yellow-500">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg class="w-6 h-6 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Material Tidak Ditemukan
+          </h3>
+          <p class="text-gray-600 mb-4">
+            Sistem mendeteksi <strong>{{ missingMaterialsList.length }}</strong> kode material dari PDF yang belum terdaftar di Master Data. Mohon tambahkan agar dapat diproses.
+          </p>
+          
+          <div class="space-y-3 max-h-60 overflow-y-auto mb-6 pr-2">
+            <div v-for="code in missingMaterialsList" :key="code" class="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
+              <span class="font-mono font-bold text-gray-800">{{ code }}</span>
+              <button @click="openAddMaterialModal(code)" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-medium">
+                + Tambah Data
+              </button>
+            </div>
+          </div>
+          
+          <div class="flex justify-end">
+            <button @click="showMissingMaterialsModal = false" class="text-gray-500 hover:text-gray-700 text-sm underline mr-4">
+              Abaikan (Data akan kosong)
+            </button>
+            <button @click="showMissingMaterialsModal = false" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 font-medium">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Quick Add Material -->
+      <div v-if="showAddMaterialModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-[10001] flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Tambah Material Baru</h3>
+                    <button @click="closeAddMaterialModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Item</label>
+                        <input v-model="newMaterialForm.code" type="text" readonly class="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-900 font-mono" />
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Material *</label>
+                        <input v-model="newMaterialForm.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" placeholder="Nama lengkap material" />
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">UoM *</label>
+                         <select v-model="newMaterialForm.uom" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500">
+                            <option value="">Pilih UoM</option>
+                            <option value="PCS">PCS</option>
+                            <option value="KG">KG</option>
+                            <option value="LTR">LITER</option>
+                            <option value="LITER">LITER</option>
+                            <option value="BOX">BOX</option>
+                         </select>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori *</label>
+                        <select v-model="newMaterialForm.category" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500">
+                            <option value="">Pilih Kategori</option>
+                            <option value="Raw Material">Raw Material</option>
+                            <option value="Packaging">Packaging</option>
+                            <option value="Finished Goods">Finished Goods</option>
+                         </select>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori</label>
+                        <input v-model="newMaterialForm.subCategory" type="text" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" placeholder="Opsional" />
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Halal</label>
+                        <select v-model="newMaterialForm.halalStatus" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500">
+                            <option value="">Pilih Status</option>
+                            <option value="Halal">Halal</option>
+                            <option value="Non Halal">Non Halal</option>
+                         </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                    <button @click="closeAddMaterialModal" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Batal</button>
+                    <button @click="saveNewMaterial" :disabled="isSavingMaterial" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400 flex items-center">
+                        <svg v-if="isSavingMaterial" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ isSavingMaterial ? 'Menyimpan...' : 'Simpan Material' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -876,6 +968,7 @@ const newShipment = ref({
   namaDriver: '',
   tanggalTerima: new Date().toISOString().slice(0, 16),
   kategori: '',
+  subCategory: '', // Field Baru
   supplierName: '',
   incomingNumber: '',
   erpPdfFile: null,
@@ -884,14 +977,47 @@ const newShipment = ref({
 })
 const isProcessingErp = ref(false)
 
+// State untuk Missing Materials & Quick Add
+const showMissingMaterialsModal = ref(false)
+const missingMaterialsList = ref([]) // Array of strings (codes)
+const showAddMaterialModal = ref(false)
+const isSavingMaterial = ref(false)
+
+const newMaterialForm = ref({
+  code: '',
+  name: '',
+  uom: '',
+  category: '',
+  subCategory: '',
+  halalStatus: '',
+  qcRequired: false,
+  status: 'Active' // Default
+})
+
 // Computed
 const isFormValid = computed(() => {
-  return newShipment.value.noPo &&
+  // 1. Cek Header
+  const isHeaderValid = newShipment.value.noPo &&
     newShipment.value.noSuratJalan &&
     newShipment.value.supplier &&
     newShipment.value.noKendaraan &&
     newShipment.value.namaDriver &&
-    newShipment.value.items.length > 0
+    newShipment.value.kategori && 
+    newShipment.value.subCategory && // Wajib ada (auto/manual)
+    newShipment.value.items.length > 0;
+
+  if (!isHeaderValid) return false;
+
+  // 2. Cek Items (termasuk Exp Date)
+  const areItemsValid = newShipment.value.items.every(item => {
+    return item.kodeItem && 
+           item.batchLot && 
+           item.expDate && // WAJIB DIISI
+           item.qtyWadah && 
+           item.qtyUnit; 
+  });
+
+  return areItemsValid;
 })
 
 const totalStockByMaterial = computed(() => {
@@ -1019,7 +1145,13 @@ const processErpPdf = async () => {
 
       let statusQC = 'Karantina'
       if (materialDetail && materialDetail.qcRequired === false) {
-        statusQC = 'Direct Putaway'
+        statusQC = 'Karantina'
+      }
+
+      // AUTO-FILL Kategori & SubKategori dari Item Pertama yang valid di Master
+      if (newShipment.value.items.length === 0 && materialDetail) { // Jika ini item pertama (atau belum ada yg set)
+           newShipment.value.kategori = materialDetail.kategori || '';
+           newShipment.value.subCategory = materialDetail.subCategory || '';
       }
 
       newShipment.value.items.push({
@@ -1049,11 +1181,24 @@ const processErpPdf = async () => {
       })
     })
 
+    // Fallback: Jika looping selesai tapi kategori masih kosong (misal item pertama skip),
+    // Coba cari dari items yg masuk
+    if (!newShipment.value.kategori && newShipment.value.items.length > 0) {
+        const firstValidItem = newShipment.value.items.find(i => i.kodeItem);
+        if (firstValidItem) {
+             const mat = props.materials.find(m => m.id === firstValidItem.kodeItem);
+             if (mat) {
+                 newShipment.value.kategori = mat.kategori || '';
+                 newShipment.value.subCategory = mat.subCategory || '';
+             }
+        }
+    }
+
 
 
     newShipment.value.isErpDataLoaded = true;
     
-    // --- VALIDASI MATERIAL HILANG ---
+// --- VALIDASI MATERIAL HILANG ---
     const missingMaterials = newShipment.value.items
         .filter(item => !item.kodeItem && item.skuSearch)
         .map(item => item.skuSearch);
@@ -1062,12 +1207,8 @@ const processErpPdf = async () => {
     const uniqueMissing = [...new Set(missingMaterials)];
 
     if (uniqueMissing.length > 0) {
-        let msg = `PERHATIAN: Ditemukan ${uniqueMissing.length} material yang BELUM ada di Master Data:\n\n`;
-        uniqueMissing.forEach(code => {
-            msg += `- ${code}\n`;
-        });
-        msg += `\nMohon tambahkan material tersebut di Menu Master Data -> Material agar bisa disimpan.`;
-        alert(msg);
+        missingMaterialsList.value = uniqueMissing;
+        showMissingMaterialsModal.value = true;
     } else {
         alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`);
     }
@@ -1085,6 +1226,79 @@ const processErpPdf = async () => {
   }
 }
 
+// Methods untuk Quick Add Material
+const openAddMaterialModal = (code) => {
+  newMaterialForm.value = {
+    code: code,
+    name: '',
+    uom: '',
+    category: '',
+    subCategory: '',
+    halalStatus: '',
+    qcRequired: false,
+    status: 'Active'
+  }
+  showAddMaterialModal.value = true
+}
+
+const closeAddMaterialModal = () => {
+    showAddMaterialModal.value = false
+}
+
+const saveNewMaterial = async () => {
+    // Validasi Sederhana
+    if (!newMaterialForm.value.name || !newMaterialForm.value.uom || !newMaterialForm.value.category) {
+        alert('Mohon lengkapi Nama, UoM, dan Kategori.');
+        return;
+    }
+
+    isSavingMaterial.value = true;
+    try {
+        const response = await axios.post('/master-data/sku', newMaterialForm.value);
+        
+        if (response.data.success) {
+            alert('Material berhasil ditambahkan!');
+            
+            // 1. Refresh Data Material (Props)
+            // Kita gunakan router.reload untuk refresh props 'materials'
+            router.reload({ only: ['materials'], onSuccess: () => {
+                // Setelah reload sukses:
+                
+                // 2. Hapus dari list missing
+                const addedCode = newMaterialForm.value.code;
+                missingMaterialsList.value = missingMaterialsList.value.filter(c => c !== addedCode);
+                
+                // 3. Update items di tabel shipment yang tadinya kosong
+                // Cari item yang kodenya cocok, lalu update kodeItem (ID) dan Nama dari response
+                const returnedMaterial = response.data.data; // Asumsi response bawa data material baru
+                
+                newShipment.value.items.forEach(item => {
+                    if (item.skuSearch === addedCode) {
+                        item.kodeItem = returnedMaterial.id;
+                        item.namaMaterial = returnedMaterial.nama_material;
+                        item.kodeItemDisplay = returnedMaterial.kode_item;
+                        // Update default values lain jika perlu
+                    }
+                });
+
+                // 4. Tutup modal add
+                closeAddMaterialModal();
+                
+                // 5. Jika list missing habis, tutup modal missing
+                if (missingMaterialsList.value.length === 0) {
+                    showMissingMaterialsModal.value = false;
+                    alert('Semua material yang hilang telah ditambahkan.');
+                }
+            }});
+        }
+    } catch (error) {
+        console.error('Error saving material:', error);
+        alert('Gagal menyimpan material: ' + (error.response?.data?.message || error.message));
+    } finally {
+        isSavingMaterial.value = false;
+    }
+}
+
 const resetForm = () => {
   newShipment.value = {
     noPo: '',
@@ -1094,6 +1308,7 @@ const resetForm = () => {
     namaDriver: '',
     tanggalTerima: new Date().toISOString().slice(0, 16),
     kategori: '',
+    subCategory: '',
     supplierName: '',
     incomingNumber: '', // <<< RESET INCOMING NUMBER
     erpPdfFile: null, // <<< RESET FILE
@@ -1249,6 +1464,25 @@ const selectMaterial = (index, material) => {
   item.skuSearch = material.code
   item.filteredMaterials = []
   item.showSuggestions = false
+
+  // 3. Auto-populate Halal Status
+  if (material.halalStatus === 'Halal') {
+    item.isHalal = true
+    item.isNonHalal = false
+  } else if (material.halalStatus === 'Non Halal') {
+    item.isHalal = false
+    item.isNonHalal = true
+  } else {
+    // Default fallback if unknown (optional, keep existing default or reset)
+    // item.isHalal = true
+    // item.isNonHalal = false
+  }
+
+  // AUTO-UPDATE HEADER Kategori & SubKategori jika belum diisi atau user mau ganti?
+  // User request: "otomatis terpilih sesuai kategori kode materialnya"
+  // Asumsi: Header mengikuti Item yang TERAKHIR DISI (atau yang dipilih user)
+  if (material.kategori) newShipment.value.kategori = material.kategori;
+  if (material.subCategory) newShipment.value.subCategory = material.subCategory;
 }
 
 const updateNamaMaterial = (index) => {
@@ -1259,6 +1493,15 @@ const updateNamaMaterial = (index) => {
     newShipment.value.items[index].namaMaterial = selectedMaterial.name
     newShipment.value.items[index].pabrikPembuat = selectedMaterial.mfg
     newShipment.value.items[index].statusQC = selectedMaterial.qcRequired ? 'To QC' : 'Direct Putaway'
+    
+    // Auto-populate Halal Status
+    if (selectedMaterial.halalStatus === 'Halal') {
+      newShipment.value.items[index].isHalal = true
+      newShipment.value.items[index].isNonHalal = false
+    } else if (selectedMaterial.halalStatus === 'Non Halal') {
+      newShipment.value.items[index].isHalal = false
+      newShipment.value.items[index].isNonHalal = true
+    }
   }
 }
 

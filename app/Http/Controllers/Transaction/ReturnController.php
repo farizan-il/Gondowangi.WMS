@@ -9,6 +9,7 @@ use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; // Added Log import
 use Inertia\Inertia;
 use App\Traits\ActivityLogger;
 
@@ -124,9 +125,35 @@ class ReturnController extends Controller
             ->limit(50) // Limit to recent 50 for performance
             ->get();
 
+        // Fetch Returns List
+        $returns = \App\Models\ReturnModel::with(['items.material', 'supplier', 'reservationRequest', 'createdBy'])
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get()
+            ->map(function ($ret) {
+                return [
+                    'id' => $ret->id,
+                    'returnNumber' => $ret->return_number,
+                    'date' => $ret->return_date ? $ret->return_date->format('Y-m-d') : $ret->created_at->format('Y-m-d'),
+                    'type' => $ret->return_type ?? 'Supplier',
+                    'supplier' => $ret->return_type === 'Production' ? ($ret->department ?? 'Production') : ($ret->supplier->nama_supplier ?? '-'),
+                    'shipmentNo' => $ret->reference_number,
+                    // Map first item for summary or handle multiple in details
+                    'itemCode' => $ret->items->first()->material->kode_item ?? '-',
+                    'itemName' => $ret->items->first()->material->nama_material ?? '-',
+                    'lotBatch' => $ret->items->first()->batch_lot ?? '-',
+                    'qty' => $ret->items->sum('qty_return'),
+                    'uom' => $ret->items->first()->uom ?? '-',
+                    'reason' => $ret->items->first()->return_reason ?? '-',
+                    'status' => $ret->status,
+                ];
+            });
+
         return Inertia::render('Return', [
             'suppliers' => $suppliers,
-            'shipments' => $shipments
+            'shipments' => $shipments,
+            'userDept' => Auth::user()->departement, // Pass User Dept
+            'initialReturns' => $returns,
         ]);
     }
 
@@ -158,6 +185,137 @@ class ReturnController extends Controller
      */
     public function store(Request $request)
     {
+        // Handle Production Return (New Logic)
+        // Handle Production Return (New Logic)
+        if ($request->input('type') === 'Production') {
+             $validated = $request->validate([
+                'type' => 'required|in:Production',
+                'date' => 'required|date',
+                'shipmentNo' => 'required|string', // Reservation No
+                'items' => 'required|array',
+                'items.*.itemCode' => 'required|exists:materials,kode_item',
+                'items.*.qty' => 'required|numeric|min:0.01',
+                'items.*.uom' => 'nullable|string',
+                'items.*.reason' => 'required|string',
+            ]);
+
+            DB::beginTransaction();
+            try {
+                // 1. Find KARANTINA Bin
+                $qrtBin = \App\Models\WarehouseBin::where('bin_code', 'QRT-HALAL')->first();
+                if (!$qrtBin) {
+                    throw new \Exception("Bin 'QRT-HALAL' tidak ditemukan. Harap hubungi administrator.");
+                }
+
+                $reservation = \App\Models\ReservationRequest::where('no_reservasi', $validated['shipmentNo'])->first();
+
+                // 2. Create Return Record Header
+                $returnModel = \App\Models\ReturnModel::create([
+                    'return_number' => $this->generateReturnNumber(),
+                    'return_type' => 'Production',
+                    'return_date' => $validated['date'],
+                    'department' => Auth::user()->departement,
+                    'reservation_request_id' => $reservation->id ?? null,
+                    'reference_number' => $validated['shipmentNo'],
+                    'status' => 'Submitted', // Ready for QC
+                    'created_by' => Auth::id(),
+                ]);
+
+                foreach ($request->items as $itemData) {
+                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->firstOrFail();
+                    $uom = $itemData['uom'] ?? $material->satuan;
+
+                    // 3. Create Return Item
+                    \App\Models\ReturnItem::create([
+                        'return_id' => $returnModel->id,
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'qty_return' => $itemData['qty'],
+                        'uom' => $uom,
+                        'return_reason' => $itemData['reason'],
+                        // 'from_bin_id' => null, // Production virtual
+                        'stock_deducted' => false, // Stock added to QRT, not deducted from inventory (it comes from outside)
+                        'item_condition' => 'Good', // Default or from input
+                    ]);
+                    
+                    // 4. Create/Update Stock in QRT-HALAL (Handling Check)
+                    $stock = \App\Models\InventoryStock::where('material_id', $material->id)
+                        ->where('bin_id', $qrtBin->id)
+                        ->where('batch_lot', $itemData['lotBatch'])
+                        ->where('status', 'KARANTINA') 
+                        ->first();
+
+                    if ($stock) {
+                        $stock->increment('qty_on_hand', $itemData['qty']);
+                        $stock->increment('qty_available', $itemData['qty']);
+                    } else {
+                        // Fetch exp_date from existing stock of the same batch to maintain consistency
+                        $refStock = \App\Models\InventoryStock::where('material_id', $material->id)
+                            ->where('batch_lot', $itemData['lotBatch'])
+                            ->whereNotNull('exp_date')
+                            ->first();
+                            
+                        // Fallback: If no stock found (unlikely for return) use now + 1 year or handle error
+                        $expDate = $refStock ? $refStock->exp_date : now()->addYears(1);
+
+                        \App\Models\InventoryStock::create([
+                            'material_id' => $material->id,
+                            'warehouse_id' => $qrtBin->warehouse_id,
+                            'bin_id' => $qrtBin->id,
+                            'batch_lot' => $itemData['lotBatch'],
+                            'qty_on_hand' => $itemData['qty'],
+                            'qty_reserved' => 0,
+                            'qty_available' => $itemData['qty'],
+                            'uom' => $uom,
+                            'status' => 'KARANTINA', // Trigger Re-QC
+                            'exp_date' => $expDate, 
+                            'last_movement_date' => now(),
+                        ]);
+                    }
+
+                    // 5. Log Movement
+                    $movementNumber = $this->generateMovementNumber();
+                    StockMovement::create([
+                        'movement_number' => $movementNumber,
+                        'movement_type' => 'RETURN_PROD',
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'from_warehouse_id' => null, 
+                        'from_bin_id' => null, 
+                        'to_warehouse_id' => $qrtBin->warehouse_id,
+                        'to_bin_id' => $qrtBin->id,
+                        'qty' => $itemData['qty'],
+                        'uom' => $uom,
+                        'reference_type' => \App\Models\ReturnModel::class, 
+                        'reference_id' => $returnModel->id,
+                        'movement_date' => $validated['date'],
+                        'executed_by' => Auth::id(),
+                        'notes' => "Return from Production. Ref: " . $validated['shipmentNo'] . ". Reason: " . ($itemData['reason'] ?? '-'),
+                    ]);
+
+                     // 6. Activity Log
+                    $this->logActivity($returnModel, 'Create Return Production', [
+                        'description' => "Return {$itemData['qty']} {$uom} of {$material->nama_material} to QRT-HALAL.",
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'qty_after' => $itemData['qty'],
+                        'reference_document' => $validated['shipmentNo'],
+                    ]);
+                }
+
+                DB::commit();
+                return redirect()->back()->with('success', 'Return dari produksi berhasil disimpan. Barang masuk ke QRT-HALAL.');
+
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("Return Store Error: " . $e->getMessage());
+                return redirect()->back()->with('error', 'Gagal menyimpan return: ' . $e->getMessage());
+            }
+
+        }
+
+        // Existing Supplier Return Logic
         $validated = $request->validate([
             'return_slip_id' => 'required|exists:return_slips,id',
             'return_date' => 'required|date',
@@ -184,8 +342,8 @@ class ReturnController extends Controller
                 'movement_type' => 'RETURN',
                 'material_id' => $returnSlip->material_id,
                 'batch_lot' => $returnSlip->batch_lot,
-                'from_warehouse_id' => null, // Or the quarantine warehouse
-                'from_bin_id' => null, // Or the quarantine bin
+                'from_warehouse_id' => null, // Or the KARANTINA warehouse
+                'from_bin_id' => null, // Or the KARANTINA bin
                 'to_warehouse_id' => null, // Represents supplier
                 'to_bin_id' => null, // Represents supplier
                 'qty' => $returnSlip->qty_return,
@@ -256,5 +414,77 @@ class ReturnController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+    public function getDeptReservations()
+    {
+        $user = Auth::user();
+        if (!$user || !$user->departement) {
+            Log::warning("ReturnController: User has no department. User ID: " . ($user->id ?? 'unknown'));
+            return response()->json([]);
+        }
+
+        Log::info("ReturnController: Fetching reservations for Dept: " . $user->departement);
+
+        // Use ReservationRequest (Header) for filtering by status 'Completed'
+        $reservations = \App\Models\ReservationRequest::query()
+            ->whereIn('status', ['Completed', 'Short-Pick']) // Include Short-Pick just in case
+            ->where(function ($query) use ($user) {
+                // Check direct column OR via relationship
+                $query->where('departemen', $user->departement)
+                      ->orWhereHas('requestedBy', function ($q) use ($user) {
+                          $q->where('departement', $user->departement);
+                      });
+            })
+            ->select('no_reservasi')
+            ->distinct()
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->pluck('no_reservasi');
+
+        Log::info("ReturnController: Found " . $reservations->count() . " reservations.");
+
+        return response()->json($reservations);
+    }
+
+    public function getReservationDetails(Request $request)
+    {
+        $reservationNo = $request->input('no');
+        
+        if (!$reservationNo) {
+             return response()->json(['error' => 'Reservation Number required'], 400);
+        }
+
+        $items = \App\Models\Reservation::with('material')
+            ->where('reservation_no', $reservationNo)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'item_code' => $item->material->kode_item,
+                    'item_name' => $item->material->nama_material,
+                    'batch_lot' => $item->batch_lot,
+                    'original_qty' => $item->qty_reserved,
+                    'qty' => 0, // Default qty return 0
+                    'uom' => $item->uom ?? $item->material->satuan,
+                ];
+            });
+
+        return response()->json($items);
+    }
+
+    private function generateReturnNumber()
+    {
+        $date = date('Ymd');
+        $lastReturn = \App\Models\ReturnModel::whereDate('created_at', today())
+            ->latest('id')
+            ->first();
+            
+        // Assuming format RET/YYYYMMDD/XXXX (17 chars)
+        // If last return exists and follows format
+        $sequence = 1;
+        if ($lastReturn && preg_match('/RET\/\d+\/(\d+)/', $lastReturn->return_number, $matches)) {
+            $sequence = intval($matches[1]) + 1;
+        }
+        
+        return "RET/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }

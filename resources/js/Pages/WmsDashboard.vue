@@ -143,7 +143,7 @@
 
         <!-- RM vs PM Comparison (Pie) -->
         <div class="bg-white p-6 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4">Material Breakdown (RM vs PM)</h3>
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Current Inventory Breakdown (RM vs PM)</h3>
           <div class="h-64 relative">
              <Pie v-if="chartData.typeBreakdown.labels.length" :data="chartData.typeBreakdown" :options="chartOptions" />
              <div v-else class="flex h-full items-center justify-center text-gray-400">No Data Available</div>

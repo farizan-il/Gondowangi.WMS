@@ -162,7 +162,7 @@
       <div v-if="showAutoPutawayModal"
         class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
         style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
+        <div class="bg-white rounded-lg p-6 w-full max-w-6xl max-h-screen overflow-y-auto">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-lg font-semibold">Generate Auto Putaway dari QC Released</h3>
             <button @click="showAutoPutawayModal = false" class="text-gray-400 hover:text-gray-600">
@@ -200,18 +200,37 @@
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.qty }}</td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.uom }}</td>
                       <td class="px-4 py-3">
-                        <div class="flex items-center gap-2">
-                          <select v-model="material.destinationBin"
-                            class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :disabled="!material.selected">
-                            <option value="">Pilih Bin</option>
-                            <option v-for="bin in availableBins" :key="bin.code" :value="bin.code">
-                              {{ bin.code }} - {{ bin.zone }} ({{ bin.currentItems }}/{{ bin.capacity }})
-                            </option>
-                          </select>
-                          <button @click="showBinDetails(material)" class="text-blue-600 hover:text-blue-800 text-xs"
+                        <div class="relative w-64">
+                          <input 
+                            type="text" 
+                            v-model="material.binSearchQuery"
+                            @input="handleBinSearchInput(material)"
+                            @focus="material.showBinSuggestions = true"
+                            @blur="hideBinSuggestions(material)"
+                            :disabled="!material.selected"
+                            placeholder="Ketik kode bin..."
+                            class="w-full px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{'bg-gray-100': !material.selected}"
+                          />
+                          
+                          <!-- Suggestions Dropdown -->
+                          <div v-if="material.showBinSuggestions && getFilteredBins(material.binSearchQuery).length > 0" 
+                               class="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            <div 
+                              v-for="bin in getFilteredBins(material.binSearchQuery)" 
+                              :key="bin.code"
+                              @mousedown.prevent="selectBin(material, bin)"
+                              class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 text-gray-900 border-b border-gray-100 last:border-0"
+                            >
+                              {{ bin.code }} [{{ bin.zone }} - {{ bin.currentItems }}/{{ bin.capacity }}]
+                            </div>
+                          </div>
+
+                          <button @click="showBinDetails(material)" class="absolute right-2 top-1.5 text-blue-600 hover:text-blue-800"
                             title="Lihat detail bin" :disabled="!material.destinationBin">
-                            Info
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -639,6 +658,8 @@ interface QCReleasedMaterial {
   stockId: number
   batchLot?: string
   expDate?: string
+  binSearchQuery?: string // Untuk autocomplete
+  showBinSuggestions?: boolean // State dropdown
 }
 
 interface BinInfo {
@@ -865,7 +886,13 @@ const generateAutoPutaway = async () => {
     const materialResponse = await fetch('/transaction/putaway-transfer/qc-released')
     if (!materialResponse.ok) throw new Error('Failed to fetch materials')
     const materials = await materialResponse.json()
-    qcReleasedMaterials.value = materials.map((m: any) => ({ ...m, selected: false, destinationBin: '' })) // [PERBAIKAN] Inisialisasi
+    qcReleasedMaterials.value = materials.map((m: any) => ({ 
+      ...m, 
+      selected: false, 
+      destinationBin: '',
+      binSearchQuery: '',
+      showBinSuggestions: false
+    }))
 
     const binResponse = await fetch('/transaction/putaway-transfer/available-bins')
     if (!binResponse.ok) throw new Error('Failed to fetch bins')
@@ -1213,7 +1240,7 @@ const printTO = (to: TransferOrder) => {
             <td style="border: 1px solid #ddd; padding: 8px;">${item.materialName}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.batchLot}</td> <td style="border: 1px solid #ddd; padding: 8px;">${item.sourceBin}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.destBin}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.actualQty !== undefined ? item.actualQty : item.qty}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${(item.actualQty !== undefined && item.actualQty !== null) ? item.actualQty : item.qty}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.uom}</td>
           </tr>
         `).join('')}
@@ -1321,6 +1348,46 @@ const getItemStatusClass = (status: string) => {
     'completed': 'bg-green-100 text-green-800'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+// Autocomplete Helpers
+const getFilteredBins = (query: string | undefined) => {
+  if (!query) return availableBins.value.slice(0, 50); // Show max 50 default
+  const lowerQuery = query.toLowerCase();
+  
+  return availableBins.value.filter(bin => 
+    bin.code.toLowerCase().includes(lowerQuery) || 
+    bin.zone.toLowerCase().includes(lowerQuery)
+  ).slice(0, 50);
+}
+
+const handleBinSearchInput = (material: QCReleasedMaterial) => {
+  material.destinationBin = ''; // Reset selection on typing
+}
+
+const selectBin = (material: QCReleasedMaterial, bin: BinInfo) => {
+  material.destinationBin = bin.code;
+  // Format: "bin code [zone - 0/4]"
+  material.binSearchQuery = `${bin.code} [${bin.zone} - ${bin.currentItems}/${bin.capacity}]`;
+  material.showBinSuggestions = false;
+}
+
+const hideBinSuggestions = (material: QCReleasedMaterial) => {
+  // Delay closing to allow click event to register
+  setTimeout(() => {
+    material.showBinSuggestions = false;
+    // If not valid selection, maybe revert or clear? 
+    // Here we just keep whatever text calls or destinationBin state
+    if (material.destinationBin) {
+       // Optional: Enforce format if user typed something but selected nothing, 
+       // or let them type part of it. 
+       // For now, if they selected a bin, ensure text matches.
+       const bin = availableBins.value.find(b => b.code === material.destinationBin);
+       if (bin) {
+          material.binSearchQuery = `${bin.code} [${bin.zone} - ${bin.currentItems}/${bin.capacity}]`;
+       }
+    }
+  }, 200);
 }
 
 onMounted(() => {

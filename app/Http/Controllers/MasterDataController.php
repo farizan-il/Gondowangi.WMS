@@ -47,12 +47,13 @@ class MasterDataController extends Controller
             'id' => $item->id,
             'code' => $item->kode_item,
             'name' => $item->nama_material,
-            'uom' => $item->satuan,
-            'category' => $item->kategori,
+            'uom' => strtoupper($item->satuan),
+            'category' => ucwords($item->kategori),
+            'subCategory' => $item->subkategori,
+            'halalStatus' => $item->halal_status,
             'qcRequired' => (bool)$item->qc_required,
             'expiry' => (bool)$item->expiry_required,
-            'supplierDefault' => $item->defaultSupplier ? $item->defaultSupplier->nama_supplier : '-',
-            'abcClass' => $item->abc_class,
+            'expiry' => (bool)$item->expiry_required,
             'status' => $item->status === 'active' ? 'Active' : 'Inactive'
         ];
 
@@ -148,10 +149,10 @@ class MasterDataController extends Controller
             'name' => 'required|string',
             'uom' => 'required|string',
             'category' => 'required|string',
+            'subCategory' => 'nullable|string',
             'qcRequired' => 'boolean',
             'expiry' => 'boolean',
-            'supplierDefault' => 'nullable|integer|exists:suppliers,id',
-            'abcClass' => 'nullable|string',
+            'halalStatus' => 'nullable|in:Halal,Non Halal',
             'status' => 'required|in:Active,Inactive'
         ]);
 
@@ -161,10 +162,10 @@ class MasterDataController extends Controller
                 'nama_material' => $validated['name'],
                 'satuan' => $validated['uom'],
                 'kategori' => $validated['category'],
+                'subkategori' => $validated['subCategory'] ?? null,
+                'halal_status' => $validated['halalStatus'] ?? null,
                 'qc_required' => $validated['qcRequired'] ?? false,
                 'expiry_required' => $validated['expiry'] ?? false,
-                'default_supplier_id' => $validated['supplierDefault'],
-                'abc_class' => $validated['abcClass'],
                 'status' => strtolower($validated['status'])
             ]);
 
@@ -195,10 +196,10 @@ class MasterDataController extends Controller
             'name' => 'required|string',
             'uom' => 'required|string',
             'category' => 'required|string',
+            'subCategory' => 'nullable|string',
             'qcRequired' => 'boolean',
             'expiry' => 'boolean',
-            'supplierDefault' => 'nullable|integer|exists:suppliers,id',
-            'abcClass' => 'nullable|string',
+            'halalStatus' => 'nullable|in:Halal,Non Halal',
             'status' => 'required|in:Active,Inactive'
         ]);
 
@@ -211,10 +212,10 @@ class MasterDataController extends Controller
                 'nama_material' => $validated['name'],
                 'satuan' => $validated['uom'],
                 'kategori' => $validated['category'],
+                'subkategori' => $validated['subCategory'] ?? null,
+                'halal_status' => $validated['halalStatus'] ?? null,
                 'qc_required' => $validated['qcRequired'] ?? false,
                 'expiry_required' => $validated['expiry'] ?? false,
-                'default_supplier_id' => $validated['supplierDefault'],
-                'abc_class' => $validated['abcClass'],
                 'status' => strtolower($validated['status'])
             ]);
 

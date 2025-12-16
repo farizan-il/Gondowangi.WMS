@@ -117,7 +117,6 @@ class GoodsReceiptController extends Controller
             ->get(['id', 'kode_supplier', 'nama_supplier']);
 
         $materials = Material::where('status', 'active')
-            ->with('defaultSupplier')
             ->orderBy('kode_item')
             ->get()
             ->map(function ($material) {
@@ -129,6 +128,8 @@ class GoodsReceiptController extends Controller
                     'mfg' => $material->defaultSupplier->nama_supplier ?? '',
                     'qcRequired' => $material->qc_required,
                     'kategori' => $material->kategori,
+                    'subCategory' => $material->subkategori,
+                    'halalStatus' => $material->halal_status,
                 ];
             });
 
