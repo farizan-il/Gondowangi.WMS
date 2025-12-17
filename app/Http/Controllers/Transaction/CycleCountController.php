@@ -119,7 +119,7 @@ class CycleCountController extends Controller
         }
 
         // JIKA HALAMAN AWAL (Inertia)
-        $stats = $this->getStatistics();
+        $stats = $this->getStatistics($category);
 
         return Inertia::render('CycleCount', [
             'initialStocks' => $mappedItems, // Kirim data yang sudah dimapping
@@ -132,7 +132,7 @@ class CycleCountController extends Controller
     /**
      * Private Helper: Menghitung Statistik Dashboard
      */
-    private function getStatistics() 
+    private function getStatistics($category = null) 
     {
         $currentMonth = Carbon::now()->month;
         $currentYear = Carbon::now()->year;
@@ -140,26 +140,45 @@ class CycleCountController extends Controller
         // 1. Total SKU Aktif (Stock > 0)
         $totalSku = InventoryStock::where('qty_on_hand', '>', 0)
             ->whereNotIn('status', ['REJECTED', 'REJECT'])
+            ->when($category, function($q) use ($category) {
+                $q->whereHas('material', function($m) use ($category) {
+                    $m->where('kategori', $category);
+                });
+            })
             ->count();
 
         // 2. Item Sudah Opname Bulan Ini (Unique Material)
         $countedThisMonth = CycleCount::where('status', 'APPROVED')
             ->whereMonth('count_date', $currentMonth)
             ->whereYear('count_date', $currentYear)
+            ->when($category, function($q) use ($category) {
+                $q->whereHas('material', function($m) use ($category) {
+                    $m->where('kategori', $category);
+                });
+            })
             ->distinct('material_id')
             ->count('material_id');
 
         // 3. Item Belum Pernah Opname Sama Sekali
         $neverCounted = InventoryStock::where('qty_on_hand', '>', 0)
             ->whereNotIn('status', ['REJECTED', 'REJECT'])
-            ->doesntHave('cycleCounts') // Butuh relasi di model InventoryStock
+            ->when($category, function($q) use ($category) {
+                $q->whereHas('material', function($m) use ($category) {
+                    $m->where('kategori', $category);
+                });
+            })
+            ->doesntHave('cycleCounts')
             ->count();
 
         // 4. Rata-rata Akurasi (Bulan Ini)
-        // Rumus: (Fisik / System) * 100
         $avgAccuracy = CycleCount::where('status', 'APPROVED')
             ->whereMonth('count_date', $currentMonth)
-            ->where('system_qty', '>', 0) // Hindari pembagian dengan nol
+            ->where('system_qty', '>', 0)
+            ->when($category, function($q) use ($category) {
+                $q->whereHas('material', function($m) use ($category) {
+                    $m->where('kategori', $category);
+                });
+            })
             ->selectRaw('AVG((physical_qty / system_qty) * 100) as avg_acc')
             ->value('avg_acc');
 
