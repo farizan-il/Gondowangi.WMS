@@ -45,6 +45,11 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'pendingReturnCount' => $user ? \App\Models\ReturnModel::where('status', 'Pending Approval')->count() : 0,
+            'pendingPickingCount' => $user ? \App\Models\ReservationRequest::whereIn('status', ['Submitted', 'Reserved', 'In Progress', 'Ready to Pick', 'Short-Pick'])
+                ->whereHas('reservations', function ($q) {
+                    $q->where('qty_reserved', '>', 0);
+                })->count() : 0,
         ]);
     }
 }

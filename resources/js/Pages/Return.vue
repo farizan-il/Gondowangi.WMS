@@ -123,6 +123,13 @@
                       Detail
                     </button>
                     <button 
+                         v-if="returnItem.status === 'Pending Approval'"
+                         @click="openApproveModal(returnItem)"
+                         class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
+                    >
+                         Approve
+                    </button>
+                    <button 
                       @click="printSlip(returnItem)"
                       class="text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded transition-colors"
                     >
@@ -515,6 +522,36 @@
           </div>
         </div>
 
+        <!-- Modal Approval -->
+        <div v-if="showApproveModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(0,0,0,0.5);">
+             <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">Approve Return</h3>
+                <p class="mb-4 text-gray-600">Konfirmasi persetujuan untuk Return <strong>{{ approveForm.return_number }}</strong>?</p>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Bin (Karantina)</label>
+                    <select v-model="approveForm.target_bin_id" class="w-full border rounded px-3 py-2">
+                        <option value="QRT-HALAL">QRT-HALAL</option>
+                        <option value="QRT-HALAL-AC">QRT-HALAL-AC</option>
+                        <option value="QRT-NON HALAL">QRT-NON HALAL</option>
+                        <option value="REJECT">REJECT</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="closeApproveModal" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Batal</button>
+                    <button 
+                        @click="submitApprove" 
+                        :disabled="isApproving"
+                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        <svg v-if="isApproving" class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ isApproving ? 'Memproses...' : 'Approve & Masukkan Stock' }}
+                    </button>
+                </div>
+             </div>
+        </div>
+
       </div>
     </div>
   </AppLayout>
@@ -689,10 +726,10 @@ const getStatusClass = (status: string) => {
   switch (status) {
     case 'Draft':
       return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`
-    case 'Submitted':
-      return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400`
-    case 'Completed':
-      return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400`
+    case 'Pending Approval':
+      return `${baseClasses} bg-yellow-100 text-yellow-800 light:bg-yellow-900/20 dark:text-yellow-400`
+    case 'Approved':
+      return `${baseClasses} bg-green-100 text-green-800 bg-green-900/20 text-green-600`
     default:
       return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`
   }
@@ -708,7 +745,7 @@ const getReasonClass = (reason: string) => {
     case 'Rusak':
       return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400`
     case 'Kelebihan Produksi':
-      return `${baseClasses} bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`
+      return `${baseClasses} text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`
     case 'Salah Kirim':
       return `${baseClasses} bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400`
     default:
@@ -859,6 +896,74 @@ const saveReturn = () => {
     }
   })
 }
+
+    // Logic Approval
+    const showApproveModal = ref(false)
+    const approveForm = ref({
+        return_id: null,
+        return_number: '',
+        target_bin_id: 'QRT-HALAL' // Default
+    })
+    const isApproving = ref(false)
+
+    const openApproveModal = (item) => {
+        approveForm.value = {
+            return_id: item.id,
+            return_number: item.returnNumber,
+            target_bin_id: 'QRT-HALAL'
+        }
+        showApproveModal.value = true
+    }
+
+    const closeApproveModal = () => {
+        showApproveModal.value = false
+        approveForm.value = { return_id: null, return_number: '', target_bin_id: 'QRT-HALAL' }
+    }
+
+    const submitApprove = async () => {
+        if (!approveForm.value.target_bin_id) {
+            alert('Pilih Target Bin!')
+            return
+        }
+
+        try {
+            isApproving.value = true
+            const response = await fetch(route('transaction.return.approve'), { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(approveForm.value)
+            })
+            
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const result = await response.json()
+
+                if (result.success) {
+                    // Update Local Data
+                    const index = returns.value.findIndex(r => r.id === approveForm.value.return_id)
+                    if (index !== -1) {
+                        returns.value[index].status = 'Approved'
+                    }
+                    closeApproveModal()
+                    window.location.reload() 
+                } else {
+                    alert('Gagal Approve: ' + result.message)
+                }
+            } else {
+                const text = await response.text();
+                console.error("Non-JSON Response Server Error:", text);
+                alert(`Terjadi kesalahan server (${response.status}). Respon bukan JSON. Cek Console.`);
+            }
+        } catch (error) {
+            console.error('Approve Error:', error)
+            alert('Terjadi kesalahan saat approve: ' + (error instanceof Error ? error.message : String(error)))
+        } finally {
+            isApproving.value = false
+        }
+    }
 
 const viewDetail = (returnItem: ReturnItem) => {
   selectedReturn.value = returnItem

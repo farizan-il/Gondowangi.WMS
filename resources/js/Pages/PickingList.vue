@@ -18,18 +18,14 @@
                 <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-blue-500 hover:text-white">
                   Semua
                 </button>
-                <button @click="filterStatus = 'Pending'" :class="filterStatus === 'Pending' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-gray-500 hover:text-white">
-                  Pending
-                </button>
+                
                 <button @click="filterStatus = 'In Progress'" :class="filterStatus === 'In Progress' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-yellow-500 hover:text-white">
-                  In Progress
+                  Dalam Proses
                 </button>
                 <button @click="filterStatus = 'Completed'" :class="filterStatus === 'Completed' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-green-500 hover:text-white">
-                  Completed
+                  Selesai
                 </button>
-                <button @click="filterStatus = 'Short-Pick'" :class="filterStatus === 'Short-Pick' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-orange-500 hover:text-white">
-                  Short-Pick
-                </button>
+                
             </div>
         </div>
 

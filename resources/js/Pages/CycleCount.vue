@@ -7,67 +7,7 @@
              Scan QR Lokasi & Serial Number untuk validasi.
            </p>
         </div> -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
-              <div class="flex justify-between items-start">
-                  <div>
-                      <p class="text-xs text-gray-500 uppercase font-bold">Total SKU (Stock)</p>
-                      <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ formatNumber(statistics.total_sku) }}</h3>
-                  </div>
-                  <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                  </div>
-              </div>
-          </div>
-
-          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
-              <div class="flex justify-between items-start">
-                  <div>
-                      <p class="text-xs text-gray-500 uppercase font-bold">Sudah Opname (Bulan Ini)</p>
-                      <h3 class="text-2xl font-bold text-gray-800 mt-1">
-                          {{ formatNumber(statistics.counted_items) }} 
-                          <span class="text-xs font-normal text-gray-400">/ {{ formatNumber(statistics.total_sku) }}</span>
-                      </h3>
-                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div class="bg-green-500 h-1.5 rounded-full" :style="`width: ${statistics.progress_percentage}%`"></div>
-                      </div>
-                  </div>
-                  <div class="p-2 bg-green-100 rounded-lg text-green-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-              </div>
-          </div>
-
-          <div class="bg-white rounded-xl shadow p-4 border-l-4" :class="statistics.avg_accuracy >= 98 ? 'border-indigo-500' : 'border-red-500'">
-              <div class="flex justify-between items-start">
-                  <div>
-                      <p class="text-xs text-gray-500 uppercase font-bold">Rata-rata Akurasi</p>
-                      <h3 class="text-2xl font-bold mt-1" :class="statistics.avg_accuracy >= 98 ? 'text-indigo-600' : 'text-red-600'">
-                          {{ statistics.avg_accuracy }}%
-                      </h3>
-                      <p class="text-[10px] text-gray-400 mt-1">Target: >98%</p>
-                  </div>
-                  <div class="p-2 rounded-lg" :class="statistics.avg_accuracy >= 98 ? 'bg-indigo-100 text-indigo-600' : 'bg-red-100 text-red-600'">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                  </div>
-              </div>
-          </div>
-
-          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-orange-500 cursor-pointer hover:bg-orange-50 transition-colors" @click="setFilterUncounted">
-              <div class="flex justify-between items-start">
-                  <div>
-                      <p class="text-xs text-gray-500 uppercase font-bold">Belum Pernah Opname</p>
-                      <h3 class="text-2xl font-bold text-orange-600 mt-1">{{ formatNumber(statistics.never_counted) }}</h3>
-                      <p class="text-[10px] text-orange-400 mt-1 font-bold underline">Klik untuk filter</p>
-                  </div>
-                  <div class="p-2 bg-orange-100 rounded-lg text-orange-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-lg shadow mb-6 border border-gray-100">
+        <div class="bg-white p-4 rounded-lg shadow mb-6 border border-gray-100">
           <div class="flex flex-col md:flex-row justify-between gap-4">
             
             <div class="flex flex-wrap gap-2 w-full md:w-3/4">
@@ -87,10 +27,14 @@
                     <option value="often">Sering (> 5x Opname)</option>
                 </select>
 
+                <select v-model="filterForm.category" @change="applyFilter" class="w-full sm:w-48 text-sm border rounded bg-gray-50 py-1.5">
+                    <option value="">Semua Kategori</option>
+                    <option value="RAW MATERIAL">Raw Material</option>
+                    <option value="PACKAGING MATERIAL">Packaging Material</option>
+                </select>
+
                 <button @click="resetFilter" class="px-3 py-1.5 text-sm text-gray-500 hover:text-red-500 underline">Reset</button>
             </div>
-
-            
 
             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 <button 
@@ -152,8 +96,65 @@
           </div>
       </div>
 
-      
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
+              <div class="flex justify-between items-start">
+                  <div>
+                      <p class="text-xs text-gray-500 uppercase font-bold">Total SKU (Stock)</p>
+                      <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ formatNumber(statistics.total_sku) }}</h3>
+                  </div>
+                  <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                  </div>
+              </div>
+          </div>
 
+          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
+              <div class="flex justify-between items-start">
+                  <div>
+                      <p class="text-xs text-gray-500 uppercase font-bold">Sudah Opname (Bulan Ini)</p>
+                      <h3 class="text-2xl font-bold text-gray-800 mt-1">
+                          {{ formatNumber(statistics.counted_items) }} 
+                          <span class="text-xs font-normal text-gray-400">/ {{ formatNumber(statistics.total_sku) }}</span>
+                      </h3>
+                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                          <div class="bg-green-500 h-1.5 rounded-full" :style="`width: ${statistics.progress_percentage}%`"></div>
+                      </div>
+                  </div>
+                  <div class="p-2 bg-green-100 rounded-lg text-green-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+              </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow p-4 border-l-4" :class="statistics.avg_accuracy >= 98 ? 'border-indigo-500' : 'border-red-500'">
+              <div class="flex justify-between items-start">
+                  <div>
+                      <p class="text-xs text-gray-500 uppercase font-bold">Rata-rata Akurasi</p>
+                      <h3 class="text-2xl font-bold mt-1" :class="statistics.avg_accuracy >= 98 ? 'text-indigo-600' : 'text-red-600'">
+                          {{ statistics.avg_accuracy }}%
+                      </h3>
+                      <p class="text-[10px] text-gray-400 mt-1">Target: >98%</p>
+                  </div>
+                  <div class="p-2 rounded-lg" :class="statistics.avg_accuracy >= 98 ? 'bg-indigo-100 text-indigo-600' : 'bg-red-100 text-red-600'">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                  </div>
+              </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-orange-500 cursor-pointer hover:bg-orange-50 transition-colors" @click="setFilterUncounted">
+              <div class="flex justify-between items-start">
+                  <div>
+                      <p class="text-xs text-gray-500 uppercase font-bold">Belum Pernah Opname</p>
+                      <h3 class="text-2xl font-bold text-orange-600 mt-1">{{ formatNumber(statistics.never_counted) }}</h3>
+                      <p class="text-[10px] text-orange-400 mt-1 font-bold underline">Klik untuk filter</p>
+                  </div>
+                  <div class="p-2 bg-orange-100 rounded-lg text-orange-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+              </div>
+          </div>
+      </div>
 
       <div class="overflow-x-auto bg-white shadow-md rounded-lg">
         <table class="w-full border-collapse border border-blue-300 text-sm">
@@ -199,6 +200,12 @@
               </td>
               <td class="border border-gray-300 p-2 text-left bg-gray-50 text-xs truncate max-w-[150px]" :title="item.product_name">
                   {{ item.product_name }}
+                  <div v-if="item.category" class="mt-1">
+                      <span class="text-[10px] px-1.5 py-0.5 rounded font-bold border"
+                        :class="getCategoryBadgeClass(item.category)">
+                        {{ item.category }}
+                      </span>
+                  </div>
               </td>
               
               <td class="border border-gray-300 p-2 bg-gray-50 text-right whitespace-nowrap">
@@ -454,7 +461,8 @@ let observer = null;
 const filterForm = reactive({
     search: props.filters?.search || '',
     status: props.filters?.status || '',
-    frequency: props.filters?.frequency || '' 
+    frequency: props.filters?.frequency || '',
+    category: props.filters?.category || ''
 });
 
 
@@ -474,6 +482,7 @@ const resetFilter = () => {
     filterForm.search = '';
     filterForm.status = '';
     filterForm.frequency = '';
+    filterForm.category = '';
     applyFilter();
 }
 
@@ -807,6 +816,13 @@ const getStatusBadgeClass = (status) => {
         case 'REJECTED': return 'bg-red-100 text-red-700 border-red-300';
         default: return 'bg-gray-50 text-gray-500 border-gray-200';
     }
+}
+
+const getCategoryBadgeClass = (category) => {
+    const upper = (category || '').toUpperCase();
+    if (upper.includes('RAW')) return 'bg-purple-100 text-purple-700 border-purple-300';
+    if (upper.includes('PACKAGING')) return 'bg-pink-100 text-pink-700 border-pink-300';
+    return 'bg-gray-100 text-gray-700 border-gray-300';
 }
 
 // --- ACTIONS ---

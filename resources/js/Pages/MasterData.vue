@@ -1550,14 +1550,12 @@ const printAllQRCodes = async () => {
       return
     }
     
-    // Generate HTML content - Flow layout (more items per page if they fit)
-    // A4 (210mm width) - 10mm padding L/R = 190mm usable width.
-    // 70mm item width * 2 = 140mm. Fits 2 columns easily.
-    // A4 (297mm height). 80mm height * 3 = 240mm. Fits 3 rows easily.
-    // So we can fit 2 * 3 = 6 items per page comfortably.
+    // Generate HTML content - Flow layout with tight packing
+    // A4 (210mm width) - 5mm margins = 200mm usable.
+    // 62mm item * 3 = 186mm. Gap 3mm * 2 = 6mm. Total 192mm. Fits comfortably.
     
     let pagesHTML = ''
-    const itemsPerPage = 6 
+    const itemsPerPage = 9
     
     for (let i = 0; i < validQRData.length; i += itemsPerPage) {
       const pageItems = validQRData.slice(i, i + itemsPerPage)
@@ -1568,7 +1566,7 @@ const printAllQRCodes = async () => {
               <div class="qr-item">
                 <img src="${qr.image}" alt="QR Code" class="qr-image">
                 <div class="info-container">
-                    <div class="info">${qr.bin_name}</div>
+                    <div class="info">${qr.bin_name || qr.bin_code}</div>
                     <div class="info zone">${qr.zone_name}</div>
                 </div>
               </div>
@@ -1582,6 +1580,10 @@ const printAllQRCodes = async () => {
       <head>
         <title>Print All QR Codes</title>
         <style>
+          @page {
+            size: A4;
+            margin: 5mm;
+          }
           * {
             margin: 0;
             padding: 0;
@@ -1590,29 +1592,29 @@ const printAllQRCodes = async () => {
           
           body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+            background-color: white;
           }
           
           .page {
-            width: 210mm;
-            /* height: 297mm;  Removed fixed height to avoid overflow */
-            padding: 5mm; /* Reduced padding */
+            width: 200mm; /* Fit within print margins */
+            padding: 0;
             page-break-after: always;
             display: flex;
             flex-wrap: wrap;
-            align-content: flex-start;
-            gap: 5mm; /* Reduced gap */
+            justify-content: flex-start;
+            row-gap: 2mm;
+            column-gap: 2mm;
           }
           
           .page:last-child {
             page-break-after: auto;
           }
           
+          /* 60mm * 3 + 2mm * 2 = 180 + 4 = 184mm (Fits in 200mm easily) */
           .qr-item {
-            width: 70mm;
+            width: 50mm; 
             height: 80mm;
-            border: 1px dashed #ccc;
+            border: 1px dashed #999;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1620,32 +1622,42 @@ const printAllQRCodes = async () => {
             text-align: center;
             overflow: hidden;
             padding-top: 2mm;
-            page-break-inside: avoid; /* Prevent item splitting */
+            page-break-inside: avoid;
           }
           
           .qr-image {
-            width: 60mm;
-            height: 60mm;
-            margin-bottom: 1mm;
+            width: 55mm;
+            height: 55mm;
+            margin-bottom: 2mm;
           }
           
           .info-container {
-             height: 18mm;
+             width: 100%;
+             padding: 0 1mm;
              display: flex;
              flex-direction: column;
+             align-items: center;
              justify-content: center;
           }
 
           .info {
-            font-size: 10px;
+            font-size: 16px; 
             font-weight: bold;
-            line-height: 1.2;
+            line-height: 1.1;
             word-break: break-all;
+            margin-bottom: 1px;
+            color: #000;
           }
           
           .info.zone {
-              font-size: 9px;
-              color: #555;
+              font-size: 12px;
+              color: #444;
+          }
+          
+          @media print {
+            body {
+               -webkit-print-color-adjust: exact;
+            }
           }
           
           @media print {

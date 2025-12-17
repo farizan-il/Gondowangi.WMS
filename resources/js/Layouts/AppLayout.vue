@@ -172,7 +172,14 @@
                             <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h6M9 13h6"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Picking List</span>
+                        <span v-show="sidebarOpen" class="font-medium flex-1">Picking List</span>
+                        <span 
+                            v-if="$page.props.pendingPickingCount > 0" 
+                            v-show="sidebarOpen"
+                            class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                        >
+                            {{ $page.props.pendingPickingCount }}
+                        </span>
                     </Link>
 
                     <!-- Return -->
@@ -185,8 +192,15 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                 d="M4 4v5h5M20 20v-5h-5m-1 5a8 8 0 01-14.8-3h-2m.2-2h-2m14-3h-2m-1 5a8 8 0 01-14.8-3" 
                             />
-                            </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Return</span>
+                        </svg>
+                        <span v-show="sidebarOpen" class="font-medium flex-1">Return</span>
+                        <span 
+                            v-if="$page.props.pendingReturnCount > 0" 
+                            v-show="sidebarOpen"
+                            class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                        >
+                            {{ $page.props.pendingReturnCount }}
+                        </span>
                     </Link>
 
                     <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->

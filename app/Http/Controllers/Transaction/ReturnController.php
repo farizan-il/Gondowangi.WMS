@@ -201,12 +201,6 @@ class ReturnController extends Controller
 
             DB::beginTransaction();
             try {
-                // 1. Find KARANTINA Bin
-                $qrtBin = \App\Models\WarehouseBin::where('bin_code', 'QRT-HALAL')->first();
-                if (!$qrtBin) {
-                    throw new \Exception("Bin 'QRT-HALAL' tidak ditemukan. Harap hubungi administrator.");
-                }
-
                 $reservation = \App\Models\ReservationRequest::where('no_reservasi', $validated['shipmentNo'])->first();
 
                 // 2. Create Return Record Header
@@ -217,7 +211,7 @@ class ReturnController extends Controller
                     'department' => Auth::user()->departement,
                     'reservation_request_id' => $reservation->id ?? null,
                     'reference_number' => $validated['shipmentNo'],
-                    'status' => 'Submitted', // Ready for QC
+                    'status' => 'Pending Approval', // Changed from 'Submitted'
                     'created_by' => Auth::id(),
                 ]);
 
@@ -233,78 +227,21 @@ class ReturnController extends Controller
                         'qty_return' => $itemData['qty'],
                         'uom' => $uom,
                         'return_reason' => $itemData['reason'],
-                        // 'from_bin_id' => null, // Production virtual
-                        'stock_deducted' => false, // Stock added to QRT, not deducted from inventory (it comes from outside)
-                        'item_condition' => 'Good', // Default or from input
+                        'stock_deducted' => false, 
+                        'item_condition' => 'Good',
                     ]);
                     
-                    // 4. Create/Update Stock in QRT-HALAL (Handling Check)
-                    $stock = \App\Models\InventoryStock::where('material_id', $material->id)
-                        ->where('bin_id', $qrtBin->id)
-                        ->where('batch_lot', $itemData['lotBatch'])
-                        ->where('status', 'KARANTINA') 
-                        ->first();
-
-                    if ($stock) {
-                        $stock->increment('qty_on_hand', $itemData['qty']);
-                        $stock->increment('qty_available', $itemData['qty']);
-                    } else {
-                        // Fetch exp_date from existing stock of the same batch to maintain consistency
-                        $refStock = \App\Models\InventoryStock::where('material_id', $material->id)
-                            ->where('batch_lot', $itemData['lotBatch'])
-                            ->whereNotNull('exp_date')
-                            ->first();
-                            
-                        // Fallback: If no stock found (unlikely for return) use now + 1 year or handle error
-                        $expDate = $refStock ? $refStock->exp_date : now()->addYears(1);
-
-                        \App\Models\InventoryStock::create([
-                            'material_id' => $material->id,
-                            'warehouse_id' => $qrtBin->warehouse_id,
-                            'bin_id' => $qrtBin->id,
-                            'batch_lot' => $itemData['lotBatch'],
-                            'qty_on_hand' => $itemData['qty'],
-                            'qty_reserved' => 0,
-                            'qty_available' => $itemData['qty'],
-                            'uom' => $uom,
-                            'status' => 'KARANTINA', // Trigger Re-QC
-                            'exp_date' => $expDate, 
-                            'last_movement_date' => now(),
-                        ]);
-                    }
-
-                    // 5. Log Movement
-                    $movementNumber = $this->generateMovementNumber();
-                    StockMovement::create([
-                        'movement_number' => $movementNumber,
-                        'movement_type' => 'RETURN_PROD',
+                    // 6. Activity Log (Request Only)
+                    $this->logActivity($returnModel, 'Return Request Created', [
+                        'description' => "Request Return {$itemData['qty']} {$uom} of {$material->nama_material} (Pending Approval).",
                         'material_id' => $material->id,
                         'batch_lot' => $itemData['lotBatch'],
-                        'from_warehouse_id' => null, 
-                        'from_bin_id' => null, 
-                        'to_warehouse_id' => $qrtBin->warehouse_id,
-                        'to_bin_id' => $qrtBin->id,
-                        'qty' => $itemData['qty'],
-                        'uom' => $uom,
-                        'reference_type' => \App\Models\ReturnModel::class, 
-                        'reference_id' => $returnModel->id,
-                        'movement_date' => $validated['date'],
-                        'executed_by' => Auth::id(),
-                        'notes' => "Return from Production. Ref: " . $validated['shipmentNo'] . ". Reason: " . ($itemData['reason'] ?? '-'),
-                    ]);
-
-                     // 6. Activity Log
-                    $this->logActivity($returnModel, 'Create Return Production', [
-                        'description' => "Return {$itemData['qty']} {$uom} of {$material->nama_material} to QRT-HALAL.",
-                        'material_id' => $material->id,
-                        'batch_lot' => $itemData['lotBatch'],
-                        'qty_after' => $itemData['qty'],
                         'reference_document' => $validated['shipmentNo'],
                     ]);
                 }
 
                 DB::commit();
-                return redirect()->back()->with('success', 'Return dari produksi berhasil disimpan. Barang masuk ke QRT-HALAL.');
+                return redirect()->back()->with('success', 'Permintaan Return berhasil dikirim. Menunggu persetujuan Supervisor.');
 
 
             } catch (\Exception $e) {
@@ -324,10 +261,10 @@ class ReturnController extends Controller
 
         DB::beginTransaction();
         try {
-            $returnSlip = ReturnSlip::findOrFail($validated['return_slip_id']);
+            $returnSlip = \App\Models\ReturnSlip::findOrFail($validated['return_slip_id']);
 
             // 1. Create Return Record
-            $returnModel = ReturnModel::create([
+            $returnModel = \App\Models\ReturnModel::create([
                 'return_slip_id' => $returnSlip->id,
                 'return_date' => $validated['return_date'],
                 'status' => 'Returned',
@@ -373,6 +310,105 @@ class ReturnController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Return failed: ' . $e->getMessage());
+        }
+    }
+
+    public function approve(Request $request)
+    {
+        $validated = $request->validate([
+            'return_id' => 'required|exists:returns,id',
+            'target_bin_id' => 'required', // Bin Code e.g., 'QRT-HALAL'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $returnModel = \App\Models\ReturnModel::with('items.material')->findOrFail($validated['return_id']);
+
+            if ($returnModel->status !== 'Pending Approval') {
+                throw new \Exception("Return status is not Pending Approval.");
+            }
+
+            // Find Target Bin
+            $targetBin = \App\Models\WarehouseBin::where('bin_code', $validated['target_bin_id'])->first();
+            if (!$targetBin) {
+                throw new \Exception("Bin '{$validated['target_bin_id']}' tidak ditemukan.");
+            }
+
+            foreach ($returnModel->items as $item) {
+                // 4. Create/Update Stock in QRT (Handling Check)
+                $stock = \App\Models\InventoryStock::where('material_id', $item->material_id)
+                    ->where('bin_id', $targetBin->id)
+                    ->where('batch_lot', $item->batch_lot)
+                    ->where('status', 'KARANTINA') 
+                    ->first();
+
+                if ($stock) {
+                    $stock->increment('qty_on_hand', $item->qty_return);
+                    $stock->increment('qty_available', $item->qty_return);
+                } else {
+                    // Fetch exp_date from existing stock of the same batch to maintain consistency
+                    $refStock = \App\Models\InventoryStock::where('material_id', $item->material_id)
+                        ->where('batch_lot', $item->batch_lot)
+                        ->whereNotNull('exp_date')
+                        ->first();
+                        
+                    // Fallback: If no stock found use now + 1 year
+                    $expDate = $refStock ? $refStock->exp_date : now()->addYears(1);
+
+                    \App\Models\InventoryStock::create([
+                        'material_id' => $item->material_id,
+                        'warehouse_id' => $targetBin->warehouse_id,
+                        'bin_id' => $targetBin->id,
+                        'batch_lot' => $item->batch_lot,
+                        'qty_on_hand' => $item->qty_return,
+                        'qty_reserved' => 0,
+                        'qty_available' => $item->qty_return,
+                        'uom' => $item->uom,
+                        'status' => 'KARANTINA', 
+                        'exp_date' => $expDate, 
+                        'last_movement_date' => now(),
+                    ]);
+                }
+
+                // 5. Log Movement
+                $movementNumber = $this->generateMovementNumber();
+                StockMovement::create([
+                    'movement_number' => $movementNumber,
+                    'movement_type' => 'APPROVE RETURN MATERIAL',
+                    'material_id' => $item->material_id,
+                    'batch_lot' => $item->batch_lot,
+                    'from_warehouse_id' => null, 
+                    'from_bin_id' => null, 
+                    'to_warehouse_id' => $targetBin->warehouse_id,
+                    'to_bin_id' => $targetBin->id,
+                    'qty' => $item->qty_return,
+                    'uom' => $item->uom,
+                    'reference_type' => \App\Models\ReturnModel::class, 
+                    'reference_id' => $returnModel->id,
+                    'movement_date' => now(),
+                    'executed_by' => Auth::id(),
+                    'notes' => "Return Approved to {$targetBin->bin_code}. Ref: " . $returnModel->reference_number,
+                ]);
+            }
+
+            $returnModel->update([
+                'status' => 'Approved',
+                'approved_by' => Auth::id(),
+            ]);
+            
+            // Log Approval
+            $this->logActivity($returnModel, 'Return Approved', [
+                'description' => "Return {$returnModel->return_number} Approved. Items moved to {$targetBin->bin_code}.",
+                'approved_by' => Auth::user()->name
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Return berhasil disetujui.']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Return Approve Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 

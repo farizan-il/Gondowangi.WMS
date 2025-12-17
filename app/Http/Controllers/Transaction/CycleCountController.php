@@ -25,6 +25,7 @@ class CycleCountController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $frequency = $request->input('frequency');
+        $category = $request->input('category');
 
         // --- 1. QUERY STOCK ---
         $query = InventoryStock::with(['material', 'bin'])
@@ -46,6 +47,13 @@ class CycleCountController extends Controller
             if ($frequency === 'never') $query->doesntHave('cycleCounts');
             elseif ($frequency === 'rare') $query->has('cycleCounts', '<', 2);
             elseif ($frequency === 'often') $query->has('cycleCounts', '>', 5);
+        }
+
+        // Filter Category
+        if ($category) {
+            $query->whereHas('material', function($q) use ($category) {
+                $q->where('kategori', $category);
+            });
         }
 
         // --- 2. EKSEKUSI PAGINATION (GANTI LIMIT DENGAN PAGINATE) ---
@@ -116,7 +124,7 @@ class CycleCountController extends Controller
         return Inertia::render('CycleCount', [
             'initialStocks' => $mappedItems, // Kirim data yang sudah dimapping
             'nextPageUrl' => $stocks->nextPageUrl(), // Kirim URL halaman selanjutnya
-            'filters' => $request->only(['search', 'status', 'frequency']),
+            'filters' => $request->only(['search', 'status', 'frequency', 'category']),
             'statistics' => $stats
         ]);
     }
@@ -192,6 +200,7 @@ class CycleCountController extends Controller
             'tanggal' => Carbon::now()->format('d/m/Y H:i'),
             'code' => $stock->material->kode_item,
             'product_name' => $stock->material->nama_material,
+            'category' => $stock->material->kategori,
             'onhand' => (float) $stock->qty_on_hand,
             'uom' => $stock->uom,
             'location' => $stock->bin ? $stock->bin->bin_code : '-',
@@ -243,6 +252,7 @@ class CycleCountController extends Controller
             'tanggal' => $cc->count_date->format('d/m/Y H:i'),
             'code' => $cc->material->kode_item,
             'product_name' => $cc->material->nama_material,
+            'category' => $cc->material->kategori,
             'onhand' => (float) $cc->system_qty,
             'uom' => $cc->material->satuan,
             'location' => $cc->bin ? $cc->bin->bin_code : '-',

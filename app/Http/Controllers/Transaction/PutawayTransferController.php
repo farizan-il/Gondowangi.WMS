@@ -71,7 +71,7 @@ class PutawayTransferController extends Controller
             'warehouse',
             'bin'
         ])
-        ->where('status', 'RELEASED')
+        ->whereIn('status', ['RELEASED', 'KARANTINA'])
         ->where('qty_available', '>', 0)
         ->whereHas('bin', function ($query) {
             $query->where('bin_code', 'LIKE', 'QRT-%');

@@ -275,17 +275,15 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])
-             //->middleware('permission:return.view')
-            ->name('return');
-        
-        Route::post('/return/parse-pdf', [ReturnController::class, 'parsePdf'])
-             // ->middleware('permission:return.create')  Assuming create permission is appropriate
-             ->name('return.parse-pdf');
-        
-        // Return from Production endpoints
-        Route::get('/return/dept-reservations', [ReturnController::class, 'getDeptReservations'])
-            // ->middleware('permission:return.view')
-            ->name('return.dept-reservations');
+            ->middleware('permission:return.view') // Assuming permission exists or reuse existing
+            ->name('return.index');
+        Route::post('/return', [ReturnController::class, 'store'])
+            ->middleware('permission:return.create')
+            ->name('return.store');
+        Route::get('/return/material/{code}', [ReturnController::class, 'getMaterial']);
+        Route::get('/return/dept-reservations', [ReturnController::class, 'getDeptReservations']);
+        Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails']);
+        Route::post('/return/approve', [ReturnController::class, 'approve'])->name('return.approve');
 
         Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails'])
             // ->middleware('permission:return.view')
