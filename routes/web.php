@@ -60,6 +60,8 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::get('/', [MasterDataController::class, 'index'])->name('master-data.index');
         
         // SKU Routes
+        // IMPORTANT: Specific routes MUST come before parameterized routes
+        Route::post('/sku/bulk-update', [MasterDataController::class, 'bulkUpdateSku']);
         Route::post('/sku', [MasterDataController::class, 'storeSku']);
         Route::put('/sku/{id}', [MasterDataController::class, 'updateSku']);
         Route::delete('/sku/{id}', [MasterDataController::class, 'deleteSku']);

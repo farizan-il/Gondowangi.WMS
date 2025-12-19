@@ -96,77 +96,75 @@ class ReservationController extends Controller
     // ===================================================================
 
     private function parseProductionOrderContent(string $pdfText)
-    {
-        // --- Langkah 1: Isolasi Bagian Bill of Material ---
-        $startKeyword = "Products to Consume"; 
-        $startPos = strpos($pdfText, $startKeyword);
-        
-        if ($startPos === false) {
-            return []; // Jika header tidak ditemukan, kembalikan array kosong
-        }
+{
+    $headerData = [
+        'productionOrderNo' => null,
+        'productName' => null,
+        'totalQuantity' => null
+    ];
 
-        // Ambil semua teks setelah keyword Bill of Material
-        $BoMSection = substr($pdfText, $startPos);
+    // 1. Ambil Production Order N°
+    if (preg_match('/Production Order N°\s*:\s*(\d+)/i', $pdfText, $matches)) {
+        $headerData['productionOrderNo'] = $matches[1];
+    }
+
+    // 2. PERBAIKAN UTAMA: Ambil Nama Produk dan Quantity
+    // Normalisasi: Ubah semua line break dan multiple spaces jadi single space
+    $normalizedText = preg_replace('/\s+/', ' ', $pdfText);
+    
+    // STRATEGI PARSING YANG LEBIH AKURAT:
+    // Cari section antara "Product" dan "Scheduled Date" (lebih aman dari line break)
+    if (preg_match('/Product\s+(.+?)\s+Scheduled Date/is', $normalizedText, $productSection)) {
+        $productContent = $productSection[1];
         
+        // Dari section ini, extract Nama Produk dan Quantity
+        // Pattern: [NAMA PRODUK] [ANGKA dengan titik/koma] Pcs
+        if (preg_match('/^(.+?)\s+([\d.,]+)\s+Pcs/i', trim($productContent), $matches)) {
+            // Nama Produk (bersihkan dari "Quantity" jika ada)
+            $productName = trim($matches[1]);
+            $productName = preg_replace('/\s*Quantity\s*$/i', '', $productName);
+            $headerData['productName'] = $productName;
+            
+            // Quantity → Konversi ke Float untuk Besar Bets (Kg)
+            // Contoh: "1.241,0000" → 1241.0
+            $qtyString = $matches[2];
+            $qtyClean = str_replace('.', '', $qtyString);  // Hapus pemisah ribuan
+            $qtyClean = str_replace(',', '.', $qtyClean);  // Koma jadi titik desimal
+            $headerData['totalQuantity'] = (float) $qtyClean;
+        }
+    }
+
+    // --- Bagian Bill Of Material (Daftar Item) ---
+    $startKeyword = "Products to Consume";
+    $startPos = strpos($pdfText, $startKeyword);
+    
+    if ($startPos !== false) {
+        $BoMSection = substr($pdfText, $startPos);
         $allMaterialsFromPdf = [];
         
-        // 🔥 PERBAIKAN REGEX UTAMA: Menggunakan preg_match_all untuk mencari pola di seluruh blok teks.
-        // Pola: [KODE] [NAMA (non-greedy)] [KUANTITAS] [UOM]
-        // 🔥 PERBAIKAN REGEX FIXED: 
-        // 1. Code: \d{4,} (Minimal 4 digit)
-        // 2. Qty: [\d.,]+ 
-        // 3. UoM: [a-zA-Z]+? (Non-greedy) diikuti oleh lookahead (?=RM|Ready|Production|\s|$)
-        //    Ini mencegah capture 'PcsRM' menjadi satu kata UoM.
-        $globalPattern = '/(\d{4,})\s+(.+?)\s+([\d.,]+)\s*([a-zA-Z]+?)(?=RM|Ready|Production|\s|$)/is'; 
+        // Regex Global untuk menangkap SEMUA item dari Bill of Material
+        // Pattern: [Kode 5 digit] [Nama Material] [Qty dengan titik/koma] [UoM] [Status]
+        $globalPattern = '/(\d{5})\s+(.+?)\s+([\d.,]+)\s+(Kg|Pcs|L|Unit)\s+RM/i';
 
-        // Mencoba mencocokkan semua pola sekaligus
         if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
-            
             foreach ($matches as $m) {
-                // $m[1] = Kode, $m[2] = Nama, $m[3] = Qty, $m[4] = UoM
-                $code = trim($m[1]);
-                $name = trim($m[2]);
-                // Sanitasi Quantity (Format Indonesia: 1.000,00 -> 1000.00)
-                // 1. Hapus titik (ribuan)
-                $qtyClean = str_replace('.', '', $m[3]);
-                // 2. Ganti koma dengan titik (desimal)
-                $qtyClean = str_replace(',', '.', $qtyClean);
-                $qty = (float) $qtyClean; 
-                $qty = (float) $qtyClean; 
+                // Konversi quantity dengan cara yang sama
+                $qtyItem = str_replace('.', '', $m[3]);
+                $qtyItem = str_replace(',', '.', $qtyItem);
                 
-                // Logging untuk debug
-                // \Log::info("Parsed Item Raw: Code={$code}, Name={$name}, Qty={$m[3]}, UoM_Raw={$m[4]}");
-
-                // Sanitasi UoM: REGEX AGRESIF
-                // Hapus apapun yang dimulai dengan RM, Ready, atau Production (case insensitive) sampai akhir string
-                $uomRaw = trim($m[4]);
-                $uomClean = preg_replace('/(RM|Ready|Production).*/i', '', $uomRaw);
-                $uom = trim($uomClean);
-
                 $allMaterialsFromPdf[] = [
-                    'code' => $code,
-                    'name' => $name, 
-                    'qty' => $qty,
-                    'uom' => $uom
+                    'code' => trim($m[1]),           // Kode Material (5 digit)
+                    'name' => trim($m[2]),           // Nama Material
+                    'qty' => (float) $qtyItem,       // Quantity (float)
+                    'uom' => trim($m[4])             // Unit of Measure
                 ];
             }
         }
-        
-        // --- Langkah 2: Agregasi Kuantitas (Tetap sama) ---
-        // Agregasi material yang memiliki kode dan UOM yang sama (jika muncul lebih dari sekali di PO)
-        $aggregatedMaterials = [];
-        foreach ($allMaterialsFromPdf as $material) {
-            $key = $material['code'] . '_' . $material['uom']; 
-            
-            if (!isset($aggregatedMaterials[$key])) {
-                $aggregatedMaterials[$key] = $material;
-            } else {
-                $aggregatedMaterials[$key]['qty'] += $material['qty'];
-            }
-        }
-
-        return array_values($aggregatedMaterials);
+        $headerData['items'] = array_values($allMaterialsFromPdf);
     }
+
+    return $headerData;
+}
 
     /**
      * Mencari material di master data dan menghitung stok tersedia.
@@ -201,168 +199,65 @@ class ReservationController extends Controller
             'kategori' => $material->kategori 
         ];
     }
-    
-    // ===================================================================
-    // ENDPOINT: parseMaterials
-    // ===================================================================
 
     public function parseMaterials(Request $request)
     {
-        // 1. VALIDASI DATA FORM (Hanya PDF dan kategori harus terisi)
-        try {
-            $request->validate([
-                'file' => 'required|file|mimes:pdf|max:10240', 
-                'request_type' => 'required|string|in:raw-material,packaging,foh-rs,add', 
-            ]);
-        } catch (ValidationException $e) {
-            return response()->json(['message' => '❌ Gagal Validasi: Periksa file atau tipe request.', 'errors' => $e->errors()], 422);
-        }
-
-        $file = $request->file('file');
-        $requestType = $request->input('request_type');
-        $allParsedMaterials = [];
-        
-        // Hapus: $pathToPdftotext (Karena tidak lagi menggunakan Spatie)
+        $request->validate([
+            'file' => 'required|file|mimes:pdf|max:10240',
+            'request_type' => 'required|string',
+        ]);
 
         try {
-            // --- 2. FASE EKSEKUSI PURE PHP PARSER (SMALOT) ---
-            if ($file->extension() === 'pdf') {
-                
-                // 🔥 KODE SMALOT UNTUK MENGGANTIKAN SPATIE/pdftotext
-                $parser = new Parser();
-                $pdf = $parser->parseFile($file->getPathname());
-                $pdfText = $pdf->getText(); 
-                // ---------------------------------------------------
-                
-                // PARSING LOGIC
-                $allParsedMaterials = $this->parseProductionOrderContent($pdfText);
-                
-                if (empty($allParsedMaterials)) {
-                     throw new \Exception("Tidak ada material yang berhasil diekstrak. Cek Regex atau format PDF."); 
-                }
-            } else {
-                throw new \Exception("Tipe file selain PDF saat ini belum didukung untuk parsing otomatis.");
-            }
+            $parser = new Parser();
+            $pdf = $parser->parseFile($request->file('file')->getPathname());
+            $pdfText = $pdf->getText(); 
+
+            $parsedData = $this->parseProductionOrderContent($pdfText);
+            // parseProductionOrderContent returns headerData directly with 'items' nested inside
+            $allParsedItems = $parsedData['items'] ?? [];
             
-            // --- 3. FASE FILTERING DAN DB LOOKUP ---
+            // Create header info without the 'items' key for response
+            $headerInfo = [
+                'productionOrderNo' => $parsedData['productionOrderNo'] ?? null,
+                'productName' => $parsedData['productName'] ?? null,
+                'totalQuantity' => $parsedData['totalQuantity'] ?? null,
+            ];
+
             $resultMaterials = [];
             $notFoundMaterials = [];
-            
-            // Tentukan kategori WMS berdasarkan request_type
-            $materialCategoryWMS = match ($requestType) {
-                'raw-material' => 'Raw Material',
-                'foh-rs' => 'FOH & RS',
-                'add', 'packaging' => 'Packaging Material',
-                default => 'Packaging Material',
-            };
+            $requestType = $request->input('request_type');
 
-            foreach ($allParsedMaterials as $parsedItem) {
-                // ... (Logika filtering, DB lookup, dan penentuan $resultMaterials / $notFoundMaterials) ...
-                
-                $materialCode = $parsedItem['code'] ?? null;
-                $materialName = $parsedItem['name'] ?? null;
-                $requestedQty = (float) ($parsedItem['qty'] ?? 0);
-                $uom = strtolower($parsedItem['uom'] ?? '');
-                
-                if (!$materialCode || $requestedQty <= 0) continue; 
-
-                // Filter logika filtering berdasarkan UoM (kg vs non-kg)
-                // REMOVED: Kita hapus filter strict UoM ini agar semua item masuk.
-                /*
-                $isRawMaterialUom = ($uom === 'kg');
-                
-                if ($requestType === 'raw-material' && !$isRawMaterialUom) {
-                    continue; // Skip jika raw material tapi bukan kg (misal ada packaging nyasar)
-                }
-                
-                if ($requestType === 'packaging' && $isRawMaterialUom) {
-                    continue; 
-                }
-                */
-
-                $materialData = $this->getMaterialAndStock($materialCode, $materialCategoryWMS, $uom);
+            foreach ($allParsedItems as $parsedItem) {
+                // Lookup ke database menggunakan fungsi getMaterialAndStock yang sudah ada di kode Anda
+                $materialData = $this->getMaterialAndStock($parsedItem['code'], 'All', $parsedItem['uom']);
                 
                 if ($materialData) {
-                    // KODE DITEMUKAN DI MASTER
-
                     $item = $materialData;
-                    
-                    // Mapping jumlah permintaan ke field yang sesuai
+                    // Masukkan Qty dari PDF ke field yang sesuai kategori
                     if ($requestType === 'raw-material') {
-                         $item['jumlahKebutuhan'] = $requestedQty;
-                         $item['jumlahKirim'] = null;
+                        $item['jumlahKebutuhan'] = $parsedItem['qty'];
                     } elseif ($requestType === 'packaging' || $requestType === 'add') {
-                         $item['jumlahPermintaan'] = $requestedQty;
-                    } elseif ($requestType === 'foh-rs') {
-                         $item['qty'] = $requestedQty;
-                         // foh-rs butuh 'keterangan' dan 'uom'
-                         $item['keterangan'] = $materialData['namaMaterial']; // Default keterangan = nama material
-                         $item['uom'] = $materialData['satuan'];
-                         $item['kodeItem'] = $materialData['kodeBahan']; // map dari kodeBahan/kodePM
-                    }
-                    
-                    // Cek ketersediaan stok
-                    if ($materialData['stokAvailable'] < $requestedQty) {
-                        $notFoundMaterials[] = [
-                            'kode' => $materialCode,
-                            'nama' => $materialData['namaBahan'] ?? $materialData['namaMaterial'],
-                            'satuan' => $item['satuan'] ?? $uom,
-                            'message' => "Stok tersedia hanya " . $materialData['stokAvailable'] . " " . ($item['satuan'] ?? $uom) . ". (Diperlukan: {$requestedQty})",
-                        ];
-                        // Karena stok kurang, kita tidak akan memasukkannya ke $resultMaterials.
-                        continue;
-                    }
-                    
-                    $resultMaterials[] = $item; 
-                    
-                } else {
-                    $notFoundMaterials[] = [
-                        'kode' => $materialCode,
-                        'nama' => $materialName,
-                        'satuan' => $uom,
-                        'message' => 'Tidak ditemukan di master inventory WMS (Kategori: ' . $materialCategoryWMS . ').'
-                    ];
-                    
-                    $item = ['satuan' => $uom, 'stokAvailable' => 0];
-                    
-                    if ($requestType === 'raw-material') {
-                        $item['kodeBahan'] = $materialCode;
-                        $item['namaBahan'] = $materialName; 
-                        $item['jumlahKebutuhan'] = $requestedQty;
-                    } elseif ($requestType === 'packaging' || $requestType === 'add') {
-                        $item['kodePM'] = $materialCode;
-                        $item['namaMaterial'] = $materialName;
-                        $item['jumlahPermintaan'] = $requestedQty;
-                    } elseif ($requestType === 'foh-rs') {
-                        $item['kodeItem'] = $materialCode;
-                        $item['keterangan'] = $materialName;
-                        $item['qty'] = $requestedQty;
-                        $item['uom'] = $uom;
+                        $item['jumlahPermintaan'] = $parsedItem['qty'];
+                    } else {
+                        $item['qty'] = $parsedItem['qty'];
                     }
                     $resultMaterials[] = $item;
+                } else {
+                    $notFoundMaterials[] = [
+                        'kode' => $parsedItem['code'],
+                        'message' => 'Tidak ditemukan di master data.'
+                    ];
                 }
             }
 
-            // 4. RESPON SUKSES
             return response()->json([
+                'header' => $headerInfo,
                 'materials' => $resultMaterials,
                 'notFoundMaterials' => $notFoundMaterials,
-                'message' => '✅ File berhasil diproses.'
+                'message' => '✅ Sukses'
             ]);
-
-        } 
-        catch (\Exception $e) {
-            // TANGKAP SEMUA ERROR RUNTIME LAINNYA
-            Log::error('RESERVATION PARSE FATAL ERROR:', [
-                'error_message' => $e->getMessage(),
-                'stack_trace' => $e->getTraceAsString(),
-                'request_type' => $requestType,
-            ]);
-            
-            // Kirim pesan error yang tertangkap di log ke frontend
-            return response()->json([
-                'message' => '❌ Gagal Eksekusi/Parsing: ' . $e->getMessage() 
-            ], 422); 
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
     
@@ -761,3 +656,5 @@ class ReservationController extends Controller
         }
     }
 }
+
+

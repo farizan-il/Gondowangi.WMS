@@ -7,6 +7,8 @@ Route::middleware('auth:sanctum')->get('/master-data/all', [MasterDataController
 
 Route::middleware('auth:sanctum')->group(function () {
     // SKU/Material
+    // IMPORTANT: Specific routes MUST come before parameterized routes
+    Route::post('/master-data/sku/bulk-update', [MasterDataController::class, 'bulkUpdateSku']);
     Route::post('/master-data/sku', [MasterDataController::class, 'storeSku']);
     Route::put('/master-data/sku/{id}', [MasterDataController::class, 'updateSku']);
     Route::delete('/master-data/sku/{id}', [MasterDataController::class, 'deleteSku']);

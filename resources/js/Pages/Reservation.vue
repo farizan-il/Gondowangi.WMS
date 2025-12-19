@@ -868,115 +868,48 @@ const debugFileParse = async () => {
 };
 
 const uploadFileAndParse = async () => {
-    // 1. Cek File Terpilih
     if (!uploadedFile.value) {
-        uploadStatus.value = { type: 'error', message: '❌ Harap pilih file PDF terlebih dahulu.' };
+        uploadStatus.value = { type: 'error', message: '❌ Harap pilih file PDF.' };
         return;
     }
-
-    // 2. Cek Kategori Yang Sesuai (Valid untuk semua sekarang)
-    if (!selectedCategory.value) {
-        uploadStatus.value = { type: 'error', message: '❌ Mohon pilih kategori terlebih dahulu.' };
-        return;
-    }
-
-    // Persiapan sebelum kirim
-    formData.value.items = []; 
-    uploadStatus.value = { type: 'info', message: 'Sedang memproses file, mohon tunggu...' };
 
     const data = new FormData();
-    data.append('file', uploadedFile.value); 
-    data.append('request_type', selectedCategory.value); 
+    data.append('file', uploadedFile.value);
+    data.append('request_type', selectedCategory.value);
 
     try {
         const response = await axios.post(route('transaction.reservation.parse-materials'), data, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
 
-        // 1. Ambil data material yang berhasil diparsing
-        const materials = response.data.materials || [];
-        const notFoundMaterials = response.data.notFoundMaterials || []; // <-- TANGKAP ARRAY PENOLAKAN
-
-        // Isi form data items (Hanya yang valid/ditemukan)
-        if (materials.length > 0) {
-            formData.value.items = materials.map(m => {
-                if (selectedCategory.value === 'raw-material') {
-                    return {
-                        // ... mapping field raw material ...
-                        kodeBahan: m.kodeBahan,
-                        namaBahan: m.namaBahan,
-                        jumlahKebutuhan: m.jumlahKebutuhan,
-                        jumlahKirim: null,
-                        satuan: m.satuan,
-                        stokAvailable: m.stokAvailable,
-                    };
-                } else if (selectedCategory.value === 'packaging' || selectedCategory.value === 'add') {
-                    return {
-                        // ... mapping field packaging material ...
-                        kodePM: m.kodePM,
-                        namaMaterial: m.namaMaterial,
-                        jumlahPermintaan: m.jumlahPermintaan,
-                        satuan: m.satuan,
-                        stokAvailable: m.stokAvailable,
-                    };
-                } else if (selectedCategory.value === 'foh-rs') {
-                    return {
-                        // ... mapping field foh-rs ...
-                        kodeItem: m.kodeItem,
-                        keterangan: m.keterangan || m.namaMaterial,
-                        qty: m.qty,
-                        uom: m.uom,
-                        stokAvailable: m.stokAvailable,
-                    };
-                }
-                return {}; 
-            });
-            uploadStatus.value = { type: 'success', message: `✅ Berhasil mengimpor ${materials.length} material.` };
-        } else {
-             // Jika materials.length > 0, tapi semua ditolak, status tetap sukses/warning. Jika 0, maka error.
-             if (notFoundMaterials.length > 0) {
-                  uploadStatus.value = { type: 'warning', message: `⚠️ ${notFoundMaterials.length} material ditolak/tidak ditemukan. Lihat detail.` };
-             } else {
-                  uploadStatus.value = { type: 'error', message: `❌ Tidak ada material yang ditemukan dalam dokumen.` };
-             }
+        // Ambil data header dari response
+        const header = response.data.header;
+        
+        if (header) {
+            // Jika kategori Raw Material 
+            if (selectedCategory.value === 'raw-material') {
+                // Nama Produk -> Nama Produk 
+                formData.value.kodeProduk = header.productName; 
+                // Production Order N° -> No Bets Ekstrak / Mixing [cite: 3]
+                formData.value.noBets = header.productionOrderNo; 
+                // Quantity -> Besar Bets (Kg) 
+                formData.value.besarBets = header.totalQuantity; 
+            } 
+            // Jika kategori Packaging [cite: 4, 6]
+            else if (selectedCategory.value === 'packaging' || selectedCategory.value === 'add') {
+                formData.value.namaProduk = header.productName; 
+                formData.value.noBetsFilling = header.productionOrderNo;
+            }
         }
 
-        // 2. Tampilkan peringatan jika ada material yang tidak ditemukan/stok kurang
-        if (notFoundMaterials.length > 0) {
-            // Kita buat daftar notifikasi penolakan yang dikirim dari backend
-            const list = notFoundMaterials.map(m => `• **${m.kode || m.kodePM || m.kodeBahan}**: ${m.message}`).join('\n');
-            
-            // Set pesan konfirmasi kustom
-            confirmationMessage.value = `⚠️ Ditemukan masalah pada material berikut (Item TIDAK dimasukkan ke tabel):\n\n${list}`;
-            showConfirmationModal.value = true;
+        // Isi tabel item (Bill of Material) tanpa batas 10 baris 
+        const materials = response.data.materials || [];
+        if (materials.length > 0) {
+            formData.value.items = materials;
         }
 
     } catch (error) {
-        console.error('Error saat parse file:', error);
-        
-        // Membaca pesan error dari backend
-        const statusText = error.response?.statusText || 'Kesalahan Server';
-        
-        // Coba ambil pesan dari body respons
-        let backendMessage = error.response?.data?.message || `Gagal memproses. (${statusText})`;
-        
-        // Ambil pesan validasi Laravel jika ada
-        if (error.response?.data?.errors) {
-             const errors = error.response.data.errors;
-             // Gabungkan semua pesan error validasi menjadi satu string
-             backendMessage = Object.values(errors).map(e => e[0]).join('; ');
-        }
-        
-        uploadStatus.value = { 
-            type: 'error', 
-            message: `❌ Gagal memproses (${statusText}): ${backendMessage}`
-        };
-    } finally {
-        // Reset file input setelah selesai
-        uploadedFile.value = null;
-        document.querySelector('input[type="file"]').value = '';
+        console.error('Parsing failed:', error);
     }
 };
 

@@ -32,90 +32,133 @@ class ReturnController extends Controller
             $pdf = $parser->parseFile($pdfFile->getPathname());
             $text = $pdf->getText();
 
-            // Normalize text: remove excessive whitespace
-            $text = preg_replace('/\s+/', ' ', $text);
-            $text = trim($text);
+            // CRITICAL: Normalisasi teks - Ubah line break & multiple spaces jadi single space
+            $normalizedText = preg_replace('/\s+/', ' ', $text);
+            $normalizedText = trim($normalizedText);
 
             $extractedData = [
                 'return_number' => '',
                 'date' => '',
+                'formatted_date' => date('Y-m-d'), // Default hari ini
                 'items' => [],
                 'origin' => '',
             ];
 
-            // 1. Header Extraction
-            // Return Number: Internal Shipment : RET/16619
-            if (preg_match('/Internal Shipment\s*:\s*([A-Za-z0-9\/]+)/i', $text, $matches)) {
+            // ============================================================
+            // STEP 1: Extract Internal Shipment Number (Return Number)
+            // ============================================================
+            // Contoh: "Internal Shipment : RET/16619"
+            if (preg_match('/Internal Shipment\s*:\s*([A-Za-z0-9\/\-]+)/i', $normalizedText, $matches)) {
                 $extractedData['return_number'] = trim($matches[1]);
             }
 
-            // Date: Schedule Date 12/12/2025 07:56:26
-            if (preg_match('/Schedule Date\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4}\s*[0-9]{2}:[0-9]{2}:[0-9]{2})/i', $text, $dateMatch)) {
-                 $extractedData['date'] = trim($dateMatch[1]);
-            } elseif (preg_match('/Schedule Date\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i', $text, $dateMatch)) {
-                 $extractedData['date'] = trim($dateMatch[1]);
+            // ============================================================
+            // STEP 2: Extract Schedule Date
+            // ============================================================
+            // Contoh: "Schedule Date 12/12/2025 07:56:26" atau "Schedule Date 12/12/2025"
+            if (preg_match('/Schedule Date\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i', $normalizedText, $dateMatch)) {
+                $rawDate = trim($dateMatch[1]);
+                
+                // Convert ke Y-m-d untuk HTML date input
+                try {
+                    $dateObj = \DateTime::createFromFormat('d/m/Y', $rawDate);
+                    if ($dateObj) {
+                        $extractedData['formatted_date'] = $dateObj->format('Y-m-d');
+                    }
+                } catch (\Exception $e) {
+                    // Keep default if parsing fails
+                    Log::warning("Date parsing failed: " . $e->getMessage());
+                }
             }
 
-            // Order/Origin
-             if (preg_match('/Order\(Origin\)\s*(.*?)\s+Schedule Date/i', $text, $originMatch)) {
+            // ============================================================
+            // STEP 3: Extract Order Origin (Optional - untuk reference)
+            // ============================================================
+            // Contoh: "Order(Origin) 512015 :PRE/15113 Schedule Date"
+            if (preg_match('/Order\s*\(Origin\)\s+(.+?)\s+Schedule Date/i', $normalizedText, $originMatch)) {
                 $extractedData['origin'] = trim($originMatch[1]);
             }
 
-            // 2. Items Extraction
-            // Pattern: [Code] Description ... Status Location Qty Unit
-            // Example: [GNAB001] NATUR Shampoo Aloe Vera 270 ml - R23 512015 Waiting Availability Production 8,0000 Pcs
-            // Regex:
-            // \[([A-Za-z0-9]+)\] : Code
-            // \s+(.*?) : Description (and Serial if present)
-            // \s+(Waiting.*?) : Status (Assuming it starts with Waiting)
-            // \s+((?:Production|Stock).*?) : Location (Assuming Production or Stock)
-            // \s+([0-9]+(?:[,.][0-9]+)?)\s+ : Qty
-            // ([A-Za-z]+) : Unit
-
-            $itemPattern = '/\[([A-Za-z0-9]+)\]\s+(.*?)\s+(Waiting.*?)\s+(Production.*?)\s+([0-9]+(?:[,.][0-9]+)?)\s+([A-Za-z]+)/i';
+            // ============================================================
+            // STEP 4: Extract Items - MAIN LOGIC
+            // ============================================================
+            // Strategi: Cari bagian setelah header "Description Serial Number Status..."
+            // kemudian extract semua baris items
             
-            if (preg_match_all($itemPattern, $text, $matches, PREG_SET_ORDER)) {
+            // REGEX PATTERN yang robust untuk menangani format PDF Anda:
+            // [KODE] Deskripsi (bisa panjang) Serial? Status Location Qty UoM
+            
+            // Pattern Utama (Cocok untuk PDF Anda):
+            $mainPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+(?:(\d+)\s+)?(Waiting\s+[A-Za-z\s]+?)\s+(Production|Stock)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
+            
+            if (preg_match_all($mainPattern, $normalizedText, $matches, PREG_SET_ORDER)) {
                 foreach ($matches as $match) {
-                    // Handle numeric format "29,0000" -> 29.0
-                    $qtyString = str_replace('.', '', $match[5]); 
-                    $qtyString = str_replace(',', '.', $qtyString);
-                    // Double check if comma was decimal separator. 
-                    // If match was "29,0000", str_replace(',', '.', ..) gives "29.0000". Correct.
+                    // Bersihkan deskripsi dari whitespace berlebih
+                    $description = preg_replace('/\s+/', ' ', trim($match[2]));
                     
-                    // Sanity check description: remove Serial Number from description if it leaked?
-                    // Usually description is just text. The regex (.*?) matches until Waiting...
-                    // "Dus Satuan ... - R23"
+                    // Konversi quantity: "29,0000" -> 29.0
+                    $qtyString = $match[6];
+                    $qtyClean = str_replace('.', '', $qtyString);  // Hapus pemisah ribuan
+                    $qtyClean = str_replace(',', '.', $qtyClean);  // Koma jadi titik desimal
                     
                     $extractedData['items'][] = [
-                        'item_code' => trim($match[1]),
-                        'description' => trim($match[2]),
-                        'status' => trim($match[3]),
-                        'location' => trim($match[4]),
-                        'qty' => floatval($qtyString),
-                        'uom' => trim($match[6]),
+                        'item_code' => trim($match[1]),             // 23371
+                        'description' => $description,               // Dus Satuan NATUR...
+                        'serial_number' => isset($match[3]) ? trim($match[3]) : '', // 512015 (optional)
+                        'status' => trim($match[4]),                // Waiting Availability
+                        'location' => trim($match[5]),              // Production
+                        'qty' => (float) $qtyClean,                 // 29.0
+                        'uom' => trim($match[7]),                   // Pcs
                     ];
                 }
             }
 
-             // Format Date to Y-m-d
-            if (!empty($extractedData['date'])) {
-                 try {
-                    $dateObj = \DateTime::createFromFormat('d/m/Y H:i:s', $extractedData['date']);
-                    if (!$dateObj) $dateObj = \DateTime::createFromFormat('d/m/Y', $extractedData['date']);
-                    $extractedData['formatted_date'] = $dateObj ? $dateObj->format('Y-m-d') : date('Y-m-d');
-                } catch (\Exception $e) { 
-                    $extractedData['formatted_date'] = date('Y-m-d'); 
+            // ============================================================
+            // FALLBACK: Pattern Sederhana jika regex utama gagal
+            // ============================================================
+            if (empty($extractedData['items'])) {
+                // Pattern minimal: [KODE] ... Angka UoM
+                $fallbackPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
+                
+                if (preg_match_all($fallbackPattern, $normalizedText, $fallbackMatches, PREG_SET_ORDER)) {
+                    foreach ($fallbackMatches as $match) {
+                        $qtyClean = str_replace(['.', ','], ['', '.'], $match[3]);
+                        
+                        $extractedData['items'][] = [
+                            'item_code' => trim($match[1]),
+                            'description' => trim($match[2]),
+                            'serial_number' => '',
+                            'status' => '',
+                            'location' => 'Production',
+                            'qty' => (float) $qtyClean,
+                            'uom' => trim($match[4]),
+                        ];
+                    }
                 }
-            } else {
-                $extractedData['formatted_date'] = date('Y-m-d');
             }
+
+            // Log hasil untuk debugging
+            Log::info("PDF Parsed Successfully", [
+                'return_number' => $extractedData['return_number'],
+                'date' => $extractedData['formatted_date'],
+                'items_count' => count($extractedData['items']),
+            ]);
 
             return response()->json($extractedData);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Gagal memproses PDF.', 'details' => $e->getMessage()], 500);
+            Log::error("Return PDF Parse Error: " . $e->getMessage(), [
+                'file' => $pdfFile->getClientOriginalName(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'error' => 'Gagal memproses PDF Return.', 
+                'details' => $e->getMessage()
+            ], 500);
         }
     }
+    
     public function index()
     {
         $suppliers = \App\Models\Supplier::select('nama_supplier')->orderBy('nama_supplier')->get();

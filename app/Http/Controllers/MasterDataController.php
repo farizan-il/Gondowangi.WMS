@@ -32,85 +32,137 @@ class MasterDataController extends Controller
     }
 
     public function index()
-    {
-        $skuPaginator = Material::paginate(self::PER_PAGE);
-        $supplierPaginator = Supplier::paginate(self::PER_PAGE);
-        $binPaginator = WarehouseBin::with('zone')->paginate(self::PER_PAGE);
-        $userPaginator = User::with('role')->paginate(self::PER_PAGE);
+{
+    // Get search and filter parameters
+    $search = request()->query('search', '');
+    $status = request()->query('status', '');
+    $activeTab = request()->query('activeTab', 'sku');
 
-        // 2. Map data di setiap Paginator
-        $mapPaginator = function ($paginator, $callback) {
-            return $paginator->through($callback);
-        };
-        
-        $skuCallback = fn($item) => [
-            'id' => $item->id,
-            'code' => $item->kode_item,
-            'name' => $item->nama_material,
-            'uom' => strtoupper($item->satuan),
-            'category' => ucwords($item->kategori),
-            'subCategory' => $item->subkategori,
-            'halalStatus' => $item->halal_status,
-            'qcRequired' => (bool)$item->qc_required,
-            'expiry' => (bool)$item->expiry_required,
-            'expiry' => (bool)$item->expiry_required,
-            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-        ];
-
-        $supplierCallback = fn($item) => [
-            'id' => $item->id,
-            'code' => $item->kode_supplier,
-            'name' => $item->nama_supplier,
-            'address' => $item->alamat,
-            'contactPerson' => $item->contact_person,
-            'phone' => $item->telepon,
-            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-        ];
-
-        $binCallback = fn($item) => [
-            'id' => $item->id,
-            'code' => $item->bin_code,
-            'zone' => $item->zone ? $item->zone->zone_name : 'N/A',
-            'capacity' => $item->capacity,
-            'type' => $item->bin_type,
-            'qrCode' => $item->qr_code_path ? asset('storage/' . $item->qr_code_path) : null,
-            'status' => ucfirst($item->status),
-            'current_items_count' => InventoryStock::where('bin_id', $item->id)->count(), // Tambahkan hitungan
-        ];
-
-        $userCallback = fn($item) => [
-            'id' => $item->id,
-            'jabatan' => $item->jabatan,
-            'fullName' => $item->name ?? 'N/',
-            'role' => $item->role->role_name ?? 'N/A',
-            'department' => $item->departement,
-            'status' => $item->status === 'active' ? 'Active' : 'Inactive'
-        ];
-
-        return Inertia::render('MasterData', [
-            'skuData' => $mapPaginator($skuPaginator, $skuCallback),
-            'supplierData' => $mapPaginator($supplierPaginator, $supplierCallback),
-            'binData' => $mapPaginator($binPaginator, $binCallback),
-            'userData' => $mapPaginator($userPaginator, $userCallback),
-
-            'supplierList' => Supplier::where('status', 'active')->get()->map(fn($s) => [
-                'id' => $s->id,
-                'name' => $s->nama_supplier
-            ]),
-            'zoneList' => WarehouseZone::where('status', 'active')->get()->map(fn($z) => [
-                'id' => $z->id,
-                'name' => $z->zone_name
-            ]),
-            'roleList' => Role::all()->map(fn($r) => [
-                'id' => $r->id,
-                'name' => $r->role_name
-            ]),
-            'activeTab' => request()->query('activeTab', 'sku'),
-            'search' => request()->query('search', ''),
-            'status' => request()->query('status', '')
-        ]);
+    // SKU Query with Search and Filter
+    $skuQuery = Material::query();
+    if ($search) {
+        $skuQuery->where(function($q) use ($search) {
+            $q->where('kode_item', 'like', '%' . $search . '%')
+              ->orWhere('nama_material', 'like', '%' . $search . '%');
+        });
     }
+    if ($status) {
+        $skuQuery->where('status', strtolower($status));
+    }
+    $skuPaginator = $skuQuery->paginate(self::PER_PAGE);
 
+    // Supplier Query with Search and Filter
+    $supplierQuery = Supplier::query();
+    if ($search) {
+        $supplierQuery->where(function($q) use ($search) {
+            $q->where('kode_supplier', 'like', '%' . $search . '%')
+              ->orWhere('nama_supplier', 'like', '%' . $search . '%');
+        });
+    }
+    if ($status) {
+        $supplierQuery->where('status', strtolower($status));
+    }
+    $supplierPaginator = $supplierQuery->paginate(self::PER_PAGE);
+
+    // Bin Location Query with Search and Filter
+    $binQuery = WarehouseBin::with('zone');
+    if ($search) {
+        $binQuery->where(function($q) use ($search) {
+            $q->where('bin_code', 'like', '%' . $search . '%')
+              ->orWhereHas('zone', function($zq) use ($search) {
+                  $zq->where('zone_name', 'like', '%' . $search . '%');
+              });
+        });
+    }
+    if ($status) {
+        $binQuery->where('status', strtolower($status));
+    }
+    $binPaginator = $binQuery->paginate(self::PER_PAGE);
+
+    // User Query with Search and Filter
+    $userQuery = User::with('role');
+    if ($search) {
+        $userQuery->where(function($q) use ($search) {
+            $q->where('jabatan', 'like', '%' . $search . '%')
+              ->orWhere('name', 'like', '%' . $search . '%');
+        });
+    }
+    if ($status) {
+        $userQuery->where('status', strtolower($status));
+    }
+    $userPaginator = $userQuery->paginate(self::PER_PAGE);
+
+    // Map data di setiap Paginator
+    $mapPaginator = function ($paginator, $callback) {
+        return $paginator->through($callback);
+    };
+    
+    $skuCallback = fn($item) => [
+        'id' => $item->id,
+        'code' => $item->kode_item,
+        'name' => $item->nama_material,
+        'uom' => strtoupper($item->satuan),
+        'category' => ucwords($item->kategori),
+        'subCategory' => $item->subkategori,
+        'halalStatus' => $item->halal_status,
+        'qcRequired' => (bool)$item->qc_required,
+        'expiry' => (bool)$item->expiry_required,
+        'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+    ];
+
+    $supplierCallback = fn($item) => [
+        'id' => $item->id,
+        'code' => $item->kode_supplier,
+        'name' => $item->nama_supplier,
+        'address' => $item->alamat,
+        'contactPerson' => $item->contact_person,
+        'phone' => $item->telepon,
+        'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+    ];
+
+    $binCallback = fn($item) => [
+        'id' => $item->id,
+        'code' => $item->bin_code,
+        'zone' => $item->zone ? $item->zone->zone_name : 'N/A',
+        'capacity' => $item->capacity,
+        'type' => $item->bin_type,
+        'qrCode' => $item->qr_code_path ? asset('storage/' . $item->qr_code_path) : null,
+        'status' => ucfirst($item->status),
+        'current_items_count' => InventoryStock::where('bin_id', $item->id)->count(),
+    ];
+
+    $userCallback = fn($item) => [
+        'id' => $item->id,
+        'jabatan' => $item->jabatan,
+        'fullName' => $item->name ?? 'N/A',
+        'role' => $item->role->role_name ?? 'N/A',
+        'department' => $item->departement,
+        'status' => $item->status === 'active' ? 'Active' : 'Inactive'
+    ];
+
+    return Inertia::render('MasterData', [
+        'skuData' => $mapPaginator($skuPaginator, $skuCallback),
+        'supplierData' => $mapPaginator($supplierPaginator, $supplierCallback),
+        'binData' => $mapPaginator($binPaginator, $binCallback),
+        'userData' => $mapPaginator($userPaginator, $userCallback),
+
+        'supplierList' => Supplier::where('status', 'active')->get()->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->nama_supplier
+        ]),
+        'zoneList' => WarehouseZone::where('status', 'active')->get()->map(fn($z) => [
+            'id' => $z->id,
+            'name' => $z->zone_name
+        ]),
+        'roleList' => Role::all()->map(fn($r) => [
+            'id' => $r->id,
+            'name' => $r->role_name
+        ]),
+        'activeTab' => $activeTab,
+        'search' => $search,
+        'status' => $status
+    ]);
+}
     public function getBinStockDetails($binId)
     {
         // Ambil stok yang tersedia di Bin ini
@@ -259,6 +311,85 @@ class MasterDataController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Error deleting SKU: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function bulkUpdateSku(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'required|exists:materials,id',
+                'category' => 'nullable|string',
+                'subCategory' => 'nullable|string',
+                'halalStatus' => 'nullable|string',
+                'status' => 'nullable|string|in:Active,Inactive',
+                'qcRequired' => 'nullable|boolean',
+                'expiry' => 'nullable|boolean',
+            ]);
+
+            $updateCount = 0;
+            $materials = Material::whereIn('id', $validated['ids'])->get();
+
+            foreach ($materials as $material) {
+                $oldValue = $material->replicate();
+                $updated = false;
+
+                // Update only fields that are provided
+                if (isset($validated['category'])) {
+                    $material->kategori = $validated['category'];
+                    $updated = true;
+                }
+                if (isset($validated['subCategory'])) {
+                    $material->subkategori = $validated['subCategory'];
+                    $updated = true;
+                }
+                if (isset($validated['halalStatus'])) {
+                    $material->halal_status = $validated['halalStatus'];
+                    $updated = true;
+                }
+                if (isset($validated['status'])) {
+                    $material->status = strtolower($validated['status']);
+                    $updated = true;
+                }
+                if (isset($validated['qcRequired'])) {
+                    $material->qc_required = $validated['qcRequired'];
+                    $updated = true;
+                }
+                if (isset($validated['expiry'])) {
+                    $material->expiry_required = $validated['expiry'];
+                    $updated = true;
+                }
+
+                if ($updated) {
+                    $material->save();
+                    $updateCount++;
+
+                    // Log activity for each updated item
+                    $this->logActivity($material, 'Bulk Update', [
+                        'description' => "Bulk Update Material: {$material->nama_material} ({$material->kode_item})",
+                        'old_value' => json_encode($oldValue),
+                        'new_value' => json_encode($material),
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$updateCount} SKU berhasil diupdate"
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error validasi: ' . json_encode($e->errors())
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error bulk updating SKU: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()

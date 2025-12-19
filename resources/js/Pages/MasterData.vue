@@ -125,7 +125,17 @@
               Tambah {{ getCurrentTabLabel() }}
             </button>
             
-            <!-- Import button moved to header -->
+            <!-- Bulk Edit Button - Only for SKU tab -->
+            <button 
+              v-if="activeTab === 'sku' && selectedSkuIds.length > 0"
+              @click="showBulkEditModal = true"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Bulk Edit ({{ selectedSkuIds.length }} selected)
+            </button>
             
             <button 
               @click="exportData"
@@ -151,16 +161,24 @@
 
           <!-- Search & Filter -->
           <div class="flex flex-wrap gap-4 mb-6">
-            <div class="flex-1 min-w-64">
+            <div class="flex-1 min-w-64 flex gap-2">
               <input 
                 v-model="searchQuery"
-                @keyup.enter="applyFilter"
+                @keyup.enter="performSearch"
                 type="text" 
                 :placeholder="'Cari ' + getCurrentTabLabel() + '...'"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
+              <button 
+                @click="performSearch"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
             </div>
-            <select v-model="statusFilter" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500">
+            <select v-model="statusFilter" @change="performSearch" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500">
               <option value="">Semua Status</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
@@ -174,6 +192,14 @@
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
                     <tr>
+                      <th class="px-4 py-3 text-center">
+                        <input 
+                          type="checkbox" 
+                          :checked="isAllSelected"
+                          @change="toggleSelectAll"
+                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        >
+                      </th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
@@ -188,7 +214,15 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="item in filteredSkuData" :key="item.id" class="hover:bg-gray-50">
+                    <tr v-for="item in activeSkuData.data" :key="item.id" class="hover:bg-gray-50">
+                      <td class="px-4 py-4 text-center">
+                        <input 
+                          type="checkbox" 
+                          :checked="selectedSkuIds.includes(item.id)"
+                          @change="toggleSelectSku(item.id)"
+                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        >
+                      </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-mono text-gray-900">{{ item.code }}</div>
                       </td>
@@ -257,7 +291,7 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="supplier in filteredSupplierData" :key="supplier.id" class="hover:bg-gray-50">
+                    <tr v-for="supplier in activeSupplierData.data" :key="supplier.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-mono text-gray-900">{{ supplier.code }}</div>
                       </td>
@@ -309,7 +343,7 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="bin in filteredBinData" :key="bin.id" class="hover:bg-gray-50">
+                    <tr v-for="bin in activeBinData.data" :key="bin.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-mono text-gray-900">{{ bin.code }}</div>
                       </td>
@@ -382,7 +416,7 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="user in filteredUserData" :key="user.id" class="hover:bg-gray-50">
+                    <tr v-for="user in activeUserData.data" :key="user.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">{{ user.jabatan }}</div>
                       </td>
@@ -860,7 +894,145 @@
         </div>
       </div>
 
+      <!-- Bulk Edit Modal -->
+      <div v-if="showBulkEditModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[999]" style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto border border-gray-200">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">
+              Bulk Edit SKU ({{ selectedSkuIds.length }} items)
+            </h3>
+            <button 
+              @click="closeBulkEditModal"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-sm text-blue-800">
+              <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+              Hanya field yang diubah akan diterapkan ke semua item yang dipilih. Field yang dikosongkan tidak akan diubah.
+            </p>
+          </div>
+
+          <!-- Bulk Edit Form -->
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <select 
+                  v-model="bulkEditData.category" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Tidak diubah --</option>
+                  <option value="Raw Material">Raw Material</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Finished Goods">Finished Goods</option>
+                  <option value="Spare Parts">Spare Parts</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Halal Status</label>
+                <select 
+                  v-model="bulkEditData.halalStatus" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Tidak diubah --</option>
+                  <option value="Halal">Halal</option>
+                  <option value="Non Halal">Non Halal</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select 
+                  v-model="bulkEditData.status" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Tidak diubah --</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori</label>
+                <input 
+                  v-model="bulkEditData.subCategory"
+                  type="text" 
+                  placeholder="Tidak diubah jika kosong"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+              </div>
+            </div>
+
+            <div class="flex gap-6">
+              <label class="flex items-center">
+                <input 
+                  v-model="bulkEditData.qcRequired" 
+                  type="checkbox"
+                  :indeterminate.prop="bulkEditData.qcRequired === null"
+                  @click="toggleTriState('qcRequired')"
+                  class="text-blue-600 focus:ring-blue-500 rounded"
+                >
+                <span class="ml-2 text-gray-900">QC Required {{ getTriStateLabel('qcRequired') }}</span>
+              </label>
+              <label class="flex items-center">
+                <input 
+                  v-model="bulkEditData.expiry" 
+                  type="checkbox"
+                  :indeterminate.prop="bulkEditData.expiry === null"
+                  @click="toggleTriState('expiry')"
+                  class="text-blue-600 focus:ring-blue-500 rounded"
+                >
+                <span class="ml-2 text-gray-900">Expiry Date Required {{ getTriStateLabel('expiry') }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Selected Items List -->
+          <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p class="text-sm font-medium text-gray-700 mb-2">Item yang akan diubah:</p>
+            <div class="max-h-40 overflow-y-auto">
+              <ul class="text-sm text-gray-600 space-y-1">
+                <li v-for="id in selectedSkuIds" :key="id" class="flex items-center gap-2">
+                  <svg class="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                  {{ getSkuInfo(id) }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button 
+              @click="closeBulkEditModal"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button 
+              @click="saveBulkEdit"
+              class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            >
+              Update {{ selectedSkuIds.length }} Items
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div v-if="showBinDetailsModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+
         <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-semibold text-gray-900">
@@ -1034,6 +1206,18 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const editingItem = ref<any>(null)
 
+// Bulk Edit states
+const showBulkEditModal = ref(false)
+const selectedSkuIds = ref<string[]>([])
+const bulkEditData = ref<any>({
+  category: '',
+  subCategory: '',
+  halalStatus: '',
+  status: '',
+  qcRequired: null, // null = tidak diubah, true/false = diubah
+  expiry: null
+})
+
 // Form data
 const formData = ref<any>({})
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -1055,7 +1239,7 @@ const Pagination = (props: { links: PaginationLink[] }) => {
 
     const elements = props.links.map((link, key) => {
         const classes = {
-            'mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-blue-500 focus:text-blue-500': true,
+            'mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-blue-500 focus:border-blue-500': true,
             'bg-blue-500 text-white': link.active,
             'text-gray-400': link.url === null // Styling untuk tombol non-aktif
         };
@@ -1086,46 +1270,6 @@ const Pagination = (props: { links: PaginationLink[] }) => {
         elements
     );
 };
-
-const filteredSkuData = computed(() => {
-    return activeSkuData.value.data.filter(item => {
-        const matchesSearch = !searchQuery.value || 
-            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-        return matchesSearch && matchesStatus
-    })
-})
-
-const filteredSupplierData = computed(() => {
-    return activeSupplierData.value.data.filter(item => {
-        const matchesSearch = !searchQuery.value || 
-            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-        return matchesSearch && matchesStatus
-    })
-})
-
-const filteredBinData = computed(() => {
-    return activeBinData.value.data.filter(item => {
-        const matchesSearch = !searchQuery.value || 
-            item.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            item.zone.toLowerCase().includes(searchQuery.value.toLowerCase())
-        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-        return matchesSearch && matchesStatus
-    })
-})
-
-const filteredUserData = computed(() => {
-    return activeUserData.value.data.filter(item => {
-        const matchesSearch = !searchQuery.value || 
-            item.jabatan.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            item.fullName.toLowerCase().includes(searchQuery.value.toLowerCase())
-        const matchesStatus = !statusFilter.value || item.status === statusFilter.value
-        return matchesSearch && matchesStatus
-    })
-})
 
 const loadBinDetails = async (binId: string, binCode: string) => {
     selectedBinDetails.value = null; // Clear previous data
@@ -1852,10 +1996,146 @@ const applyFilter = () => {
 
 watch(activeTab, () => {
     resetForm();
+    // Clear selections when switching tabs
+    selectedSkuIds.value = [];
 });
 
 const loadData = () => {
   resetForm()
+}
+
+// Bulk Edit Computed Properties
+const isAllSelected = computed(() => {
+  if (!activeSkuData.value.data || activeSkuData.value.data.length === 0) return false
+  return selectedSkuIds.value.length === activeSkuData.value.data.length
+})
+
+// Search Method
+const performSearch = () => {
+  router.get(route('master-data.index'), {
+    search: searchQuery.value,
+    status: statusFilter.value,
+    activeTab: activeTab.value
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+    only: ['skuData', 'supplierData', 'binData', 'userData']
+  })
+}
+
+// Bulk Edit Methods
+const toggleSelectSku = (id: string) => {
+  const index = selectedSkuIds.value.indexOf(id)
+  if (index > -1) {
+    selectedSkuIds.value.splice(index, 1)
+  } else {
+    selectedSkuIds.value.push(id)
+  }
+}
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedSkuIds.value = []
+  } else {
+    selectedSkuIds.value = activeSkuData.value.data.map((item: any) => item.id)
+  }
+}
+
+const closeBulkEditModal = () => {
+  showBulkEditModal.value = false
+  // Reset bulk edit form
+  bulkEditData.value = {
+    category: '',
+    subCategory: '',
+    halalStatus: '',
+    status: '',
+    qcRequired: null,
+    expiry: null
+  }
+}
+
+const toggleTriState = (field: 'qcRequired' | 'expiry') => {
+  if (bulkEditData.value[field] === null) {
+    bulkEditData.value[field] = true
+  } else if (bulkEditData.value[field] === true) {
+    bulkEditData.value[field] = false
+  } else {
+    bulkEditData.value[field] = null
+  }
+}
+
+const getTriStateLabel = (field: 'qcRequired' | 'expiry') => {
+  const value = bulkEditData.value[field]
+  if (value === null) return '(tidak diubah)'
+  if (value === true) return '(Ya)'
+  return '(Tidak)'
+}
+
+const getSkuInfo = (id: string) => {
+  const sku = activeSkuData.value.data.find((item: any) => item.id === id)
+  return sku ? `${sku.code} - ${sku.name}` : id
+}
+
+const saveBulkEdit = async () => {
+  try {
+    // Prepare update data - only send fields that have values
+    const updateData: any = {
+      ids: selectedSkuIds.value
+    }
+
+    if (bulkEditData.value.category) {
+      updateData.category = bulkEditData.value.category
+    }
+    if (bulkEditData.value.subCategory) {
+      updateData.subCategory = bulkEditData.value.subCategory
+    }
+    if (bulkEditData.value.halalStatus) {
+      updateData.halalStatus = bulkEditData.value.halalStatus
+    }
+    if (bulkEditData.value.status) {
+      updateData.status = bulkEditData.value.status
+    }
+    if (bulkEditData.value.qcRequired !== null) {
+      updateData.qcRequired = bulkEditData.value.qcRequired
+    }
+    if (bulkEditData.value.expiry !== null) {
+      updateData.expiry = bulkEditData.value.expiry
+    }
+
+    // Validate that at least one field is being updated
+    if (Object.keys(updateData).length === 1) { // only 'ids'
+      showMessage('error', 'Pilih minimal satu field untuk diubah')
+      return
+    }
+
+    const response = await fetch('/master-data/sku/bulk-update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      showMessage('error', result.message || 'Terjadi kesalahan')
+      return
+    }
+
+    showMessage('success', result.message || `${selectedSkuIds.value.length} items berhasil diupdate`)
+    closeBulkEditModal()
+    selectedSkuIds.value = []
+    
+    // Reload page after 1.5 seconds
+    setTimeout(() => window.location.reload(), 1500)
+
+  } catch (error) {
+    console.error('Bulk update error:', error)
+    showMessage('error', 'Error: ' + (error as Error).message)
+  }
 }
 
 onMounted(() => {
