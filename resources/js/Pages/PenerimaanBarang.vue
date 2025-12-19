@@ -43,6 +43,8 @@
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No PO</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Surat
                   Jalan</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
@@ -57,6 +59,23 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="shipment in shipments.data" :key="shipment.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noPo }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">
+                  <div v-if="shipment.items && shipment.items.length > 0">
+                    <span class="font-mono text-xs">{{ shipment.items[0].kodeItem || '-' }}</span>
+                    <span v-if="shipment.items.length > 1" class="text-xs text-gray-500 ml-1">
+                      (+{{ shipment.items.length - 1 }} lainnya)
+                    </span>
+                  </div>
+                  <span v-else class="text-gray-400">-</span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900">
+                  <div v-if="shipment.items && shipment.items.length > 0" class="max-w-xs">
+                    <div class="truncate" :title="shipment.items[0].namaMaterial">
+                     {{ shipment.items[0].namaMaterial || '-' }}
+                    </div>
+                  </div>
+                  <span v-else class="text-gray-400">-</span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noSuratJalan }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.supplier }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(shipment.tanggalTerima) }}
@@ -551,7 +570,6 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori <span v-if="newShipment.subCategory">(Otomatis)</span></label>
                 <input v-model="newShipment.subCategory" type="text" readonly placeholder="Auto dari Material"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900 focus:outline-none">
-```
               </div>
             </div>
 
@@ -865,6 +883,7 @@
         </div>
       </div>
       <!-- Modal Missing Materials Alert -->
+      
       <div v-if="showMissingMaterialsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
           style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border-l-4 border-yellow-500">
@@ -1429,23 +1448,45 @@ const processErpPdf = async () => {
       newShipment.value.isErpDataLoaded = true;
     }
     
-    // VALIDASI MATERIAL HILANG (untuk normal mode)
-    if (!wizardMode.value) {
+    // VALIDASI MATERIAL HILANG (untuk kedua mode: normal dan wizard)
+    if (wizardMode.value) {
+      // Wizard mode: cek missing materials dari semua groups
+      const allMissingMaterials = []
+      
+      itemCodeGroups.value.forEach(group => {
+        const missingInGroup = group.items
+          .filter(item => !item.kodeItem && item.skuSearch)
+          .map(item => item.skuSearch)
+        allMissingMaterials.push(...missingInGroup)
+      })
+      
+      // Hapus duplikat
+      const uniqueMissing = [...new Set(allMissingMaterials)]
+      
+      if (uniqueMissing.length > 0) {
+        missingMaterialsList.value = uniqueMissing
+        showMissingMaterialsModal.value = true
+      } else {
+        alert(`Berhasil memuat ${itemCodeGroups.value.length} grup kode item dari PDF.`)
+      }
+    } else {
+      // Normal mode: cek missing materials dari newShipment.items
       const missingMaterials = newShipment.value.items
           .filter(item => !item.kodeItem && item.skuSearch)
-          .map(item => item.skuSearch);
+          .map(item => item.skuSearch)
           
       // Hapus duplikat
-      const uniqueMissing = [...new Set(missingMaterials)];
+      const uniqueMissing = [...new Set(missingMaterials)]
 
       if (uniqueMissing.length > 0) {
-          missingMaterialsList.value = uniqueMissing;
-          showMissingMaterialsModal.value = true;
+          missingMaterialsList.value = uniqueMissing
+          showMissingMaterialsModal.value = true
       } else {
-          alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`);
+          alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`)
       }
     }
     // --------------------------------
+
 
   } catch (error) {
     console.error('Error processing ERP PDF:', error)

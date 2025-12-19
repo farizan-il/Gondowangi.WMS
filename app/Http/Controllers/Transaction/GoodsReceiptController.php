@@ -246,7 +246,7 @@ class GoodsReceiptController extends Controller
             }
 
             // Lookup Supplier
-             if (!empty($extractedData['supplier_name'])) {
+            if (!empty($extractedData['supplier_name'])) {
                 $searchName = explode(',', $extractedData['supplier_name'])[0]; 
                 $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . $searchName . '%')->first();
                 if ($supplier) {
