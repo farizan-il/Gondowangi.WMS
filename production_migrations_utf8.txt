@@ -1,0 +1,1 @@
+﻿[{"migration":"2025_12_01_164653_create_qc_reqc_history_table"},{"migration":"2025_12_09_140000_add_last_seen_at_to_users_table"},{"migration":"2025_12_11_155623_add_duration_tracking_to_reservation_requests_table"}]

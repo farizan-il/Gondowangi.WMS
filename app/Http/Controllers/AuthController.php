@@ -23,10 +23,17 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'identifier' => 'required|string',
             'password' => 'required|string',
+            'database_connection' => 'required|string|in:mysql,mysql_testing',
         ]);
 
         // Cek apakah identifier adalah email atau NIK
         $fieldType = filter_var($credentials['identifier'], FILTER_VALIDATE_EMAIL) ? 'email' : 'nik';
+
+        // Set database connection sesuai pilihan user
+        $databaseConnection = $credentials['database_connection'];
+        \Config::set('database.default', $databaseConnection);
+        \DB::purge($databaseConnection);
+        \DB::reconnect($databaseConnection);
 
         // Cari user dan cek status - LOAD RELATION ROLE
         $user = User::with('role')->where($fieldType, $credentials['identifier'])->first();
@@ -46,8 +53,12 @@ class AuthController extends Controller
         if (Auth::attempt([$fieldType => $credentials['identifier'], 'password' => $credentials['password']], $request->remember)) {
             $request->session()->regenerate();
 
+            // Simpan pilihan database di session
+            $request->session()->put('selected_database', $databaseConnection);
+
             $this->logActivity(Auth::user(), 'Login', [
                 'description' => 'User berhasil Login ke sistem',
+                'database' => $databaseConnection,
             ]);
 
             return redirect()->intended('/dashboard');

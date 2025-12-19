@@ -292,6 +292,25 @@
                         </p>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <!-- Database Indicator -->
+                        <div 
+                            v-if="selectedDatabase"
+                            :class="[
+                                'px-3 py-2 rounded-lg flex items-center space-x-2 text-sm font-semibold shadow-sm',
+                                selectedDatabase === 'mysql_testing' 
+                                    ? 'bg-orange-100 text-orange-800 border border-orange-300' 
+                                    : 'bg-green-100 text-green-800 border border-green-300'
+                            ]"
+                            :title="selectedDatabase === 'mysql_testing' ? 'Anda sedang menggunakan database Testing' : 'Anda sedang menggunakan database Production'"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                            </svg>
+                            <span>
+                                {{ selectedDatabase === 'mysql_testing' ? 'TESTING' : 'PRODUCTION' }}
+                            </span>
+                        </div>
+                        
                         <!-- Notification -->
                         <button class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,6 +389,11 @@
     const logout = () => {
         router.post('/logout');
     };
+
+    // Get selected database from session
+    const selectedDatabase = computed(() => {
+        return page.props.selectedDatabase || 'mysql'; // Default to production if not set
+    });
 
     const navLinkClass = (path) => {
         // Remove query parameters from current URL for comparison

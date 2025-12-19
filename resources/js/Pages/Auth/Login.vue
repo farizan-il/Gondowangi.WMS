@@ -69,6 +69,55 @@
                         </div>
                     </div>
 
+                    <!-- Database Selection -->
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">
+                            <svg class="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                            </svg>
+                            Pilih Database
+                        </label>
+                        <div class="space-y-2">
+                            <label 
+                                class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md"
+                                :class="form.database_connection === 'mysql' ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-white hover:border-green-300'"
+                            >
+                                <input 
+                                    v-model="form.database_connection"
+                                    type="radio" 
+                                    value="mysql"
+                                    class="w-4 h-4 text-green-600 focus:ring-green-500"
+                                >
+                                <div class="ml-3 flex-1">
+                                    <div class="flex items-center">
+                                        <span class="font-semibold text-gray-800">Production Database</span>
+                                        <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded">MAIN</span>
+                                    </div>
+                                    <span class="text-xs text-gray-600">Database utama untuk operasional</span>
+                                </div>
+                            </label>
+                            
+                            <label 
+                                class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md"
+                                :class="form.database_connection === 'mysql_testing' ? 'border-orange-500 bg-orange-50' : 'border-gray-300 bg-white hover:border-orange-300'"
+                            >
+                                <input 
+                                    v-model="form.database_connection"
+                                    type="radio" 
+                                    value="mysql_testing"
+                                    class="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                                >
+                                <div class="ml-3 flex-1">
+                                    <div class="flex items-center">
+                                        <span class="font-semibold text-gray-800">Testing Database</span>
+                                        <span class="ml-2 px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-semibold rounded">TEST</span>
+                                    </div>
+                                    <span class="text-xs text-gray-600">Database untuk testing dan percobaan</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Remember Me & Forgot Password -->
                     <div class="flex items-center justify-between">
                         <label class="flex items-center cursor-pointer">
@@ -135,6 +184,7 @@ const form = useForm({
     identifier: '',
     password: '',
     remember: false,
+    database_connection: 'mysql', // Default to production
 });
 
 const submit = () => {

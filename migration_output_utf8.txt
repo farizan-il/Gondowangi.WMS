@@ -1,0 +1,22 @@
+﻿
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[42S02]: Base table or view not found: 1146 Table 'gondowangi_wms_testing.reservation_requests' doesn't exist (Connection: mysql_testing, SQL: alter table `reservation_requests` add `picking_started_at` timestamp null after `status`)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:824
+    820Ôûò                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    821Ôûò                 );
+    822Ôûò             }
+    823Ôûò 
+  Ô×£ 824Ôûò             throw new QueryException(
+    825Ôûò                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    826Ôûò             );
+    827Ôûò         }
+    828Ôûò     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:570
+      PDOException::("SQLSTATE[42S02]: Base table or view not found: 1146 Table 'gondowangi_wms_testing.reservation_requests' doesn't exist")
+
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:570
+      PDOStatement::execute()
+

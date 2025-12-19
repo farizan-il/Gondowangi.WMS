@@ -162,7 +162,7 @@
               <select v-model="filterType" class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900">
                 <option value="">Semua Tipe</option>
                 <option value="Raw Material">Raw Material</option>
-                <option value="Packaging Material">Packaging Material</option>
+                <option value="Packaging">Packaging Material</option>
               </select>
 
               <select v-model="filterLocation"
@@ -691,7 +691,7 @@ const props = defineProps<{
 // Types
 interface MaterialItem {
   id: string
-  type: 'Raw Material' | 'Packaging Material'
+  type: 'Raw Material' | 'Packaging'
   subkategori?: string
   kode: string
   nama: string

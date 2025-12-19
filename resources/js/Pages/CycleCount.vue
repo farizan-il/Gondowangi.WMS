@@ -30,7 +30,7 @@
                 <select v-model="filterForm.category" @change="applyFilter" class="w-full sm:w-48 text-sm border rounded bg-gray-50 py-1.5">
                     <option value="">Semua Kategori</option>
                     <option value="RAW MATERIAL">Raw Material</option>
-                    <option value="PACKAGING MATERIAL">Packaging Material</option>
+                    <option value="PACKAGING">Packaging Material</option>
                 </select>
 
                 <button @click="resetFilter" class="px-3 py-1.5 text-sm text-gray-500 hover:text-red-500 underline">Reset</button>
