@@ -778,9 +778,10 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 
 // Data reaktif
+const page = usePage()
 const showModal = ref(false)
 const selectedCategory = ref('')
 const showFilterPanel = ref(false)
@@ -806,13 +807,23 @@ const filters = ref({
   dateTo: ''
 })
 
-// Category configuration
-const categories = [
-  { id: 'packaging', name: 'Request Packaging Material' },
-  { id: 'raw-material', name: 'Request Raw Material' },
-  { id: 'foh-rs', name: 'FOH & RS' },
-  { id: 'add', name: 'ADD (Additional Request)' }
-]
+// Category configuration (Computed based on Role)
+const categories = computed(() => {
+  const allCategories = [
+    { id: 'packaging', name: 'Request Packaging Material' },
+    { id: 'raw-material', name: 'Request Raw Material' },
+    { id: 'foh-rs', name: 'FOH & RS' },
+    { id: 'add', name: 'ADD (Additional Request)' }
+  ]
+
+  // RBAC: Logistik SPV hanya boleh FOH & RS
+  const userRole = page.props.auth.user?.role?.name;
+  if (userRole === 'Logistik SPV') {
+      return allCategories.filter(c => c.id === 'foh-rs');
+  }
+
+  return allCategories;
+})
 
 // Form data
 const formData = ref({
@@ -993,9 +1004,9 @@ const fetchReservations = async () => {
   }
 }
 
-// Computed properties
+// Computed properties - Force Cache Bust
 const getCategoryName = (type) => {
-  const category = categories.find(c => c.id === type)
+  const category = categories.value.find(c => c.id === type)
   return category ? category.name : type
 }
 

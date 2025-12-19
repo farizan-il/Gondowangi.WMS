@@ -52,7 +52,7 @@
               <select v-model="reasonFilter"
                 class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm col-span-2 sm:col-span-1">
                 <option value="">Semua Reason</option>
-                <option value="Gagal QC">Gagal QC</option>
+                <option value="QC Reject">QC Reject</option>
                 <option value="Kadaluarsa">Kadaluarsa</option>
                 <option value="Rusak">Rusak</option>
                 <option value="Kelebihan Produksi">Kelebihan Produksi</option>
@@ -163,7 +163,7 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Return</label>
                 <div class="flex gap-6">
-                  <label class="flex items-center">
+                   <!-- <label class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
                       type="radio" 
@@ -171,7 +171,7 @@
                       class="text-blue-600 focus:ring-blue-500"
                     >
                     <span class="ml-2 text-gray-900">Return ke Supplier</span>
-                  </label>
+                  </label>  -->
                   <label class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
@@ -180,6 +180,16 @@
                       class="text-blue-600 focus:ring-blue-500"
                     >
                     <span class="ml-2 text-gray-900">Return dari Produksi</span>
+                  </label>
+                  <!-- New Option -->
+                  <label class="flex items-center">
+                    <input 
+                      v-model="newReturn.type" 
+                      type="radio" 
+                      value="Rejected Material"
+                      class="text-blue-600 focus:ring-blue-500"
+                    >
+                    <span class="ml-2 text-gray-900">Return Material Reject</span>
                   </label>
                 </div>
               </div>
@@ -231,7 +241,7 @@
                     {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
                   </label>
                   <select 
-                    v-if="newReturn.type === 'Supplier'"
+                    v-if="newReturn.type === 'Supplier' || newReturn.type === 'Rejected Material'"
                     v-model="newReturn.supplier" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
@@ -255,12 +265,17 @@
                   </label>
                   <select 
                     v-model="newReturn.shipmentNo" 
-                    @change="newReturn.type === 'Production' ? fetchReservationDetails() : null"
+                    @change="handleShipmentNoChange"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Pilih</option>
                     <template v-if="newReturn.type === 'Supplier'">
-                         <option v-for="ship in shipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                         <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                            {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
+                         </option>
+                    </template>
+                    <template v-else-if="newReturn.type === 'Rejected Material'">
+                         <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
                             {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
                          </option>
                     </template>
@@ -358,7 +373,7 @@
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
                           >
                             <option value="">Pilih Alasan</option>
-                            <option value="Gagal QC">Gagal QC</option>
+                            <option value="QC Reject">QC Reject</option>
                             <option value="Kadaluarsa">Kadaluarsa</option>
                             <option value="Rusak">Rusak</option>
                             <option value="Kelebihan Produksi">Kelebihan Produksi</option>
@@ -568,7 +583,7 @@ interface ReturnItem {
   id: string
   returnNumber: string
   date: string
-  type: 'Supplier' | 'Production'
+  type: 'Supplier' | 'Production' | 'Rejected Material'
   supplier: string
   shipmentNo?: string
   itemCode: string
@@ -588,11 +603,13 @@ interface NewReturnItem {
   uom: string
   reason: string
   originalQty?: number
+  id?: number // stock id helper
 }
 
 const props = defineProps({
   suppliers: Array,
   shipments: Array,
+  rejectedShipments: Array,
   userDept: String,
   initialReturns: Array
 })
@@ -633,8 +650,21 @@ watch(() => newReturn.value.type, (newType) => {
         newReturn.value.supplier = '';
         newReturn.value.shipmentNo = '';
         newReturn.value.items = [];
+        if (newType === 'Rejected Material') {
+            // No action needed initially, dropdown for shipmentNo will use rejectedShipments
+        }
     }
 });
+
+const handleShipmentNoChange = () => {
+    if (newReturn.value.type === 'Production') {
+        fetchReservationDetails();
+    } else if (newReturn.value.type === 'Rejected Material') {
+        fetchRejectedShipmentDetails();
+    } else if (newReturn.value.type === 'Supplier') {
+        fetchSupplierShipmentDetails();
+    }
+};
 
 const message = ref<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -708,6 +738,68 @@ const fetchReservationDetails = async () => {
     }
 }
 
+const fetchRejectedShipmentDetails = async () => {
+    if (!newReturn.value.shipmentNo) return;
+    
+    try {
+        const response = await axios.get('/transaction/return/rejected-shipment-details', {
+            params: { no: newReturn.value.shipmentNo }
+        });
+        const items = response.data;
+        
+        if (items.length > 0) {
+            newReturn.value.supplier = items[0].supplier_name;
+        }
+
+        newReturn.value.items = items.map((item: any) => ({
+            id: item.id,
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            lotBatch: item.batch_lot,
+            qty: item.on_hand_qty, // Default to total on hand in reject bin
+            uom: item.uom,
+            reason: 'QC Reject', 
+            originalQty: item.on_hand_qty 
+        }));
+        
+    } catch (e) {
+        console.error('Error fetching rejected shipment details', e);
+        alert('Gagal mengambil detail material reject.');
+    }
+}
+
+const fetchSupplierShipmentDetails = async () => {
+    if (!newReturn.value.shipmentNo) return;
+    
+    try {
+        const response = await axios.get('/transaction/return/supplier-shipment-details', {
+            params: { no: newReturn.value.shipmentNo }
+        });
+        const items = response.data;
+        
+        // Auto-fill supplier from the first material found
+        if (items.length > 0) {
+            newReturn.value.supplier = items[0].supplier_name;
+        }
+
+        // Auto-fill items with rejected materials
+        newReturn.value.items = items.map((item: any) => ({
+            id: item.id,
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            lotBatch: item.batch_lot,
+            qty: item.on_hand_qty, // Default to total on hand in reject bin
+            uom: item.uom,
+            reason: 'QC Reject', 
+            originalQty: item.on_hand_qty 
+        }));
+        
+    } catch (e) {
+        console.error('Error fetching supplier shipment details', e);
+        alert('Gagal mengambil detail shipment.');
+    }
+}
+
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value
   localStorage.setItem('darkMode', JSON.stringify(isDarkMode.value))
@@ -738,7 +830,7 @@ const getStatusClass = (status: string) => {
 const getReasonClass = (reason: string) => {
   const baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full'
   switch (reason) {
-    case 'Gagal QC':
+    case 'QC Reject':
       return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`
     case 'Kadaluarsa':
       return `${baseClasses} bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400`

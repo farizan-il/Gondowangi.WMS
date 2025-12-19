@@ -17,11 +17,17 @@ class DashboardController extends Controller
         $validStatuses = ['KARANTINA', 'RELEASED', 'HOLD', 'REJECTED'];
 
         // 1. Ambil Data Inventory Stock dengan Kriteria Pemantauan
-        $materialItems = InventoryStock::query()
+        $query = InventoryStock::query()
             ->where('qty_on_hand', '>', 0)
             // 💡 PERBAIKAN UTAMA: Menggunakan status yang dikonfirmasi oleh pengguna
-            ->whereIn('status', $validStatuses)
-            ->with([
+            ->whereIn('status', $validStatuses);
+
+        // RBAC: QAC hanya boleh lihat Expired / Near Expiry (untuk Re-QC)
+        if (auth()->user() && auth()->user()->hasRole('QAC')) {
+            $query->where('exp_date', '<=', now()->addDays(60));
+        }
+        
+        $materialItems = $query->with([
                 'material',
                 'bin',
                 'movements.executedBy',
@@ -53,29 +59,39 @@ class DashboardController extends Controller
                 // --- Logika Status Khusus Dashboard ---
                 $binCode = $item->bin->bin_code ?? '';
                 $requiresPutAway = false;
+                $isReleasedPutaway = false;
+                $isRejectedPutaway = false;
                 $requiresQC = false;
                 $displayStatus = $item->status;
                 
+                // 1. Cek jika item QC RELEASED tapi masih di bin karantina (QRT-*)
                 if ($item->status === 'RELEASED' && str_starts_with($binCode, 'QRT-')) {
                     $requiresPutAway = true;
-                    // Ubah status yang ditampilkan agar jelas di tabel
-                    $displayStatus = 'Released (Perlu Put Away)'; 
+                    $isReleasedPutaway = true;
+                    $displayStatus = 'QC RELEASED (Wajib Put Away)';
                 }
 
-                // 2. Cek apakah item KARANTINA (membutuhkan QC/tindak lanjut)
-                if ($item->status === 'KARANTINA') {
+                // 2. Cek jika item QC REJECT tapi masih di bin karantina (QRT-*)
+                elseif ($item->status === 'REJECTED' && str_starts_with($binCode, 'QRT-')) {
+                    $requiresPutAway = true;
+                    $isRejectedPutaway = true;
+                    $displayStatus = 'QC REJECTED (Wajib Pemindahan)';
+                }
+
+                // 3. Cek apakah item KARANTINA (membutuhkan QC/tindak lanjut)
+                elseif ($item->status === 'KARANTINA') {
                     $requiresQC = true;  
                     $displayStatus = 'Karantina (Perlu QC/Tindak Lanjut)';
                 }
                 
-                // 3. Cek jika item HOLD
-                if ($item->status === 'HOLD') {
-                    $displayStatus = 'HOLD (Menunggu Persetujuan)';
+                // 4. Cek jika item REJECTED (tapi sudah di bin reject atau lainnya)
+                elseif ($item->status === 'REJECTED' && !str_starts_with($binCode, 'QRT-')) {
+                    $displayStatus = 'REJECTED (Siap Return)';
                 }
-
-                // 4. Cek jika item REJECT
-                if ($item->status === 'REJECT') {  
-                    $displayStatus = 'Ditolak (Perlu Tindak Lanjut)';
+                
+                // 5. Cek jika item HOLD
+                elseif ($item->status === 'HOLD') {
+                    $displayStatus = 'HOLD (Menunggu Persetujuan)';
                 }
 
                 return [
@@ -90,24 +106,25 @@ class DashboardController extends Controller
                     'qty' => $item->qty_on_hand,
                     'uom' => $item->uom,
                     'expiredDate' => $item->exp_date ? $item->exp_date->toDateString() : 'N/A',
-                    // 💡 PENTING: Menggunakan $displayStatus di sini
                     'status' => $displayStatus, 
                     'history' => $history,
                     'qr_data' => json_encode([
                         'id' => $item->id,
                         'kode' => $item->material->kode_item,
                         'lot' => $item->batch_lot,
-                        'status' => $item->status, // Status asli (RELEASED/KARANTINA) untuk QR
+                        'status' => $item->status,
                     ]),
-                    // 💡 PENTING: Menggunakan status asli (sebelum diubah $displayStatus)
                     'qr_type' => $item->status, 
                     'requiresPutAway' => $requiresPutAway,
+                    'isReleasedPutaway' => $isReleasedPutaway,
+                    'isRejectedPutaway' => $isRejectedPutaway,
                     'requiresQC' => $requiresQC,
-                    'entry_date' => $item->created_at->toISOString(), // Added for sorting (Newest/Oldest)
+                    'entry_date' => $item->created_at->toISOString(),
                 ];
             });
         
-        $putAwayCount = $materialItems->filter(fn($item) => $item['requiresPutAway'])->count();
+        $releasedPutAwayCount = $materialItems->filter(fn($item) => $item['isReleasedPutaway'] ?? false)->count();
+        $rejectedPutAwayCount = $materialItems->filter(fn($item) => $item['isRejectedPutaway'] ?? false)->count();
 
         // Hitungan QC: Item KARANTINA
         $qcCount = $materialItems->filter(fn($item) => $item['requiresQC'])->count();
@@ -116,19 +133,23 @@ class DashboardController extends Controller
         // Hitung ulang di sini untuk akurasi penuh
         $expiredCount = InventoryStock::where('qty_on_hand', '>', 0)
             ->where('exp_date', '<=', now())
-            ->whereIn('status', $validStatuses) // Tambahkan filter status
+            ->whereIn('status', $validStatuses)
             ->count();
         $expiringSoonCount = InventoryStock::where('qty_on_hand', '>', 0)
             ->where('exp_date', '<=', now()->addDays(30))
             ->where('exp_date', '>', now())
-            ->whereIn('status', $validStatuses) // Tambahkan filter status
+            ->whereIn('status', $validStatuses)
             ->count();
 
         $alerts = [];
         
         // Notifikasi Cerdas Put Away
-        if ($putAwayCount > 0) {
-            $alerts[] = ['id' => '0', 'type' => 'info', 'message' => "💡 **$putAwayCount item** status Released tapi masih di Bin Karantina (`QRT-*`). Segera lakukan **Put Away**."];
+        if ($releasedPutAwayCount > 0) {
+            $alerts[] = ['id' => '0', 'type' => 'info', 'message' => "💡 **{$releasedPutAwayCount} item** status **RELEASED** tapi masih di Bin Karantina (`QRT-*`). Segera lakukan **Put Away**."];
+        }
+
+        if ($rejectedPutAwayCount > 0) {
+            $alerts[] = ['id' => '4', 'type' => 'warning', 'message' => "⚠️ **{$rejectedPutAwayCount} item** status **REJECTED** tapi masih di Bin Karantina (`QRT-*`). Segera lakukan **Pemindahan ke Bin Reject**."];
         }
 
         // Notifikasi QC yang Dibutuhkan (Karantina)

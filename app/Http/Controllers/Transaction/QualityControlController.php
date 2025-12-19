@@ -710,18 +710,17 @@ class QualityControlController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
-                // Hapus stok sisa dari inventory
+                // Update status stok QRT menjadi REJECTED (TETAP ADA DI BIN QRT)
                 $inventoryStockQRT->update([
-                    'qty_on_hand' => 0,
-                    'qty_available' => 0,
                     'status' => 'REJECTED', 
+                    'last_movement_date' => now(),
                 ]);
                 
-                // Buat Stock Movement Reject
+                // Buat Stock Movement Status Change to REJECTED
                 $rejectMovementNumber = $this->generateMovementNumber($movementSequence);
-                $this->createRejectMovement($incomingItem, $quarantineBin, $returnNumber, $qtyAfterSample, $rejectMovementNumber);
+                $this->createRejectStatusMovement($incomingItem, $inventoryStockQRT, $returnNumber, $qtyAfterSample, $rejectMovementNumber);
 
-                $successMessage = "QC REJECT! Return Slip: {$returnNumber}. Material akan dikembalikan ke supplier.";
+                $successMessage = "QC REJECT! Return Slip: {$returnNumber}. Material wajib dilakukan pemindahan ke Bin Reject.";
             }
 
             DB::commit();
@@ -789,6 +788,27 @@ class QualityControlController extends Controller
             'movement_date' => now(),
             'executed_by' => Auth::id(),
             'notes' => "QC PASS - Status stok di Bin Karantina diubah menjadi RELEASED.",
+        ]);
+    }
+
+    private function createRejectStatusMovement($incomingItem, $inventoryStock, $returnNumber, $qtyAfterSample, $movementNumber)
+    {
+        StockMovement::create([
+            'movement_number' => $movementNumber,
+            'movement_type' => 'STATUS_CHANGE', 
+            'material_id' => $incomingItem->material_id,
+            'batch_lot' => $incomingItem->batch_lot,
+            'from_warehouse_id' => $inventoryStock->warehouse_id,
+            'from_bin_id' => $inventoryStock->bin_id,
+            'to_warehouse_id' => $inventoryStock->warehouse_id,
+            'to_bin_id' => $inventoryStock->bin_id,
+            'qty' => $qtyAfterSample, 
+            'uom' => $incomingItem->satuan,
+            'reference_type' => 'return_slip',
+            'reference_id' => $returnNumber, 
+            'movement_date' => now(),
+            'executed_by' => Auth::id(),
+            'notes' => "QC REJECT - Status stok di Bin Karantina diubah menjadi REJECTED. Menunggu pemindahan ke Bin Reject.",
         ]);
     }
 

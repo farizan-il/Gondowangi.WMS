@@ -54,8 +54,13 @@ class PutawayTransferController extends Controller
                         'boxScanned' => (bool)$item->box_scanned,
                         'sourceBinScanned' => (bool)$item->source_bin_scanned,
                         'destBinScanned' => (bool)$item->dest_bin_scanned,
+                        // Add status from inventory stock if needed, but let's check item level first
                     ];
-                })->toArray()
+                })->toArray(),
+                'hasRejected' => $to->items->contains(function($item) {
+                     // Check if it's going to a reject bin or status is REJECTED if we had it there
+                     return str_contains($item->destinationBin?->bin_code ?? '', 'RJT');
+                })
             ];
         })->toArray();
 
@@ -71,7 +76,7 @@ class PutawayTransferController extends Controller
             'warehouse',
             'bin'
         ])
-        ->whereIn('status', ['RELEASED', 'KARANTINA'])
+        ->whereIn('status', ['RELEASED', 'REJECTED'])
         ->where('qty_available', '>', 0)
         ->whereHas('bin', function ($query) {
             $query->where('bin_code', 'LIKE', 'QRT-%');
@@ -87,6 +92,7 @@ class PutawayTransferController extends Controller
                 'batchLot' => $stock->batch_lot,
                 'expDate' => $stock->exp_date,
                 'stockId' => $stock->id,
+                'status' => $stock->status,
                 'selected' => false,
                 'destinationBin' => ''
             ];
@@ -158,7 +164,8 @@ class PutawayTransferController extends Controller
         $request->validate([
             'materials' => 'required|array',
             'materials.*.stockId' => 'required|exists:inventory_stock,id',
-            'materials.*.destinationBin' => 'required'
+            'materials.*.destinationBin' => 'required',
+            'materials.*.qty' => 'required|numeric|min:0'
         ]);
 
         DB::beginTransaction();
@@ -198,7 +205,7 @@ class PutawayTransferController extends Controller
                     'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $material['qty'])
                 ]);
 
-                $test = $this->logActivity($transferOrder, 'Create Putaway TO', [
+                $this->logActivity($transferOrder, 'Create Putaway TO', [
                     'description' => "Membuat Transfer Order Putaway untuk {$material['qty']} {$stock->uom} {$stock->material->nama_material}",
                     'material_id' => $stock->material_id,
                     'batch_lot' => $stock->batch_lot,
@@ -207,7 +214,6 @@ class PutawayTransferController extends Controller
                     'bin_to' => $destBin->id,     
                     'reference_document' => $toNumber,
                 ]);
-
             }
 
             DB::commit();
@@ -389,5 +395,28 @@ class PutawayTransferController extends Controller
         }
 
         return "TO-{$year}-{$month}-{$newNumber}";
+    }
+
+    public function getRejectBins()
+    {
+        $bins = WarehouseBin::with(['warehouse'])
+            ->where('bin_code', 'LIKE', '%RJT%')
+            ->get()
+            ->map(function ($bin) {
+                // Determine capacity/items (simplified for now, matching existing logic if possible)
+                $currentItemsCount = InventoryStock::where('bin_id', $bin->id)
+                    ->where('qty_on_hand', '>', 0)
+                    ->count();
+
+                return [
+                    'code' => $bin->bin_code,
+                    'warehouse' => $bin->warehouse->warehouse_code ?? 'N/A',
+                    'zone' => $bin->zone ?? 'N/A',
+                    'capacity' => $bin->capacity ?? 'N/A',
+                    'currentItems' => $currentItemsCount,
+                ];
+            });
+
+        return response()->json($bins);
     }
 }

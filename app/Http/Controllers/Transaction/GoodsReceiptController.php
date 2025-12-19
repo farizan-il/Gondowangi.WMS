@@ -255,6 +255,18 @@ class GoodsReceiptController extends Controller
                 }
             }
 
+            // 5. DETECT MULTIPLE ITEM CODES
+            $uniqueItemCodes = array_unique(array_column($extractedData['items'], 'kode_material'));
+            $hasMultipleItemCodes = count($uniqueItemCodes) > 1;
+            
+            $extractedData['has_multiple_item_codes'] = $hasMultipleItemCodes;
+            $extractedData['unique_item_codes'] = array_values($uniqueItemCodes);
+            
+            // 6. GROUP ITEMS BY KODE_MATERIAL (untuk wizard mode)
+            if ($hasMultipleItemCodes) {
+                $extractedData['items_grouped_by_code'] = $this->groupItemsByCode($extractedData['items']);
+            }
+
             return response()->json($extractedData);
 
         } catch (\Exception $e) {
@@ -448,6 +460,210 @@ class GoodsReceiptController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menyimpan penerimaan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Group items by kode_material for multi-item-code handling
+     */
+    private function groupItemsByCode(array $items): array
+    {
+        $grouped = [];
+        foreach ($items as $item) {
+            $code = $item['kode_material'];
+            if (!isset($grouped[$code])) {
+                $grouped[$code] = [
+                    'code' => $code,
+                    'items' => []
+                ];
+            }
+            $grouped[$code]['items'][] = $item;
+        }
+        return array_values($grouped);
+    }
+
+    /**
+     * Store multiple shipments (untuk handle PDF dengan multiple item codes)
+     */
+    public function storeMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'shipments' => 'required|array|min:1',
+            'shipments.*.noPo' => 'required|string|max:255',
+            'shipments.*.noSuratJalan' => 'required|string|max:255',
+            'shipments.*.supplier' => 'required|exists:suppliers,id',
+            'shipments.*.noKendaraan' => 'required|string|max:50',
+            'shipments.*.namaDriver' => 'required|string|max:255',
+            'shipments.*.tanggalTerima' => 'required|date',
+            'shipments.*.kategori' => 'nullable|string|max:100',
+            'shipments.*.incomingNumber' => 'required|string|max:255',
+            'shipments.*.items' => 'required|array|min:1',
+            'shipments.*.items.*.kodeItem' => 'required|exists:materials,id',
+            'shipments.*.items.*.batchLot' => 'required|string|max:255',
+            'shipments.*.items.*.expDate' => 'nullable|date',
+            'shipments.*.items.*.qtyWadah' => 'required|numeric|min:1',
+            'shipments.*.items.*.qtyUnit' => 'required|numeric|min:1',
+            'shipments.*.items.*.binTarget' => 'required|string|max:255',
+            'shipments.*.items.*.isHalal' => 'nullable|boolean',
+            'shipments.*.items.*.isNonHalal' => 'nullable|boolean',
+            'shipments.*.items.*.pabrikPembuat' => 'nullable|string|max:255',
+            'shipments.*.items.*.kondisiBaik' => 'nullable|boolean',
+            'shipments.*.items.*.kondisiTidakBaik' => 'nullable|boolean',
+            'shipments.*.items.*.coaAda' => 'nullable|boolean',
+            'shipments.*.items.*.coaTidakAda' => 'nullable|boolean',
+            'shipments.*.items.*.labelMfgAda' => 'nullable|boolean',
+            'shipments.*.items.*.labelMfgTidakAda' => 'nullable|boolean',
+            'shipments.*.items.*.labelCoaSesuai' => 'nullable|boolean',
+            'shipments.*.items.*.labelCoaTidakSesuai' => 'nullable|boolean',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $createdShipments = [];
+
+            foreach ($validated['shipments'] as $shipmentData) {
+                // Gunakan incoming number dari PDF (sama untuk semua split)
+                $incomingNumber = $shipmentData['incomingNumber'];
+                
+                // Check jika incoming number sudah ada (hanya cek sekali untuk yang pertama)
+                if (count($createdShipments) === 0 && IncomingGood::where('incoming_number', $incomingNumber)->exists()) {
+                    throw new \Exception("Nomor Incoming ({$incomingNumber}) sudah ada dalam sistem.");
+                }
+
+                // Create atau get PO
+                $purchaseOrder = PurchaseOrder::firstOrCreate(
+                    ['no_po' => $shipmentData['noPo']],
+                    [
+                        'supplier_id' => $shipmentData['supplier'],
+                        'tanggal_po' => now(),
+                        'status' => 'Open',
+                        'created_by' => Auth::id() ?? 1
+                    ]
+                );
+
+                // Create incoming good
+                $incoming = IncomingGood::create([
+                    'incoming_number' => $incomingNumber,
+                    'no_surat_jalan' => $shipmentData['noSuratJalan'],
+                    'po_id' => $purchaseOrder->id,
+                    'supplier_id' => $shipmentData['supplier'],
+                    'no_kendaraan' => $shipmentData['noKendaraan'],
+                    'nama_driver' => $shipmentData['namaDriver'],
+                    'tanggal_terima' => $shipmentData['tanggalTerima'],
+                    'kategori' => $shipmentData['kategori'] ?? 'Raw Material',
+                    'status' => 'Karantina',
+                    'received_by' => Auth::id(),
+                ]);
+
+                // Get warehouse ID from first bin
+                $sampleBin = WarehouseBin::where('bin_code', $shipmentData['items'][0]['binTarget'])->first();
+                $warehouseId = $sampleBin ? $sampleBin->warehouse_id : 1;
+
+                // Create items and inventory stock
+                foreach ($shipmentData['items'] as $itemData) {
+                    $material = Material::find($itemData['kodeItem']);
+                    
+                    $binTarget = WarehouseBin::where('bin_code', $itemData['binTarget'])->first();
+                    if (!$binTarget) {
+                        throw new \Exception("Warehouse Bin dengan kode {$itemData['binTarget']} tidak ditemukan.");
+                    }
+
+                    $jumlahWadah = (float) $itemData['qtyWadah'];
+                    $qtyPerWadah = (float) $itemData['qtyUnit'];
+                    $totalQtyReceived = $jumlahWadah * $qtyPerWadah;
+                    
+                    $qrCode = $this->generateQRCode(
+                        $incomingNumber,
+                        $material->kode_item,
+                        $itemData['batchLot'],
+                        $totalQtyReceived,
+                        $itemData['expDate'] ?? ''
+                    );
+
+                    IncomingGoodsItem::create([
+                        'incoming_id' => $incoming->id,
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['batchLot'],
+                        'exp_date' => $itemData['expDate'] ?? null,
+                        'qty_wadah' => $qtyPerWadah,
+                        'qty_unit' => $jumlahWadah,
+                        'satuan' => $material->satuan,
+                        'kondisi_baik' => $itemData['kondisiBaik'] ?? true,
+                        'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? false,
+                        'coa_ada' => $itemData['coaAda'] ?? true,
+                        'coa_tidak_ada' => $itemData['coaTidakAda'] ?? false,
+                        'label_mfg_ada' => $itemData['labelMfgAda'] ?? true,
+                        'label_mfg_tidak_ada' => $itemData['labelMfgTidakAda'] ?? false,
+                        'label_coa_sesuai' => $itemData['labelCoaSesuai'] ?? true,
+                        'label_coa_tidak_sesuai' => $itemData['labelCoaTidakSesuai'] ?? false,
+                        'bin_target' => $itemData['binTarget'],
+                        'is_halal' => $itemData['isHalal'] ?? false,
+                        'is_non_halal' => $itemData['isNonHalal'] ?? false,
+                        'pabrik_pembuat' => $itemData['pabrikPembuat'] ?? '',
+                        'status_qc' => 'To QC',
+                        'qr_code' => $qrCode,
+                    ]);
+
+                    // Update inventory stock
+                    $inventory = InventoryStock::firstOrNew([
+                        'material_id' => $material->id,
+                        'warehouse_id' => $warehouseId,
+                        'bin_id' => $binTarget->id,
+                        'batch_lot' => $itemData['batchLot'],
+                        'status' => 'KARANTINA',
+                    ]);
+                    
+                    if (!$inventory->exists) {
+                        $inventory->fill([
+                            'exp_date' => $itemData['expDate'] ?? null,
+                            'qty_on_hand' => 0,
+                            'qty_reserved' => 0,
+                            'uom' => $material->satuan,
+                            'status' => 'KARANTINA',
+                            'gr_id' => $incoming->id,
+                            'last_movement_date' => now(),
+                        ]);
+                    }
+                    
+                    $inventory->qty_on_hand += $totalQtyReceived;
+                    $inventory->qty_available = $inventory->qty_on_hand;
+                    $inventory->save();
+
+                    // Log activity
+                    $this->logActivity($incoming, 'Create', [
+                        'description' => "Penerimaan Material {$material->nama_material} ({$material->kode_item}) Batch {$itemData['batchLot']} ke Bin {$binTarget->bin_code}. Qty: {$totalQtyReceived} {$material->satuan}",
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['batchLot'],
+                        'exp_date' => $itemData['expDate'] ?? null,
+                        'qty_before' => $inventory->qty_on_hand - $totalQtyReceived,
+                        'qty_after' => $inventory->qty_on_hand,
+                        'bin_to' => $binTarget->id,
+                        'reference_document' => $incoming->no_surat_jalan,
+                    ]);
+                }
+
+                $createdShipments[] = [
+                    'id' => $incoming->id,
+                    'incoming_number' => $incoming->incoming_number,
+                    'no_surat_jalan' => $incoming->no_surat_jalan,
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'created_count' => count($createdShipments),
+                'shipments' => $createdShipments,
+                'message' => "Berhasil membuat " . count($createdShipments) . " penerimaan barang."
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

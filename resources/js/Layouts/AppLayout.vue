@@ -57,7 +57,7 @@
                     </Link>
 
                     <Link 
-                        v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
+                        v-if="$page.props.permissions"
                         href="/transaction/cycle-count"
                         :class="navLinkClass('/transaction/cycle-count')"
                     >
@@ -81,7 +81,7 @@
 
                     <!-- IT Admin Dashboard -->
                     <Link 
-                        v-if="hasAnyPermission(['central_data.role_management_admin'])"
+                        
                         href="/it-dashboard"
                         :class="navLinkClass('/it-dashboard')"
                     >
@@ -90,6 +90,8 @@
                         </svg>
                         <span v-show="sidebarOpen" class="font-medium">IT Dashboard</span>
                     </Link>
+
+
 
                     <!-- DIVIDER / SEPARATOR - hanya tampil jika ada menu transaksi -->
                     <div v-if="hasAnyTransactionPermission" class="my-4 px-2">
@@ -135,7 +137,14 @@
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">PutAway</span>
+                        <span v-show="sidebarOpen" class="font-medium flex-1">PutAway</span>
+                        <span 
+                            v-if="$page.props.pendingPutawayCount > 0" 
+                            v-show="sidebarOpen"
+                            class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                        >
+                            {{ $page.props.pendingPutawayCount }}
+                        </span>
                     </Link>
 
                     <!-- Bin to Bin -->
@@ -151,7 +160,7 @@
 
                     <!-- Reservation -->
                     <Link 
-                        v-if="hasAnyPermission(['reservation.view', 'reservation.create_request', 'reservation.approve_request'])"
+                        v-if="hasAnyPermission(['reservation.view', 'reservation.create', 'reservation.approve'])"
                         href="/transaction/reservation"
                         :class="navLinkClass('/transaction/reservation')"
                     >
@@ -164,7 +173,7 @@
 
                     <!-- Picking List -->
                     <Link 
-                        v-if="hasAnyPermission(['picking.view', 'picking.kerjakan_picking'])"
+                        v-if="hasAnyPermission(['picking.view', 'picking.execute'])"
                         href="/transaction/picking-list"
                         :class="navLinkClass('/transaction/picking-list')"
                     >
@@ -184,7 +193,7 @@
 
                     <!-- Return -->
                     <Link 
-                        v-if="hasAnyPermission(['return.view', 'return.create_return', 'return.approve_return'])"
+                        v-if="hasAnyPermission(['return.view', 'return.create', 'return.approve'])"
                         href="/transaction/return"
                         :class="navLinkClass('/transaction/return')"
                     >
@@ -215,7 +224,7 @@
 
                     <!-- Master Data -->
                     <Link 
-                        v-if="hasAnyPermission(['central_data.sku_management_view', 'central_data.supplier_management_view', 'central_data.bin_management_view'])"
+                        
                         href="/master-data"
                         :class="navLinkClass('/master-data')"
                     >
@@ -227,8 +236,7 @@
 
                     <!-- Role Permission (hanya untuk admin) -->
                     <Link 
-                        v-if="hasAnyPermission(['central_data.role_management_view', 'central_data.role_management_admin'])"
-                        href="/role-permission"
+                        
                         :class="navLinkClass('/role-permission')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,6 +335,11 @@
 
     const page = usePage();
     const { hasPermission, hasAnyPermission } = usePermissions();
+    
+    // DEBUG: Check permissions
+    console.log('DEBUG: User Role:', page.props.auth.user?.role?.name);
+    console.log('DEBUG: Permissions:', page.props.permissions);
+
     const sidebarOpen = ref(true);
 
     // Check if user has any transaction permissions

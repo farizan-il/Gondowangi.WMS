@@ -421,6 +421,71 @@
               </p>
             </div>
 
+            <!-- Wizard Stepper Section (Multi-Item-Code) -->
+            <div v-if="wizardMode && newShipment.isErpDataLoaded" class="mb-6 bg-blue-50 rounded-lg p-4 border-2 border-blue-300">
+              <h4 class="text-md font-bold text-blue-900 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                  <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                </svg>
+                Terdeteksi {{ itemCodeGroups.length }} Kode Item Berbeda
+              </h4>
+              <p class="text-sm text-blue-700 mb-4">
+                Sistem akan membuat <strong>{{ itemCodeGroups.length }} penerimaan terpisah</strong> 
+                (1 per kode item) untuk memudahkan cetak checklist. Gunakan tombol navigasi untuk melihat dan edit detail setiap kode item.
+              </p>
+              
+              <!-- Step Navigation -->
+              <div class="flex items-center justify-between mb-4">
+                <button 
+                  @click="previousStep" 
+                  :disabled="currentStepIndex === 0"
+                  class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                  </svg>
+                  Sebelumnya
+                </button>
+                
+                <div class="flex gap-2">
+                  <div 
+                    v-for="(group, index) in itemCodeGroups" 
+                    :key="index"
+                    :class="[
+                      'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all cursor-pointer',
+                      currentStepIndex === index 
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-300' 
+                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    ]"
+                    @click="goToStep(index)"
+                    :title="`Step ${index + 1}: ${group.code}`">
+                    {{ index + 1 }}
+                  </div>
+                </div>
+                
+                <button 
+                  @click="nextStep" 
+                  :disabled="currentStepIndex === itemCodeGroups.length - 1"
+                  class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                  Selanjutnya
+                  <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Current Step Info -->
+              <div class="bg-white rounded-lg p-3 border border-blue-300 shadow-sm">
+                <p class="text-sm font-semibold text-gray-800">
+                  Step {{ currentStepIndex + 1 }} dari {{ itemCodeGroups.length }}: 
+                  <span class="text-blue-700 font-mono text-base">{{ currentItemCodeGroup?.code }}</span>
+                </p>
+                <p class="text-xs text-gray-600 mt-1">
+                  {{ currentItemCodeGroup?.items.length }} baris material dengan kode item ini
+                </p>
+              </div>
+            </div>
+
             <!-- Form Header -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <div>
@@ -486,11 +551,19 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sub Kategori <span v-if="newShipment.subCategory">(Otomatis)</span></label>
                 <input v-model="newShipment.subCategory" type="text" readonly placeholder="Auto dari Material"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900 focus:outline-none">
+```
               </div>
             </div>
 
             <!-- Detail Items -->
             <div class="border-t border-gray-200 pt-6">
+              <!-- Badge for Wizard Mode -->
+              <div v-if="wizardMode" class="mb-3 inline-block bg-blue-100 px-4 py-2 rounded-full border border-blue-300">
+                <span class="text-sm font-semibold text-blue-800">
+                  🔧 Editing Kode Item: <span class="font-mono">{{ currentItemCodeGroup?.code }}</span>
+                </span>
+              </div>
+              
               <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-medium text-gray-900">Detail Material</h4>
                 <button @click="addNewItem"
@@ -889,6 +962,61 @@
             </div>
         </div>
       </div>
+
+      <!-- Modal Confirmation for Multiple Shipments -->
+      <div v-if="showConfirmMultipleModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 backdrop-blur-sm z-[10000] flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 border-t-4 border-blue-600">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg class="w-6 h-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Konfirmasi Pembuatan Penerimaan
+          </h3>
+          <div class="mb-6">
+            <p class="text-gray-700 mb-3">
+              Sistem akan membuat <strong class="text-blue-700 text-lg">{{ itemCodeGroups.length }} penerimaan terpisah</strong> 
+              dengan data sebagai berikut:
+            </p>
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div class="text-sm space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Incoming Number:</span>
+                  <span class="font-mono font-bold text-blue-700">{{ newShipment.incomingNumber }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">No PO:</span>
+                  <span class="font-semibold">{{ newShipment.noPo }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">No Surat Jalan:</span>
+                  <span class="font-semibold">{{ newShipment.noSuratJalan }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+              <p class="text-xs text-yellow-800">
+                <strong>⚠️ Catatan:</strong> Setiap penerimaan akan dipisah berdasarkan kode item untuk memudahkan cetak checklist.
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button 
+              @click="showConfirmMultipleModal = false" 
+              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium">
+              Batal
+            </button>
+            <button 
+              @click="confirmAndSaveMultiple" 
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Ya, Lanjutkan
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </AppLayout>
 </template>
@@ -992,6 +1120,20 @@ const newMaterialForm = ref({
   halalStatus: '',
   qcRequired: false,
   status: 'Active' // Default
+})
+
+// State untuk Wizard Mode (Multi-Item-Code)
+const wizardMode = ref(false)
+const currentStepIndex = ref(0)
+const itemCodeGroups = ref([])  // Array of { code: string, items: [] }
+const showConfirmMultipleModal = ref(false)
+
+// Computed for current step
+const currentItemCodeGroup = computed(() => {
+  if (wizardMode.value && itemCodeGroups.value.length > 0) {
+    return itemCodeGroups.value[currentStepIndex.value]
+  }
+  return null
 })
 
 // Computed
@@ -1103,114 +1245,205 @@ const processErpPdf = async () => {
 
     const parsedData = response.data
 
-    // 1. Reset Items
-    newShipment.value.items = []
-
-    // 2. Isi Header
-    newShipment.value.incomingNumber = parsedData.incoming_number || ''
-    newShipment.value.noSuratJalan = (parsedData.no_surat_jalan && parsedData.no_surat_jalan !== 'N/A') 
-        ? parsedData.no_surat_jalan 
-        : 'N/A'
-    newShipment.value.noPo = parsedData.no_po || ''
-
-    newShipment.value.noKendaraan = parsedData.no_truck || '-' 
-    newShipment.value.namaDriver = parsedData.driver_name || '-'
-    
-    if (parsedData.tanggal_terima) {
-         newShipment.value.tanggalTerima = parsedData.tanggal_terima
-    }
-
-    // 3. Set Supplier
-    const foundSupplier = props.suppliers.find(s =>
-      s.nama_supplier.toLowerCase().includes(parsedData.supplier_name.toLowerCase()) ||
-      s.kode_supplier.toLowerCase() === parsedData.supplier_code.toLowerCase()
-    )
-
-    if (foundSupplier) {
-      newShipment.value.supplier = foundSupplier.id
-      newShipment.value.supplierName = foundSupplier.nama_supplier
-      supplierSearchQuery.value = foundSupplier.nama_supplier
-    } else {
-      newShipment.value.supplier = ''
-      newShipment.value.supplierName = parsedData.supplier_name ? `*${parsedData.supplier_name}` : ''
-      supplierSearchQuery.value = parsedData.supplier_name || ''
-    }
-
-    // 4. Proses Items (Looping)
-    // Backend sekarang mengembalikan array items yang lengkap (meski ada duplikat kode)
-    parsedData.items.forEach(itemData => {
+    // CHECK IF MULTIPLE ITEM CODES DETECTED
+    if (parsedData.has_multiple_item_codes) {
+      // WIZARD MODE
+      wizardMode.value = true
+      currentStepIndex.value = 0
       
-      // Cari Material di Master Data berdasarkan Kode Item (misal: 30015)
-      const materialDetail = props.materials.find(m => m.code == itemData.kode_material)
-
-      let statusQC = 'Karantina'
-      if (materialDetail && materialDetail.qcRequired === false) {
-        statusQC = 'Karantina'
-      }
-
-      // AUTO-FILL Kategori & SubKategori dari Item Pertama yang valid di Master
-      if (newShipment.value.items.length === 0 && materialDetail) { // Jika ini item pertama (atau belum ada yg set)
-           newShipment.value.kategori = materialDetail.kategori || '';
-           newShipment.value.subCategory = materialDetail.subCategory || '';
-      }
-
-      newShipment.value.items.push({
-        kodeItem: materialDetail ? materialDetail.id : '', 
-        kodeItemDisplay: itemData.kode_material, 
-        namaMaterial: materialDetail ? materialDetail.name : itemData.description, 
-        batchLot: '', 
-        expDate: '', 
-        qtyWadah: itemData.quantity, // 4995 untuk baris 1, 1008 untuk baris 2
-        qtyUnit: '1', 
-        pabrikPembuat: newShipment.value.supplierName || '', 
-        skuSearch: itemData.kode_material,
-        filteredMaterials: [],
-        showSuggestions: false,
-        kondisiBaik: true,
-        kondisiTidakBaik: false,
-        coaAda: true,
-        coaTidakAda: false,
-        labelMfgAda: true,
-        labelMfgTidakAda: false,
-        labelCoaSesuai: true,
-        labelCoaTidakSesuai: false,
-        statusQC: statusQC,
-        binTarget: 'QRT-HALAL',
-        isHalal: true,
-        isNonHalal: false,
-      })
-    })
-
-    // Fallback: Jika looping selesai tapi kategori masih kosong (misal item pertama skip),
-    // Coba cari dari items yg masuk
-    if (!newShipment.value.kategori && newShipment.value.items.length > 0) {
-        const firstValidItem = newShipment.value.items.find(i => i.kodeItem);
-        if (firstValidItem) {
-             const mat = props.materials.find(m => m.id === firstValidItem.kodeItem);
-             if (mat) {
-                 newShipment.value.kategori = mat.kategori || '';
-                 newShipment.value.subCategory = mat.subCategory || '';
-             }
-        }
-    }
-
-
-
-    newShipment.value.isErpDataLoaded = true;
-    
-// --- VALIDASI MATERIAL HILANG ---
-    const missingMaterials = newShipment.value.items
-        .filter(item => !item.kodeItem && item.skuSearch)
-        .map(item => item.skuSearch);
+      // Build item code groups
+      itemCodeGroups.value = parsedData.items_grouped_by_code.map(group => {
+        const items = group.items.map(itemData => {
+          const materialDetail = props.materials.find(m => m.code == itemData.kode_material)
+          
+          return {
+            kodeItem: materialDetail ? materialDetail.id : '',
+            kodeItemDisplay: itemData.kode_material,
+            namaMaterial: materialDetail ? materialDetail.name : itemData.description,
+            batchLot: '',
+            expDate: '',
+            qtyWadah: itemData.quantity,
+            qtyUnit: '1',
+            pabrikPembuat: parsedData.supplier_name || '',
+            skuSearch: itemData.kode_material,
+            filteredMaterials: [],
+            showSuggestions: false,
+            kondisiBaik: true,
+            kondisiTidakBaik: false,
+            coaAda: true,
+            coaTidakAda: false,
+            labelMfgAda: true,
+            labelMfgTidakAda: false,
+            labelCoaSesuai: true,
+            labelCoaTidakSesuai: false,
+            statusQC: 'Karantina',
+            binTarget: 'QRT-HALAL',
+            isHalal: true,
+            isNonHalal: false,
+          }
+        })
         
-    // Hapus duplikat
-    const uniqueMissing = [...new Set(missingMaterials)];
-
-    if (uniqueMissing.length > 0) {
-        missingMaterialsList.value = uniqueMissing;
-        showMissingMaterialsModal.value = true;
+        return {
+          code: group.code,
+          items: items
+        }
+      })
+      
+      // Set header data (same for all groups)
+      newShipment.value.incomingNumber = parsedData.incoming_number || ''
+      newShipment.value.noSuratJalan = (parsedData.no_surat_jalan && parsedData.no_surat_jalan !== 'N/A') 
+          ? parsedData.no_surat_jalan 
+          : 'N/A'
+      newShipment.value.noPo = parsedData.no_po || ''
+      newShipment.value.noKendaraan = parsedData.no_truck || '-'
+      newShipment.value.namaDriver = parsedData.driver_name || '-'
+      
+      if (parsedData.tanggal_terima) {
+        newShipment.value.tanggalTerima = parsedData.tanggal_terima
+      }
+      
+      // Set supplier
+      const foundSupplier = props.suppliers.find(s =>
+        s.nama_supplier.toLowerCase().includes(parsedData.supplier_name.toLowerCase()) ||
+        s.kode_supplier.toLowerCase() === parsedData.supplier_code.toLowerCase()
+      )
+      
+      if (foundSupplier) {
+        newShipment.value.supplier = foundSupplier.id
+        newShipment.value.supplierName = foundSupplier.nama_supplier
+        supplierSearchQuery.value = foundSupplier.nama_supplier
+      }
+      
+      // Load first group items
+      newShipment.value.items = itemCodeGroups.value[0].items
+      
+      // Auto-fill kategori from first valid material
+      const firstItem = newShipment.value.items[0]
+      if (firstItem && firstItem.kodeItem) {
+        const mat = props.materials.find(m => m.id === firstItem.kodeItem)
+        if (mat) {
+          newShipment.value.kategori = mat.kategori || ''
+          newShipment.value.subCategory = mat.subCategory || ''
+        }
+      }
+      
+      newShipment.value.isErpDataLoaded = true
+      alert(`Terdeteksi ${itemCodeGroups.value.length} kode item berbeda. Gunakan wizard untuk melihat dan edit detail setiap kode item.`)
+      
     } else {
-        alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`);
+      // NORMAL MODE (single item code atau no items)
+      wizardMode.value = false
+      itemCodeGroups.value = []
+      
+      // 1. Reset Items
+      newShipment.value.items = []
+
+      // 2. Isi Header
+      newShipment.value.incomingNumber = parsedData.incoming_number || ''
+      newShipment.value.noSuratJalan = (parsedData.no_surat_jalan && parsedData.no_surat_jalan !== 'N/A') 
+          ? parsedData.no_surat_jalan 
+          : 'N/A'
+      newShipment.value.noPo = parsedData.no_po || ''
+
+      newShipment.value.noKendaraan = parsedData.no_truck || '-' 
+      newShipment.value.namaDriver = parsedData.driver_name || '-'
+      
+      if (parsedData.tanggal_terima) {
+           newShipment.value.tanggalTerima = parsedData.tanggal_terima
+      }
+
+      // 3. Set Supplier
+      const foundSupplier = props.suppliers.find(s =>
+        s.nama_supplier.toLowerCase().includes(parsedData.supplier_name.toLowerCase()) ||
+        s.kode_supplier.toLowerCase() === parsedData.supplier_code.toLowerCase()
+      )
+
+      if (foundSupplier) {
+        newShipment.value.supplier = foundSupplier.id
+        newShipment.value.supplierName = foundSupplier.nama_supplier
+        supplierSearchQuery.value = foundSupplier.nama_supplier
+      } else {
+        newShipment.value.supplier = ''
+        newShipment.value.supplierName = parsedData.supplier_name ? `*${parsedData.supplier_name}` : ''
+        supplierSearchQuery.value = parsedData.supplier_name || ''
+      }
+
+      // 4. Proses Items (Looping)
+      // Backend sekarang mengembalikan array items yang lengkap (meski ada duplikat kode)
+      parsedData.items.forEach(itemData => {
+        
+        // Cari Material di Master Data berdasarkan Kode Item (misal: 30015)
+        const materialDetail = props.materials.find(m => m.code == itemData.kode_material)
+
+        let statusQC = 'Karantina'
+        if (materialDetail && materialDetail.qcRequired === false) {
+          statusQC = 'Karantina'
+        }
+
+        // AUTO-FILL Kategori & SubKategori dari Item Pertama yang valid di Master
+        if (newShipment.value.items.length === 0 && materialDetail) { // Jika ini item pertama (atau belum ada yg set)
+             newShipment.value.kategori = materialDetail.kategori || '';
+             newShipment.value.subCategory = materialDetail.subCategory || '';
+        }
+
+        newShipment.value.items.push({
+          kodeItem: materialDetail ? materialDetail.id : '', 
+          kodeItemDisplay: itemData.kode_material, 
+          namaMaterial: materialDetail ? materialDetail.name : itemData.description, 
+          batchLot: '', 
+          expDate: '', 
+          qtyWadah: itemData.quantity, // 4995 untuk baris 1, 1008 untuk baris 2
+          qtyUnit: '1', 
+          pabrikPembuat: newShipment.value.supplierName || '', 
+          skuSearch: itemData.kode_material,
+          filteredMaterials: [],
+          showSuggestions: false,
+          kondisiBaik: true,
+          kondisiTidakBaik: false,
+          coaAda: true,
+          coaTidakAda: false,
+          labelMfgAda: true,
+          labelMfgTidakAda: false,
+          labelCoaSesuai: true,
+          labelCoaTidakSesuai: false,
+          statusQC: statusQC,
+          binTarget: 'QRT-HALAL',
+          isHalal: true,
+          isNonHalal: false,
+        })
+      })
+
+      // Fallback: Jika looping selesai tapi kategori masih kosong (misal item pertama skip),
+      // Coba cari dari items yg masuk
+      if (!newShipment.value.kategori && newShipment.value.items.length > 0) {
+          const firstValidItem = newShipment.value.items.find(i => i.kodeItem);
+          if (firstValidItem) {
+               const mat = props.materials.find(m => m.id === firstValidItem.kodeItem);
+               if (mat) {
+                   newShipment.value.kategori = mat.kategori || '';
+                   newShipment.value.subCategory = mat.subCategory || '';
+               }
+          }
+      }
+
+      newShipment.value.isErpDataLoaded = true;
+    }
+    
+    // VALIDASI MATERIAL HILANG (untuk normal mode)
+    if (!wizardMode.value) {
+      const missingMaterials = newShipment.value.items
+          .filter(item => !item.kodeItem && item.skuSearch)
+          .map(item => item.skuSearch);
+          
+      // Hapus duplikat
+      const uniqueMissing = [...new Set(missingMaterials)];
+
+      if (uniqueMissing.length > 0) {
+          missingMaterialsList.value = uniqueMissing;
+          showMissingMaterialsModal.value = true;
+      } else {
+          alert(`Berhasil memuat ${parsedData.items.length} item dari PDF.`);
+      }
     }
     // --------------------------------
 
@@ -1225,6 +1458,116 @@ const processErpPdf = async () => {
     isProcessingErp.value = false
   }
 }
+
+// Wizard Navigation Methods
+const nextStep = () => {
+  if (currentStepIndex.value < itemCodeGroups.value.length - 1) {
+    // Save current step's items back to group
+    itemCodeGroups.value[currentStepIndex.value].items = JSON.parse(JSON.stringify(newShipment.value.items))
+    
+    // Move to next step
+    currentStepIndex.value++
+    
+    // Load next group items
+    newShipment.value.items = JSON.parse(JSON.stringify(itemCodeGroups.value[currentStepIndex.value].items))
+  }
+}
+
+const previousStep = () => {
+  if (currentStepIndex.value > 0) {
+    // Save current step's items
+    itemCodeGroups.value[currentStepIndex.value].items = JSON.parse(JSON.stringify(newShipment.value.items))
+    
+    // Move back
+    currentStepIndex.value--
+    
+    // Load previous group items
+    newShipment.value.items = JSON.parse(JSON.stringify(itemCodeGroups.value[currentStepIndex.value].items))
+  }
+}
+
+const goToStep = (stepIndex) => {
+  if (stepIndex >= 0 && stepIndex < itemCodeGroups.value.length && stepIndex !== currentStepIndex.value) {
+    // Save current step
+    itemCodeGroups.value[currentStepIndex.value].items = JSON.parse(JSON.stringify(newShipment.value.items))
+    
+    // Jump to selected step
+    currentStepIndex.value = stepIndex
+    
+    // Load selected group
+    newShipment.value.items = JSON.parse(JSON.stringify(itemCodeGroups.value[stepIndex].items))
+  }
+}
+
+
+// Save Shipment Logic (handles both wizard and normal mode)
+const saveShipment = () => {
+  if (wizardMode.value) {
+    // Wizard mode: show confirmation dialog first
+    // Save current step before showing dialog
+    itemCodeGroups.value[currentStepIndex.value].items = JSON.parse(JSON.stringify(newShipment.value.items))
+    showConfirmMultipleModal.value = true
+  } else {
+    // Normal mode: submit single shipment
+    submitSingleShipment()
+  }
+}
+
+const confirmAndSaveMultiple = async () => {
+  showConfirmMultipleModal.value = false
+  
+  // Build shipments array from all groups
+  const shipmentsToCreate = itemCodeGroups.value.map(group => ({
+    noPo: newShipment.value.noPo,
+    noSuratJalan: newShipment.value.noSuratJalan,
+    supplier: newShipment.value.supplier,
+    noKendaraan: newShipment.value.noKendaraan,
+    namaDriver: newShipment.value.namaDriver,
+    tanggalTerima: newShipment.value.tanggalTerima,
+    kategori: newShipment.value.kategori,
+    subCategory: newShipment.value.subCategory,
+    incomingNumber: newShipment.value.incomingNumber,
+    items: group.items
+  }))
+  
+  isSaving.value = true
+  try {
+    const response = await axios.post('/transaction/goods-receipt/store-multiple', {
+      shipments: shipmentsToCreate
+    })
+    
+    if (response.data.success) {
+      alert(response.data.message || `Berhasil membuat ${response.data.created_count} penerimaan!`)
+      closeModal()
+      router.reload()
+    }
+  } catch (error) {
+    console.error(error)
+    alert('Gagal menyimpan: ' + (error.response?.data?.error || error.message))
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const submitSingleShipment = () => {
+  isSaving.value = true
+  
+  router.post('/transaction/goods-receipt', {
+    ...newShipment.value
+  }, {
+    onSuccess: () => {
+      isSaving.value = false
+      closeModal()
+      router.reload()
+    },
+    onError: (errors) => {
+      isSaving.value = false
+      console.error(errors)
+      alert('Gagal menyimpan: ' + JSON.stringify(errors))
+    }
+  })
+}
+
 
 // Methods untuk Quick Add Material
 const openAddMaterialModal = (code) => {
@@ -1500,55 +1843,12 @@ const updateNamaMaterial = (index) => {
       newShipment.value.items[index].isNonHalal = false
     } else if (selectedMaterial.halalStatus === 'Non Halal') {
       newShipment.value.items[index].isHalal = false
-      newShipment.value.items[index].isNonHalal = true
+    newShipment.value.items[index].isNonHalal = true
     }
   }
 }
 
-const saveShipment = () => {
-  if (isSaving.value) { // <-- CEK FLAG
-    console.log('Penyimpanan sedang dalam proses. Permintaan diabaikan.')
-    return
-  }
-
-  if (!isFormValid.value) {
-    alert('Mohon lengkapi semua field yang diperlukan')
-    return
-  }
-
-  isSaving.value = true
-
-  // Debug: Log data sebelum dikirim
-  console.log('Data yang akan dikirim:', JSON.stringify(newShipment.value, null, 2))
-
-  router.post('/transaction/goods-receipt', newShipment.value, {
-    preserveScroll: true,
-    onBefore: () => {
-      console.log('Request dimulai...')
-    },
-    onSuccess: (page) => {
-      console.log('Response sukses:', page)
-      console.log('Flash messages:', page.props.flash)
-      closeModal()
-
-      // Reload data setelah sukses
-      router.reload({ only: ['shipments'] })
-      alert('Penerimaan berhasil disimpan')
-    },
-    onError: (errors) => {
-      console.error('Validation errors:', errors)
-      let errorMsg = 'Gagal menyimpan:\n'
-      Object.entries(errors).forEach(([key, value]) => {
-        errorMsg += `${key}: ${value}\n`
-      })
-      alert(errorMsg)
-    },
-    onFinish: () => {
-      isSaving.value = false // <-- RESET FLAG
-      console.log('Request selesai')
-    }
-  })
-}
+// Old saveShipment method removed - replaced with wizard-aware version above
 
 const generateQR = (shipmentId, itemId, lot, qty, expDate) => {
   return `${shipmentId}|${itemId}|${lot}|${qty}|${expDate}`

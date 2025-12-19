@@ -184,8 +184,11 @@ class ReservationController extends Controller
              return null;
         }
 
-        // Ambil stok dari inventory stock
-        $totalAvailableStock = InventoryStock::where('material_id', $material->id)->sum('qty_available');
+        // Ambil stok dari inventory stock - HANYA status RELEASED (sudah lolos QC)
+        // Material yang masih KARANTINA tidak boleh direservasi
+        $totalAvailableStock = InventoryStock::where('material_id', $material->id)
+            ->where('status', 'RELEASED')
+            ->sum('qty_available');
 
         return [
             'kodeBahan' => $material->kode_item,
@@ -367,6 +370,7 @@ class ReservationController extends Controller
     {
         // Memuat 'reservations' (detail batch) beserta materialnya
         $reservations = ReservationRequest::with(['items', 'reservations.material'])
+            ->where('requested_by', Auth::id())
             ->orderBy('created_at', 'desc')
             ->get();
             
@@ -382,7 +386,9 @@ class ReservationController extends Controller
     public function getReservationsData() 
     {
         // Memuat 'reservations' (detail batch) beserta materialnya
-        $reservations = ReservationRequest::with(['items', 'reservations.material'])->get();
+        $reservations = ReservationRequest::with(['items', 'reservations.material'])
+            ->where('requested_by', Auth::id())
+            ->get();
         
         // Gunakan helper untuk mapping data AJAX
         $mappedReservations = $reservations->map(fn($req) => $this->mapReservationToCamelCase($req));
@@ -427,7 +433,7 @@ class ReservationController extends Controller
             )
             // Menjumlahkan qty_available dari semua baris stok material yang sama
             ->selectRaw('SUM(inventory_stock.qty_available) as total_available_stock')
-            // Apply Status Filter: Hanya ambil yang RELEASED
+            // Apply Status Filter: HANYA ambil yang RELEASED (material yang sudah lolos QC)
             ->where('inventory_stock.status', 'RELEASED')
             
             // Apply Filters (Category)
@@ -511,9 +517,11 @@ class ReservationController extends Controller
             // 1. Dapatkan Material ID
             $material = Material::where('kode_item', $materialCode)->firstOrFail();
             
-            // 2. Dapatkan stok yang tersedia
-            $availableStocksQuery = InventoryStock::where('material_id', $material->id)
-                ->where('qty_available', '>', 0);
+            // 2. Dapatkan stok yang tersedia - HANYA yang RELEASED (sudah lolos QC)
+        // Material KARANTINA tidak boleh dialokasikan untuk reservation
+        $availableStocksQuery = InventoryStock::where('material_id', $material->id)
+            ->where('status', 'RELEASED')
+            ->where('qty_available', '>', 0);
             
             // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
             
@@ -665,8 +673,10 @@ class ReservationController extends Controller
                     continue;
                 }
                 
-                // 2. Hitung total stok tersedia dari InventoryStock
+                // 2. Hitung total stok tersedia dari InventoryStock (RELEASED/KARANTINA only)
                 $totalAvailableStock = InventoryStock::where('material_id', $material->id)
+                    ->whereIn('status', ['RELEASED', 'KARANTINA'])
+                    ->where('status', '!=', 'REJECTED')
                     ->sum('qty_available');
 
                 // 3. Bandingkan

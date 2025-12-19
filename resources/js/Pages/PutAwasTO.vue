@@ -94,6 +94,11 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="font-medium text-gray-900">{{ to.toNumber }}</div>
                   <div v-if="to.reservationNo" class="text-sm text-gray-500">{{ to.reservationNo }}</div>
+                  <div v-if="to.hasRejected" class="mt-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">
+                      Reject Items
+                    </span>
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ to.items.length > 0 ? to.items[0].batchLot : 'N/A' }}
@@ -195,12 +200,32 @@
                           class="rounded border-gray-300 focus:ring-blue-500">
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.itemCode }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.materialName }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.materialName }} <div v-if="material.status === 'REJECTED'" class="mt-1">
+                          <span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Reject</span>
+                        </div></td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.currentBin }}</td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.qty }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.uom }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-900">
+                        {{ material.uom }}
+                      </td>
                       <td class="px-4 py-3">
-                        <div class="relative w-64">
+                        <!-- IF REJECTED: Show Select Dropdown for RJT Bins -->
+                        <div v-if="material.status === 'REJECTED'" class="w-64">
+                          <select 
+                            v-model="material.destinationBin"
+                            :disabled="!material.selected"
+                            class="w-full px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{'bg-gray-100': !material.selected}"
+                          >
+                            <option value="">Pilih Bin Reject (RJT)</option>
+                            <option v-for="bin in rejectBins" :key="bin.code" :value="bin.code">
+                              {{ bin.code }}
+                            </option>
+                          </select>
+                        </div>
+
+                        <!-- IF RELEASED: Show Current Searchable Input -->
+                        <div v-else class="relative w-64">
                           <input 
                             type="text" 
                             v-model="material.binSearchQuery"
@@ -645,6 +670,7 @@ interface TransferOrder {
   reservationNo?: string
   items: TOItem[]
   isExecuting?: boolean
+  hasRejected?: boolean
 }
 
 interface QCReleasedMaterial {
@@ -658,6 +684,7 @@ interface QCReleasedMaterial {
   stockId: number
   batchLot?: string
   expDate?: string
+  status: string // RELEASED | REJECTED
   binSearchQuery?: string // Untuk autocomplete
   showBinSuggestions?: boolean // State dropdown
 }
@@ -717,6 +744,7 @@ watch(() => page.props.transferOrders, (newOrders) => {
 // Reactive data
 const qcReleasedMaterials = ref<QCReleasedMaterial[]>([])
 const availableBins = ref<BinInfo[]>([])
+const rejectBins = ref<BinInfo[]>([])
 const searchQuery = ref('')
 const searchBatch = ref('')
 const filterType = ref('')
@@ -899,6 +927,11 @@ const generateAutoPutaway = async () => {
     const bins = await binResponse.json()
     availableBins.value = bins
 
+    const rejectResponse = await fetch('/transaction/putaway-transfer/reject-bins')
+    if (!rejectResponse.ok) throw new Error('Failed to fetch reject bins')
+    const rBins = await rejectResponse.json()
+    rejectBins.value = rBins
+
     showAutoPutawayModal.value = true
   } catch (error) {
     console.error('Error loading data:', error)
@@ -944,14 +977,18 @@ const confirmAutoPutaway = async () => {
         qty: m.qty
       }))
     }, {
-      onSuccess: () => {
+      onSuccess: (page) => {
         showAutoPutawayModal.value = false
-        // Ganti alert dengan notifikasi flash
-        alert('Putaway TO berhasil digenerate!')
+        if (page.props.flash && page.props.flash.success) {
+          alert(page.props.flash.success)
+        } else {
+          alert('Putaway TO berhasil digenerate!')
+        }
       },
       onError: (errors) => {
         console.error('Error generating putaway:', errors)
-        alert('Gagal generate putaway TO: ' + (errors.message || Object.values(errors)[0]))
+        const errorMsg = errors.message || Object.values(errors)[0] || 'Gagal generate putaway TO'
+        alert('Gagal: ' + errorMsg)
       }
     })
     
@@ -1001,7 +1038,11 @@ const closeDetailModal = () => {
   if (selectedTO.value?.isExecuting && selectedTO.value.status !== 'Completed') {
     // Save state before closing if executing
     saveTOState(selectedTO.value); 
-    alert(`Progress TO ${selectedTO.value.toNumber} disimpan secara parsial.`);
+    if (usePage().props.flash?.success) {
+        alert(usePage().props.flash.success);
+    } else {
+        alert(`Progress TO ${selectedTO.value.toNumber} disimpan secara parsial.`);
+    }
   } else {
     // Clear state jika TO sudah selesai atau dibatalkan
     clearTOState(); 

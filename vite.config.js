@@ -3,6 +3,7 @@ import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 
+// Config updated to trigger restart
 export default defineConfig({
     plugins: [
         laravel({

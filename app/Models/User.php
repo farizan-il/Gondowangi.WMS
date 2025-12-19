@@ -56,4 +56,9 @@ class User extends Authenticatable
             ->where('permission_name', $permissionName)
             ->exists();
     }
+
+    public function hasRole($roleName)
+    {
+        return $this->role && $this->role->role_name === $roleName;
+    }
 }

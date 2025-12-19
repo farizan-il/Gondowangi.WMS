@@ -125,6 +125,18 @@ class ReturnController extends Controller
             ->limit(50) // Limit to recent 50 for performance
             ->get();
 
+        // Fetch shipments that have REJECTED materials in bins NOT starting with QRT
+        $rejectedShipments = \App\Models\IncomingGood::whereHas('inventoryStocks', function ($query) {
+            $query->where('status', 'REJECTED')
+                ->whereHas('bin', function ($q) {
+                    $q->where('bin_code', 'NOT LIKE', 'QRT-%');
+                });
+        })
+        ->select('incoming_number', 'no_surat_jalan')
+        ->distinct()
+        ->orderBy('created_at', 'desc')
+        ->get();
+
         // Fetch Returns List
         $returns = \App\Models\ReturnModel::with(['items.material', 'supplier', 'reservationRequest', 'createdBy'])
             ->orderBy('created_at', 'desc')
@@ -152,6 +164,7 @@ class ReturnController extends Controller
         return Inertia::render('Return', [
             'suppliers' => $suppliers,
             'shipments' => $shipments,
+            'rejectedShipments' => $rejectedShipments,
             'userDept' => Auth::user()->departement, // Pass User Dept
             'initialReturns' => $returns,
         ]);
@@ -187,6 +200,97 @@ class ReturnController extends Controller
     {
         // Handle Production Return (New Logic)
         // Handle Production Return (New Logic)
+        // Handle Rejected Material Return (To Supplier)
+        if ($request->input('type') === 'Rejected Material') {
+            $validated = $request->validate([
+                'type' => 'required|in:Rejected Material',
+                'date' => 'required|date',
+                'shipmentNo' => 'required|string', // Incoming Number
+                'items' => 'required|array',
+                'items.*.id' => 'required|exists:inventory_stock,id',
+                'items.*.itemCode' => 'required',
+                'items.*.qty' => 'required|numeric|min:0.01',
+                'items.*.uom' => 'nullable|string',
+                'items.*.reason' => 'required|string',
+            ]);
+
+            DB::beginTransaction();
+            try {
+                $returnModel = \App\Models\ReturnModel::create([
+                    'return_number' => $this->generateReturnNumber(),
+                    'return_type' => 'Supplier', // Use 'Supplier' as the base type for report
+                    'return_date' => $validated['date'],
+                    'reference_number' => $validated['shipmentNo'],
+                    'status' => 'Returned',
+                    'created_by' => Auth::id(),
+                    'returned_by' => Auth::id(),
+                ]);
+
+                foreach ($request->items as $itemData) {
+                    $stock = \App\Models\InventoryStock::find($itemData['id']);
+                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->firstOrFail();
+                    $uom = $itemData['uom'] ?? $material->satuan;
+                    
+                    // 1. Create Return Item
+                    \App\Models\ReturnItem::create([
+                        'return_id' => $returnModel->id,
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'qty_return' => $itemData['qty'],
+                        'uom' => $uom,
+                        'return_reason' => $itemData['reason'],
+                        'stock_deducted' => true, 
+                        'item_condition' => 'Rejected',
+                    ]);
+
+                    // 2. Stock Movement
+                    $movementNumber = $this->generateMovementNumber();
+                    StockMovement::create([
+                        'movement_number' => $movementNumber,
+                        'movement_type' => 'RETURN_REJECTED',
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'from_warehouse_id' => $stock->warehouse_id,
+                        'from_bin_id' => $stock->bin_id,
+                        'to_warehouse_id' => null, 
+                        'to_bin_id' => null, 
+                        'qty' => $itemData['qty'] * -1,
+                        'uom' => $uom,
+                        'reference_type' => 'return_model',
+                        'reference_id' => $returnModel->id,
+                        'movement_date' => now(),
+                        'executed_by' => Auth::id(),
+                        'notes' => "Return Rejected Material to Supplier. Ref: " . $validated['shipmentNo'],
+                    ]);
+
+                    // 3. Update/Delete Stock
+                    if ($stock->qty_on_hand <= $itemData['qty']) {
+                        $stock->delete();
+                    } else {
+                        $stock->decrement('qty_on_hand', $itemData['qty']);
+                        $stock->decrement('qty_available', $itemData['qty']);
+                    }
+
+                    // 4. Activity Log
+                    $this->logActivity($returnModel, 'Return Rejected Material', [
+                        'description' => "Return {$itemData['qty']} {$uom} of {$material->nama_material} (REJECTED) to Supplier.",
+                        'material_id' => $material->id,
+                        'batch_lot' => $itemData['lotBatch'],
+                        'reference_document' => $validated['shipmentNo'],
+                    ]);
+                }
+
+                DB::commit();
+                return redirect()->back()->with('success', 'Return material reject ke supplier berhasil.');
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("Return Store Error: " . $e->getMessage());
+                return redirect()->back()->with('error', 'Gagal menyimpan return: ' . $e->getMessage());
+            }
+        }
+
+        // Handle Production Return (New Logic)
         if ($request->input('type') === 'Production') {
              $validated = $request->validate([
                 'type' => 'required|in:Production',
@@ -211,7 +315,7 @@ class ReturnController extends Controller
                     'department' => Auth::user()->departement,
                     'reservation_request_id' => $reservation->id ?? null,
                     'reference_number' => $validated['shipmentNo'],
-                    'status' => 'Pending Approval', // Changed from 'Submitted'
+                    'status' => 'Pending Approval',
                     'created_by' => Auth::id(),
                 ]);
 
@@ -243,13 +347,11 @@ class ReturnController extends Controller
                 DB::commit();
                 return redirect()->back()->with('success', 'Permintaan Return berhasil dikirim. Menunggu persetujuan Supervisor.');
 
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error("Return Store Error: " . $e->getMessage());
                 return redirect()->back()->with('error', 'Gagal menyimpan return: ' . $e->getMessage());
             }
-
         }
 
         // Existing Supplier Return Logic
@@ -364,7 +466,7 @@ class ReturnController extends Controller
                         'qty_reserved' => 0,
                         'qty_available' => $item->qty_return,
                         'uom' => $item->uom,
-                        'status' => 'KARANTINA', 
+                        'status' => 'RELEASED', 
                         'exp_date' => $expDate, 
                         'last_movement_date' => now(),
                     ]);
@@ -501,6 +603,78 @@ class ReturnController extends Controller
                     'original_qty' => $item->qty_reserved,
                     'qty' => 0, // Default qty return 0
                     'uom' => $item->uom ?? $item->material->satuan,
+                ];
+            });
+
+        return response()->json($items);
+    }
+
+    public function getRejectedShipmentDetails(Request $request)
+    {
+        $shipmentNo = $request->input('no');
+        
+        if (!$shipmentNo) {
+             return response()->json(['error' => 'Shipment Number required'], 400);
+        }
+
+        $incomingGood = \App\Models\IncomingGood::where('incoming_number', $shipmentNo)->first();
+        if (!$incomingGood) {
+            return response()->json(['error' => 'Shipment Number not found'], 404);
+        }
+
+        $items = \App\Models\InventoryStock::with('material')
+            ->where('gr_id', $incomingGood->id)
+            ->where('status', 'REJECTED')
+            ->whereHas('bin', function ($q) {
+                $q->where('bin_code', 'NOT LIKE', 'QRT-%');
+            })
+            ->get()
+            ->map(function ($stock) {
+                return [
+                    'id' => $stock->id,
+                    'item_code' => $stock->material->kode_item,
+                    'item_name' => $stock->material->nama_material,
+                    'batch_lot' => $stock->batch_lot,
+                    'on_hand_qty' => $stock->qty_on_hand,
+                    'qty' => $stock->qty_on_hand, // Default to all as user just inputs qty return
+                    'uom' => $stock->uom,
+                    'supplier_id' => $stock->material->supplier_id,
+                    'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
+                ];
+            });
+
+        return response()->json($items);
+    }
+
+    public function getSupplierShipmentDetails(Request $request)
+    {
+        $shipmentNo = $request->input('no');
+        
+        if (!$shipmentNo) {
+             return response()->json(['error' => 'Shipment Number required'], 400);
+        }
+
+        $incomingGood = \App\Models\IncomingGood::where('incoming_number', $shipmentNo)->first();
+        if (!$incomingGood) {
+            return response()->json(['error' => 'Shipment Number not found'], 404);
+        }
+
+        // Fetch materials with REJECTED status for this shipment
+        $items = \App\Models\InventoryStock::with(['material', 'material.supplier'])
+            ->where('gr_id', $incomingGood->id)
+            ->where('status', 'REJECTED')
+            ->get()
+            ->map(function ($stock) {
+                return [
+                    'id' => $stock->id,
+                    'item_code' => $stock->material->kode_item,
+                    'item_name' => $stock->material->nama_material,
+                    'batch_lot' => $stock->batch_lot,
+                    'on_hand_qty' => $stock->qty_on_hand,
+                    'qty' => $stock->qty_on_hand, // Default to all on hand qty
+                    'uom' => $stock->uom,
+                    'supplier_id' => $stock->material->supplier_id,
+                    'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
                 ];
             });
 

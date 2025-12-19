@@ -29,7 +29,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware('permission:incoming.view')
+        // ->middleware('permission:dashboard.wms')
         ->name('dashboard');
 
     // WMS Dashboard
@@ -44,8 +44,12 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
     Route::post('/dashboard/reqc/initiate', [DashboardController::class, 'initiateReqcForExpiredMaterials'])
         ->name('dashboard.reqc.initiate');
 
-    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
-    Route::get('/it-dashboard', [ActivityLogController::class, 'dashboard'])->name('it-dashboard');
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])
+        // ->middleware('permission:activity_log.view')
+        ->name('activity-log');
+    Route::get('/it-dashboard', [ActivityLogController::class, 'dashboard'])
+        // ->middleware('permission:it_dashboard.view')
+        ->name('it-dashboard');
 
     // Master Data Routes
     Route::get('/master-data/bin/{binId}/stocks', [MasterDataController::class, 'getBinStockDetails'])->name('bin.stocks.details');
@@ -83,37 +87,37 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
     
     // Bin Routes
     Route::post('/master-data/bin', [MasterDataController::class, 'storeBin'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.bin.store');
     Route::put('/master-data/bin/{id}', [MasterDataController::class, 'updateBin'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.bin.update');
     Route::delete('/master-data/bin/{id}', [MasterDataController::class, 'deleteBin'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.bin.delete');
     Route::get('/master-data/bin/{id}/qrcode', [MasterDataController::class, 'generateBinQRCode'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.view')
         ->name('master-data.bin.qrcode');
     
     // User Routes
     Route::post('/master-data/user', [MasterDataController::class, 'storeUser'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.user.store');
     Route::put('/master-data/user/{id}', [MasterDataController::class, 'updateUser'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.user.update');
     Route::delete('/master-data/user/{id}', [MasterDataController::class, 'deleteUser'])
-        ->middleware('permission:central_data.sku_management_view')
+        // ->middleware('permission:master_data.manage')
         ->name('master-data.user.delete');
     
-    // Role Permission routes - only for admins
-    Route::middleware('permission:central_data.role_management_view')->group(function () {
+    // Role Permission routes - now open
+    // Route::middleware('permission:role_permission.view')->group(function () {
         Route::get('/role-permission', [RolePermissionController::class, 'index'])->name('role-permission');
         Route::post('/role-permission', [RolePermissionController::class, 'store'])->name('role-permission.store');
         Route::delete('/role-permission/{id}', [RolePermissionController::class, 'destroy'])->name('role-permission.destroy');
         Route::get('/role-permission/{id}/permissions', [RolePermissionController::class, 'getPermissions'])->name('role-permission.permissions');
         Route::put('/role-permission/{id}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('role-permission.update-permissions');
-    });
+    // });
 
     
 
@@ -139,36 +143,39 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
 
         // Awal Route Goods Receipt
         Route::post('/goods-receipt/parse-erp-pdf', [GoodsReceiptController::class, 'parseErpPdf'])
-            ->middleware('permission:incoming.create')
+            // ->middleware('permission:incoming.create')
             ->name('goods-receipt.parse-erp-pdf');
         Route::get('/goods-receipt', [GoodsReceiptController::class, 'index'])
-            ->middleware('permission:incoming.view')
+            // ->middleware('permission:incoming.view')
             ->name('goods-receipt');
         Route::post('/goods-receipt', [GoodsReceiptController::class, 'store'])
-            ->middleware('permission:incoming.create')
+            // ->middleware('permission:incoming.create')
             ->name('goods-receipt.store');
+        Route::post('/goods-receipt/store-multiple', [GoodsReceiptController::class, 'storeMultiple'])
+            // ->middleware('permission:incoming.create')
+            ->name('goods-receipt.store-multiple');
         Route::get('/goods-receipt/po/{id}', [GoodsReceiptController::class, 'getPoDetails'])
-            ->middleware('permission:incoming.view')
+            // ->middleware('permission:incoming.view')
             ->name('goods-receipt.po-details');
         // Akhir Route Goods Receipt
 
         // Awal Route Quality Control
         Route::get('/quality-control', [QualityControlController::class, 'index'])
-            ->middleware('permission:qc.view')
+            // ->middleware('permission:qc.view')
             ->name('quality-control');
 
         Route::post('/quality-control/scan', [QualityControlController::class, 'scanQR'])
-            ->middleware('permission:qc.view')
+            // ->middleware('permission:qc.view')
             ->name('quality-control.scan');
 
         Route::post('/quality-control', [QualityControlController::class, 'store'])
-            ->middleware('permission:qc.input_qc_result')
+            // ->middleware('permission:qc.create')
             ->name('quality-control.store');
         // Akhir Route Quality Control
 
         // AWAL PutAway & Transfer Order
         Route::get('/putaway-transfer', [PutawayTransferController::class, 'index'])
-            ->middleware('permission:putaway.view')
+            // ->middleware('permission:putaway.view')
             ->name('putaway.transfer.index');
 
         Route::post('/putaway-transfer/complete/{id}', [PutawayTransferController::class, 'completeTO'])
@@ -178,38 +185,41 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
             
             // Main index page
             Route::get('/', [PutawayTransferController::class, 'index'])
-                ->middleware('permission:putaway.view')
+                // ->middleware('permission:putaway.view')
                 ->name('index');
             
             // Get QC Released Materials for auto putaway
             Route::get('/qc-released', [PutawayTransferController::class, 'getQcReleasedMaterials'])
-                ->middleware('permission:putaway.view')
+                // ->middleware('permission:putaway.view')
                 ->name('qc.released');
             
             // Get available bins
             Route::get('/available-bins', [PutawayTransferController::class, 'getAvailableBins'])
-                ->middleware('permission:putaway.view')
+                // ->middleware('permission:putaway.view')
                 ->name('available.bins');
             
             // Get bin details
             Route::get('/bin-details', [PutawayTransferController::class, 'getBinDetails'])
-                ->middleware('permission:putaway.view')
+                // ->middleware('permission:putaway.view')
                 ->name('bin.details');
             
             // Generate auto putaway
             Route::post('/generate', [PutawayTransferController::class, 'generateAutoPutaway'])
-                ->middleware('permission:putaway.create')
+                // ->middleware('permission:putaway.create')
                 ->name('generate');
             
             // Complete Transfer Order
             Route::post('/complete/{id}', [PutawayTransferController::class, 'completeTO'])
-                // ->middleware('permission:putaway.execute')
+                // // ->middleware('permission:putaway.execute')
                 ->name('complete');
 
             // Scan Putaway
             Route::post('/scan', [PutawayTransferController::class, 'scanPutaway'])
-                // ->middleware('permission:putaway.execute')
+                // // ->middleware('permission:putaway.execute')
                 ->name('scan');
+
+            Route::get('/reject-bins', [PutawayTransferController::class, 'getRejectBins'])
+                ->name('reject-bins');
         });
 
         Route::post('/reservation/parse-materials', [ReservationController::class, 'parseMaterials'])
@@ -231,7 +241,7 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
 
         // Bin to bin
         Route::get('/bin-to-bin', [BintobinController::class, 'index'])
-            ->middleware('permission:bin-to-bin.view')
+            // ->middleware('permission:bintobin.view')
             ->name('bin-to-bin');
 
         // Endpoint untuk memproses transfer
@@ -240,49 +250,52 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
 
         // Reservation
         Route::get('/reservation', [ReservationController::class, 'index'])
-            ->middleware('permission:reservation.view')
+            // ->middleware('permission:reservation.view')
             ->name('reservation.index');
             
         // Reservation Store (POST)
         Route::post('/reservation', [ReservationController::class, 'store'])
-            ->middleware('permission:reservation.create')
+            // ->middleware('permission:reservation.create')
             ->name('reservation.store');
 
         // ENDPOINT UNTUK AMBIL DATA (AJAX/Web)
         Route::get('/reservations/data', [ReservationController::class, 'getReservationsData'])
-            ->middleware('permission:reservation.view')
+            // ->middleware('permission:reservation.view')
             ->name('reservation.data');
             
         // NEW ENDPOINT: Material Search API
         Route::get('/materials/search', [ReservationController::class, 'searchMaterials'])
-            ->middleware('permission:reservation.create') // Gunakan permission yang sesuai
+            // ->middleware('permission:reservation.create') // Gunakan permission yang sesuai
             ->name('materials.search');
 
         // Picking List
         Route::get('/picking-list', [PickingListController::class, 'index'])
-            ->middleware('permission:picking.view')
+            // ->middleware('permission:picking.view')
             ->name('picking-list');
         Route::post('/picking-list', [PickingListController::class, 'store'])
-            ->middleware('permission:picking.create')
+            // ->middleware('permission:picking.execute')
             ->name('picking-list.store');
         Route::get('/api/picking-list', [PickingListController::class, 'getPickingList'])
-            ->middleware('permission:picking.view')
+            // ->middleware('permission:picking.view')
             ->name('api.picking-list');
         
         Route::post('/picking-list/update-status/{id}', [PickingListController::class, 'updateStatus'])
-            ->middleware('permission:picking.create')
+            // ->middleware('permission:picking.create')
             ->name('picking-list.update-status');
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])
-            ->middleware('permission:return.view') // Assuming permission exists or reuse existing
+            // ->middleware('permission:return.view') // Assuming permission exists or reuse existing
             ->name('return.index');
         Route::post('/return', [ReturnController::class, 'store'])
-            ->middleware('permission:return.create')
+            // ->middleware('permission:return.create')
             ->name('return.store');
         Route::get('/return/material/{code}', [ReturnController::class, 'getMaterial']);
         Route::get('/return/dept-reservations', [ReturnController::class, 'getDeptReservations']);
         Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails']);
+        Route::get('/return/rejected-shipment-details', [ReturnController::class, 'getRejectedShipmentDetails']);
+        Route::get('/return/supplier-shipment-details', [ReturnController::class, 'getSupplierShipmentDetails']);
+        Route::post('/return/parse-pdf', [ReturnController::class, 'parsePdf']);
         Route::post('/return/approve', [ReturnController::class, 'approve'])->name('return.approve');
 
         Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails'])
@@ -291,7 +304,7 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         
         // Store Return (General)
         Route::post('/return', [ReturnController::class, 'store'])
-            // ->middleware('permission:return.create') // Or appropriate permission
+             // ->middleware('permission:return.create') // Or appropriate permission
             ->name('return.store');
         
 

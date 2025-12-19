@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
+use Illuminate\Support\Facades\Log;
+
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
@@ -23,6 +25,7 @@ class HandleInertiaRequests extends Middleware
             $permissions = $user->role->permissions()
                 ->pluck('permission_name')
                 ->toArray();
+            Log::info('Inertia Permissions for user ' . $user->email, $permissions);
         }
 
         return array_merge(parent::share($request), [
@@ -50,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                 ->whereHas('reservations', function ($q) {
                     $q->where('qty_reserved', '>', 0);
                 })->count() : 0,
+            'pendingPutawayCount' => $user ? \App\Models\TransferOrder::where('status', 'Pending')->count() : 0,
         ]);
     }
 }

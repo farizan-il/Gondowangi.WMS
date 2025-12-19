@@ -50,4 +50,9 @@ class IncomingGood extends Model
     {
         return $this->hasMany(IncomingDocument::class, 'incoming_id');
     }
+
+    public function inventoryStocks()
+    {
+        return $this->hasMany(InventoryStock::class, 'gr_id');
+    }
 }

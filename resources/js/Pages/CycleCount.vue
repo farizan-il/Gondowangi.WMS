@@ -171,7 +171,7 @@
               
               <th colspan="3" class="border border-blue-400 p-2 bg-blue-300">Input Warehouseman</th>
               <th colspan="2" class="border border-blue-400 p-2 bg-blue-300">Hasil</th>
-              <th colspan="2" class="border border-blue-400 p-2 bg-yellow-200">Area Supervisor</th>
+              <th v-if="canApprove" colspan="2" class="border border-blue-400 p-2 bg-yellow-200">Area Supervisor</th>
             </tr>
             <tr>
               <th class="border border-blue-400 p-2 bg-blue-100 w-32">Scan Serial</th>
@@ -179,8 +179,8 @@
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Qty</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Acc</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">In Acc</th>
-              <th class="border border-blue-400 p-2 bg-yellow-100 w-40">Note SPV</th>
-              <th class="border border-blue-400 p-2 bg-yellow-100 w-20">Action</th>
+              <th v-if="canApprove" class="border border-blue-400 p-2 bg-yellow-100 w-40">Note SPV</th>
+              <th v-if="canApprove" class="border border-blue-400 p-2 bg-yellow-100 w-20">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -248,12 +248,12 @@
               <td class="border border-gray-300 p-2 text-xs font-bold" :class="getAccuracyColor(item)">{{ calculateAccuracy(item) }}%</td>
               <td class="border border-gray-300 p-2 text-xs font-bold" :class="getVarianceColor(item)">{{ calculateVariance(item) }}%</td>
 
-              <td class="border border-gray-300 p-1 bg-yellow-50">
+              <td v-if="canApprove" class="border border-gray-300 p-1 bg-yellow-50">
                   <input type="text" v-model="item.spv_note" 
                     class="w-full text-xs border border-yellow-300 rounded px-1 py-1 bg-white focus:ring-yellow-500 focus:border-yellow-500" 
                     placeholder="Catatan SPV...">
               </td>
-              <td class="border border-gray-300 p-1 bg-yellow-50 text-center align-middle">
+              <td v-if="canApprove" class="border border-gray-300 p-1 bg-yellow-50 text-center align-middle">
                   
                   <div v-if="item.status === 'DRAFT' || !item.status" class="flex flex-col items-center justify-center">
                       <span class="text-gray-400 text-[10px] italic">Waiting Submit</span>
@@ -436,8 +436,8 @@
 
 <script setup lang="ts">
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { useForm, router } from '@inertiajs/vue3'
-import { ref, reactive, onMounted, nextTick, onBeforeUnmount, watch } from 'vue'
+import { useForm, router, usePage } from '@inertiajs/vue3' // Added usePage
+import { ref, reactive, onMounted, nextTick, onBeforeUnmount, watch, computed } from 'vue' // Added computed
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import axios from 'axios';
 
@@ -450,6 +450,11 @@ const props = defineProps({
 
 const form = useForm({ items: [] });
 const selectedItems = ref([]);
+const page = usePage();
+// Check if user has permission to approve (SPV/IT)
+const canApprove = computed(() => {
+    return page.props.permissions?.includes('cycle_count.approve');
+});
 
 // --- INFINITE SCROLL STATE ---
 const scrollTrigger = ref(null); // Ref untuk elemen div di bawah table

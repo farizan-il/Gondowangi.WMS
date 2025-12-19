@@ -539,6 +539,8 @@ import { Html5Qrcode } from 'html5-qrcode'
 import QRCode from 'qrcode';
 
 // ... (semua variabel ref, let qrScanner, dan props lainnya)
+const page = usePage()
+const canCreateQC = computed(() => page.props.permissions.includes('qc.create'))
 
 let qrScanner = null
 

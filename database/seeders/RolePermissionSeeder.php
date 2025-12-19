@@ -10,125 +10,150 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Buat Roles
-        $roles = [
-            [
-                'role_name' => 'Super Admin',
-                'description' => 'Administrator dengan akses penuh ke seluruh sistem'
-            ],
-            [
-                'role_name' => 'QC Inspector',
-                'description' => 'Role untuk tim QC yang memeriksa barang masuk'
-            ],
-            [
-                'role_name' => 'Warehouse Supervisor',
-                'description' => 'Supervisor gudang dengan akses approve dan monitoring'
-            ],
-            [
-                'role_name' => 'Operator Gudang',
-                'description' => 'Operator untuk kegiatan operasional gudang sehari-hari'
-            ],
-            [
-                'role_name' => 'Purchasing Staff',
-                'description' => 'Staff purchasing untuk mengelola pembelian dan supplier'
-            ]
-        ];
+        // 1. Truncate Tables
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\DB::table('role_permissions')->truncate();
+        \Illuminate\Support\Facades\DB::table('roles')->truncate();
+        \Illuminate\Support\Facades\DB::table('permissions')->truncate();
+        \Illuminate\Support\Facades\DB::table('users')->truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        foreach ($roles as $roleData) {
-            Role::create($roleData);
-        }
-
-        // Buat Permissions
+        // 2. Define Permissions
         $permissionsData = [
-            // Incoming/Receipt
-            ['module' => 'incoming', 'action' => 'view', 'description' => 'Lihat data penerimaan barang'],
-            ['module' => 'incoming', 'action' => 'create', 'description' => 'Buat penerimaan barang baru'],
-            ['module' => 'incoming', 'action' => 'edit', 'description' => 'Edit data penerimaan barang'],
-            ['module' => 'incoming', 'action' => 'delete', 'description' => 'Hapus data penerimaan barang'],
-            ['module' => 'incoming', 'action' => 'approve', 'description' => 'Approve penerimaan barang'],
+            // Dashboard
+            ['module' => 'dashboard', 'action' => 'wms', 'description' => 'Akses Dashboard WMS'],
+            ['module' => 'it_dashboard', 'action' => 'view', 'description' => 'Akses Dashboard IT'],
+
+            // Incoming (Penerimaan Barang)
+            ['module' => 'incoming', 'action' => 'view', 'description' => 'Lihat Penerimaan Barang'],
+            ['module' => 'incoming', 'action' => 'create', 'description' => 'Buat Penerimaan Barang'],
+            ['module' => 'incoming', 'action' => 'edit', 'description' => 'Edit Penerimaan Barang'],
+            ['module' => 'incoming', 'action' => 'delete', 'description' => 'Hapus Penerimaan Barang'],
+            ['module' => 'incoming', 'action' => 'approve', 'description' => 'Approve Penerimaan Barang'],
 
             // Quality Control
-            ['module' => 'qc', 'action' => 'view', 'description' => 'Lihat data quality control'],
-            ['module' => 'qc', 'action' => 'input_qc_result', 'description' => 'Input hasil QC'],
-            ['module' => 'qc', 'action' => 'approve', 'description' => 'Approve hasil QC'],
-            ['module' => 'qc', 'action' => 'reject', 'description' => 'Reject hasil QC'],
+            ['module' => 'qc', 'action' => 'view', 'description' => 'Lihat Quality Control'],
+            ['module' => 'qc', 'action' => 'create', 'description' => 'Input Hasil QC'], // Mapping create to input
+            ['module' => 'qc', 'action' => 'edit', 'description' => 'Edit Hasil QC'],
+            ['module' => 'qc', 'action' => 'delete', 'description' => 'Hapus Hasil QC'],
+            ['module' => 'qc', 'action' => 'approve', 'description' => 'Approve QC'],
+            ['module' => 'qc', 'action' => 'reject', 'description' => 'Reject QC'],
 
-            // Label Karantina
-            ['module' => 'label_karantina', 'action' => 'view', 'description' => 'Lihat label karantina'],
-            ['module' => 'label_karantina', 'action' => 'cetak_label', 'description' => 'Cetak label karantina'],
-            ['module' => 'label_karantina', 'action' => 'release', 'description' => 'Release dari karantina'],
-            ['module' => 'label_karantina', 'action' => 'reject', 'description' => 'Reject barang karantina'],
+            // OnHand (Inventory)
+            ['module' => 'onhand', 'action' => 'view', 'description' => 'Lihat Stock On Hand'],
 
-            // Putaway & Transfer Order
-            ['module' => 'putaway', 'action' => 'view', 'description' => 'Lihat putaway & TO'],
-            ['module' => 'putaway', 'action' => 'kerjakan_to', 'description' => 'Kerjakan transfer order'],
-            ['module' => 'putaway', 'action' => 'cetak_slip', 'description' => 'Cetak slip putaway'],
+            // Cycle Count
+            ['module' => 'cycle_count', 'action' => 'view', 'description' => 'Lihat Cycle Count'],
+            ['module' => 'cycle_count', 'action' => 'create', 'description' => 'Buat/Proses Cycle Count'],
+            ['module' => 'cycle_count', 'action' => 'approve', 'description' => 'Approve Cycle Count'],
+
+            // Activity Log
+            ['module' => 'activity_log', 'action' => 'view', 'description' => 'Lihat Riwayat Aktivitas'],
 
             // Reservation
-            ['module' => 'reservation', 'action' => 'view', 'description' => 'Lihat reservation'],
-            ['module' => 'reservation', 'action' => 'create_request', 'description' => 'Buat request reservation'],
-            ['module' => 'reservation', 'action' => 'approve_request', 'description' => 'Approve request reservation'],
-            ['module' => 'reservation', 'action' => 'cetak_form', 'description' => 'Cetak form reservation'],
-
-            // Picking
-            ['module' => 'picking', 'action' => 'view', 'description' => 'Lihat picking list'],
-            ['module' => 'picking', 'action' => 'kerjakan_picking', 'description' => 'Kerjakan picking'],
-            ['module' => 'picking', 'action' => 'cetak_picking_list', 'description' => 'Cetak picking list'],
+            ['module' => 'reservation', 'action' => 'view', 'description' => 'Lihat Reservasi'],
+            ['module' => 'reservation', 'action' => 'create', 'description' => 'Buat Request Reservasi'],
+            ['module' => 'reservation', 'action' => 'approve', 'description' => 'Approve Reservasi'],
 
             // Return
-            ['module' => 'return', 'action' => 'view', 'description' => 'Lihat data return'],
-            ['module' => 'return', 'action' => 'create_return', 'description' => 'Buat return baru'],
-            ['module' => 'return', 'action' => 'approve_return', 'description' => 'Approve return'],
-            ['module' => 'return', 'action' => 'cetak_slip', 'description' => 'Cetak slip return'],
+            ['module' => 'return', 'action' => 'view', 'description' => 'Lihat Return'],
+            ['module' => 'return', 'action' => 'create', 'description' => 'Buat Return'],
+            ['module' => 'return', 'action' => 'approve', 'description' => 'Approve Return'],
 
-            // Central Data - SKU Management
-            ['module' => 'central_data', 'action' => 'sku_management_view', 'description' => 'Lihat SKU'],
-            ['module' => 'central_data', 'action' => 'sku_management_create', 'description' => 'Buat SKU'],
-            ['module' => 'central_data', 'action' => 'sku_management_edit', 'description' => 'Edit SKU'],
-            ['module' => 'central_data', 'action' => 'sku_management_delete', 'description' => 'Hapus SKU'],
-            ['module' => 'central_data', 'action' => 'sku_management_admin', 'description' => 'Admin SKU'],
+            // Outbound / Logistik Ops
+            ['module' => 'putaway', 'action' => 'view', 'description' => 'Lihat Putaway'],
+            ['module' => 'putaway', 'action' => 'create', 'description' => 'Proses Putaway'], // Create usually means execute here
+            ['module' => 'bintobin', 'action' => 'view', 'description' => 'Lihat Bin to Bin'],
+            ['module' => 'bintobin', 'action' => 'create', 'description' => 'Proses Bin to Bin'],
+            ['module' => 'picking', 'action' => 'view', 'description' => 'Lihat Picking List'],
+            ['module' => 'picking', 'action' => 'execute', 'description' => 'Kerjakan Picking'],
 
-            // Central Data - Supplier Management
-            ['module' => 'central_data', 'action' => 'supplier_management_view', 'description' => 'Lihat Supplier'],
-            ['module' => 'central_data', 'action' => 'supplier_management_create', 'description' => 'Buat Supplier'],
-            ['module' => 'central_data', 'action' => 'supplier_management_edit', 'description' => 'Edit Supplier'],
-            ['module' => 'central_data', 'action' => 'supplier_management_delete', 'description' => 'Hapus Supplier'],
-            ['module' => 'central_data', 'action' => 'supplier_management_admin', 'description' => 'Admin Supplier'],
+            // Master Data
+            ['module' => 'master_data', 'action' => 'view', 'description' => 'Lihat Master Data'],
+            ['module' => 'master_data', 'action' => 'manage', 'description' => 'Kelola Master Data'],
 
-            // Central Data - Bin Management
-            ['module' => 'central_data', 'action' => 'bin_management_view', 'description' => 'Lihat Bin'],
-            ['module' => 'central_data', 'action' => 'bin_management_create', 'description' => 'Buat Bin'],
-            ['module' => 'central_data', 'action' => 'bin_management_edit', 'description' => 'Edit Bin'],
-            ['module' => 'central_data', 'action' => 'bin_management_delete', 'description' => 'Hapus Bin'],
-            ['module' => 'central_data', 'action' => 'bin_management_admin', 'description' => 'Admin Bin'],
-
-            // Central Data - User Management
-            ['module' => 'central_data', 'action' => 'user_management_view', 'description' => 'Lihat User'],
-            ['module' => 'central_data', 'action' => 'user_management_create', 'description' => 'Buat User'],
-            ['module' => 'central_data', 'action' => 'user_management_edit', 'description' => 'Edit User'],
-            ['module' => 'central_data', 'action' => 'user_management_delete', 'description' => 'Hapus User'],
-            ['module' => 'central_data', 'action' => 'user_management_admin', 'description' => 'Admin User'],
-
-            // Central Data - Role Management
-            ['module' => 'central_data', 'action' => 'role_management_view', 'description' => 'Lihat Role'],
-            ['module' => 'central_data', 'action' => 'role_management_create', 'description' => 'Buat Role'],
-            ['module' => 'central_data', 'action' => 'role_management_edit', 'description' => 'Edit Role'],
-            ['module' => 'central_data', 'action' => 'role_management_delete', 'description' => 'Hapus Role'],
-            ['module' => 'central_data', 'action' => 'role_management_admin', 'description' => 'Admin Role'],
+            // Role Permission
+            ['module' => 'role_permission', 'action' => 'view', 'description' => 'Lihat Role Permission'],
+            ['module' => 'role_permission', 'action' => 'edit', 'description' => 'Kelola Role Permission'],
         ];
 
-        foreach ($permissionsData as $permData) {
-            Permission::create([
-                'permission_name' => "{$permData['module']}.{$permData['action']}",
-                'module' => $permData['module'],
-                'action' => $permData['action'],
-                'description' => $permData['description']
+        $permIds = [];
+        foreach ($permissionsData as $pd) {
+            $p = Permission::create([
+                'permission_name' => "{$pd['module']}.{$pd['action']}",
+                'module' => $pd['module'],
+                'action' => $pd['action'],
+                'description' => $pd['description']
             ]);
+            $permIds[$p->permission_name] = $p->id;
         }
 
-        // Assign semua permissions ke Super Admin
-        $superAdmin = Role::where('role_name', 'Super Admin')->first();
-        $allPermissions = Permission::all();
-        $superAdmin->permissions()->attach($allPermissions->pluck('id'));
+        // 3. Create Roles & Assign Permissions
+
+        // A. IT (Akses Semua)
+        $roleIT = Role::create(['role_name' => 'IT', 'description' => 'IT Department - Full Access']);
+        $roleIT->permissions()->attach(Permission::pluck('id'));
+
+        // B. Logistik SPV
+        $roleSpv = Role::create(['role_name' => 'Logistik SPV', 'description' => 'Supervisor Logistik']);
+        $roleSpv->permissions()->attach([
+            $permIds['dashboard.wms'],
+            $permIds['qc.view'],
+            $permIds['onhand.view'],
+            $permIds['cycle_count.view'], $permIds['cycle_count.create'], $permIds['cycle_count.approve'],
+            $permIds['activity_log.view'],
+            $permIds['reservation.view'], $permIds['reservation.create'],
+            $permIds['return.view'], $permIds['return.approve'],
+        ]);
+
+        // C. Logistik Admin
+        $roleAdm = Role::create(['role_name' => 'Logistik Admin', 'description' => 'Admin Logistik']);
+        $roleAdm->permissions()->attach([
+            $permIds['incoming.view'], $permIds['incoming.create'], $permIds['incoming.edit'], $permIds['incoming.delete'], $permIds['incoming.approve'],
+        ]);
+
+        // D. Logistik Operator
+        $roleOp = Role::create(['role_name' => 'Logistik Operator', 'description' => 'Operator Gudang']);
+        $roleOp->permissions()->attach([
+            $permIds['putaway.view'], $permIds['putaway.create'],
+            $permIds['bintobin.view'], $permIds['bintobin.create'],
+            $permIds['picking.view'], $permIds['picking.execute'],
+            $permIds['cycle_count.view'], $permIds['cycle_count.create'], // Added access
+        ]);
+
+        // E. QAC
+        $roleQAC = Role::create(['role_name' => 'QAC', 'description' => 'Quality Assurance Control']);
+        $roleQAC->permissions()->attach([
+            $permIds['qc.view'], $permIds['qc.create'], $permIds['qc.edit'], $permIds['qc.delete'], $permIds['qc.approve'], $permIds['qc.reject'],
+            $permIds['onhand.view'], // Restricted logic in Controller
+        ]);
+
+        // F. Produksi
+        $roleProd = Role::create(['role_name' => 'Produksi', 'description' => 'Department Produksi']);
+        $roleProd->permissions()->attach([
+            $permIds['reservation.view'], $permIds['reservation.create'],
+            $permIds['return.view'], $permIds['return.create'],
+        ]);
+
+        // 4. Create Users
+        $users = [
+            ['name' => 'IT User', 'email' => 'it@gondowangi.com', 'role_id' => $roleIT->id],
+            ['name' => 'SPV Logistik', 'email' => 'spv.log@gondowangi.com', 'role_id' => $roleSpv->id],
+            ['name' => 'Admin Logistik', 'email' => 'adm.log@gondowangi.com', 'role_id' => $roleAdm->id],
+            ['name' => 'Operator Logistik', 'email' => 'op.log@gondowangi.com', 'role_id' => $roleOp->id],
+            ['name' => 'QAC User', 'email' => 'qac@gondowangi.com', 'role_id' => $roleQAC->id],
+            ['name' => 'Produksi User', 'email' => 'prod@gondowangi.com', 'role_id' => $roleProd->id],
+        ];
+
+        foreach ($users as $index => $u) {
+            \App\Models\User::create([
+                'name' => $u['name'],
+                'email' => $u['email'],
+                'nik' => 'NIK-' . str_pad((string)($index + 1), 5, '0', STR_PAD_LEFT),
+                'password' => bcrypt('password'),
+                'role_id' => $u['role_id'],
+                'status' => 'active'
+            ]);
+        }
     }
 }

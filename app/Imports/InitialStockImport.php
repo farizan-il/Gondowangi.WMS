@@ -106,7 +106,7 @@ class InitialStockImport implements ToModel, WithHeadingRow, WithChunkReading, W
             // Helper to get quantity from multiple possible columns
             $qtyQrt = $this->sanitizeValue($row['qrt'] ?? 0);
             $qtyRelease = $this->sanitizeValue($row['release'] ?? 0);
-            $qtyRiject = $this->sanitizeValue($row['riject'] ?? 0);
+            $qtyRiject = $this->sanitizeValue($row['reject'] ?? 0);
             // Handle single 'quantity' or 'qty' column
             $qtyGeneral = $this->sanitizeValue($row['quantity'] ?? $row['qty'] ?? 0); 
 
