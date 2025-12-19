@@ -108,30 +108,33 @@ class ReservationController extends Controller
         $headerData['productionOrderNo'] = $matches[1];
     }
 
-    // 2. PERBAIKAN UTAMA: Ambil Nama Produk dan Quantity
+    // 2. PERBAIKAN FINAL: Ambil Nama Produk dan Quantity
     // Normalisasi: Ubah semua line break dan multiple spaces jadi single space
     $normalizedText = preg_replace('/\s+/', ' ', $pdfText);
     
-    // STRATEGI PARSING YANG LEBIH AKURAT:
-    // Cari section antara "Product" dan "Scheduled Date" (lebih aman dari line break)
-    if (preg_match('/Product\s+(.+?)\s+Scheduled Date/is', $normalizedText, $productSection)) {
-        $productContent = $productSection[1];
+    // Ekstrak bagian tabel header (Source Document | Product | Quantity)
+    // Lalu ambil data yang ada SETELAH header tersebut
+    if (preg_match('/Source Document\s+Product\s+Quantity\s+(.+?)\s+([\d.,]+)\s+Pcs/is', $normalizedText, $matches)) {
+        // Group 1: Nama Produk (bisa mengandung kata "Quantity" yang tidak diinginkan)
+        $rawProductName = trim($matches[1]);
         
-        // Dari section ini, extract Nama Produk dan Quantity
-        // Pattern: [NAMA PRODUK] [ANGKA dengan titik/koma] Pcs
-        if (preg_match('/^(.+?)\s+([\d.,]+)\s+Pcs/i', trim($productContent), $matches)) {
-            // Nama Produk (bersihkan dari "Quantity" jika ada)
-            $productName = trim($matches[1]);
-            $productName = preg_replace('/\s*Quantity\s*$/i', '', $productName);
-            $headerData['productName'] = $productName;
-            
-            // Quantity → Konversi ke Float untuk Besar Bets (Kg)
-            // Contoh: "1.241,0000" → 1241.0
-            $qtyString = $matches[2];
-            $qtyClean = str_replace('.', '', $qtyString);  // Hapus pemisah ribuan
-            $qtyClean = str_replace(',', '.', $qtyClean);  // Koma jadi titik desimal
-            $headerData['totalQuantity'] = (float) $qtyClean;
-        }
+        // SOLUSI MASALAH 1: Hapus kata "Quantity" yang terbawa di nama produk
+        $cleanProductName = preg_replace('/Quantity/i', '', $rawProductName);
+        $cleanProductName = trim($cleanProductName);
+        $headerData['productName'] = $cleanProductName;
+        
+        // Group 2: Angka Quantity
+        // SOLUSI MASALAH 2: Format dengan titik sebagai pemisah ribuan (1241 → 1.241)
+        $qtyString = $matches[2];
+        
+        // Konversi ke float dulu (hapus titik ribuan, ubah koma ke titik desimal)
+        $qtyClean = str_replace('.', '', $qtyString);  // 1.241,0000 → 1241,0000
+        $qtyClean = str_replace(',', '.', $qtyClean);  // 1241,0000 → 1241.0000
+        $qtyFloat = (float) $qtyClean;                 // → 1241.0
+        
+        // Format ulang dengan titik ribuan, TANPA desimal (1241.0 → "1.241")
+        // Catatan: Jika butuh desimal, ganti 0 dengan jumlah digit desimal yang diinginkan
+        $headerData['totalQuantity'] = number_format($qtyFloat, 0, ',', '.');
     }
 
     // --- Bagian Bill Of Material (Daftar Item) ---
