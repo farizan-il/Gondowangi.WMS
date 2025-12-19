@@ -145,7 +145,9 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{
                     formatDateTime(request.tanggalPermintaan) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">763473</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {{ request.type === 'raw-material' ? (request.noBets || '-') : ((request.type === 'packaging' || request.type === 'add') ? (request.noBetsFilling || '-') : '-') }}
+                  </td>
 
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ getDisplayText(request) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -908,8 +910,16 @@ const uploadFileAndParse = async () => {
             formData.value.items = materials;
         }
 
+
     } catch (error) {
         console.error('Parsing failed:', error);
+        
+        // Display error message to user
+        if (error.response && error.response.data && error.response.data.message) {
+            uploadStatus.value = { type: 'error', message: error.response.data.message };
+        } else {
+            uploadStatus.value = { type: 'error', message: '❌ Gagal memproses file PDF.' };
+        }
     }
 };
 

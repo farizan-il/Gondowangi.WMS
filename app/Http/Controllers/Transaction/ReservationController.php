@@ -226,9 +226,36 @@ class ReservationController extends Controller
                 'totalQuantity' => $parsedData['totalQuantity'] ?? null,
             ];
 
+            // ** VALIDASI DUPLICATE NO BETS SAAT IMPORT PDF **
+            $requestType = $request->input('request_type');
+            
+            // Untuk Raw Material, cek apakah productionOrderNo (yang akan jadi noBets) sudah ada
+            if ($requestType === 'raw-material' && !empty($parsedData['productionOrderNo'])) {
+                $existingBets = ReservationRequest::where('no_bets', $parsedData['productionOrderNo'])->first();
+                
+                if ($existingBets) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "❌ No Bets '{$parsedData['productionOrderNo']}' sudah digunakan pada reservasi {$existingBets->no_reservasi}. Import dibatalkan. Silakan gunakan file dengan No Bets yang berbeda."
+                    ], 422);
+                }
+            }
+            
+            // Untuk Packaging/ADD, cek apakah productionOrderNo (yang akan jadi noBetsFilling) sudah ada
+            if (($requestType === 'packaging' || $requestType === 'add') && !empty($parsedData['productionOrderNo'])) {
+                $existingBetsFilling = ReservationRequest::where('no_bets_filling', $parsedData['productionOrderNo'])->first();
+                
+                if ($existingBetsFilling) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "❌ No Bets Filling '{$parsedData['productionOrderNo']}' sudah digunakan pada reservasi {$existingBetsFilling->no_reservasi}. Import dibatalkan. Silakan gunakan file dengan No Bets yang berbeda."
+                    ], 422);
+                }
+            }
+            // ** END VALIDASI DUPLICATE NO BETS **
+
             $resultMaterials = [];
             $notFoundMaterials = [];
-            $requestType = $request->input('request_type');
 
             foreach ($allParsedItems as $parsedItem) {
                 // Lookup ke database menggunakan fungsi getMaterialAndStock yang sudah ada di kode Anda
@@ -537,6 +564,33 @@ class ReservationController extends Controller
             'items.*.alasanPenambahan' => 'nullable|string',
         ]);
         // END PERBAIKAN UTAMA
+
+        // ** START: VALIDASI DUPLICATE NO BETS **
+        // Cek apakah No Bets sudah ada di database untuk mencegah duplikasi
+        $requestType = $validated['request_type'];
+        
+        if ($requestType === 'raw-material' && !empty($validated['noBets'])) {
+            // Cek duplicate untuk Raw Material (no_bets)
+            $existingBets = ReservationRequest::where('no_bets', $validated['noBets'])->first();
+            
+            if ($existingBets) {
+                throw ValidationException::withMessages([
+                    'noBets' => "❌ No Bets '{$validated['noBets']}' sudah digunakan pada reservasi {$existingBets->no_reservasi}. Silakan gunakan No Bets yang berbeda."
+                ]);
+            }
+        }
+        
+        if (($requestType === 'packaging' || $requestType === 'add') && !empty($validated['noBetsFilling'])) {
+            // Cek duplicate untuk Packaging/ADD (no_bets_filling)
+            $existingBetsFilling = ReservationRequest::where('no_bets_filling', $validated['noBetsFilling'])->first();
+            
+            if ($existingBetsFilling) {
+                throw ValidationException::withMessages([
+                    'noBetsFilling' => "❌ No Bets Filling '{$validated['noBetsFilling']}' sudah digunakan pada reservasi {$existingBetsFilling->no_reservasi}. Silakan gunakan No Bets Filling yang berbeda."
+                ]);
+            }
+        }
+        // ** END: VALIDASI DUPLICATE NO BETS **
 
         // ** START: VALIDASI STOK SERVER-SIDE (Final Guard) **
         // Logic ini penting untuk mencegah double submission atau race condition
