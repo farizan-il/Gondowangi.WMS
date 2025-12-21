@@ -16,7 +16,7 @@
       <!-- Filter Section -->
       <div class="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:items-center md:space-x-4">
         <div class="md:w-1/6">
-           <select v-model="limit" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+           <select v-model="limit" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
              <option value="10">Show 10</option>
              <option value="25">Show 25</option>
              <option value="50">Show 50</option>
@@ -26,14 +26,14 @@
         </div>
         <div class="flex-1">
           <input v-model="search" type="text" placeholder="Cari No PO, SJ, Kendaraan..."
-            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+            class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
         </div>
         <!-- Supplier Filter Removed -->
         <div class="md:w-1/6">
-            <input v-model="dateStart" type="date" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Dari Tanggal">
+            <input v-model="dateStart" type="date" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Dari Tanggal">
         </div>
         <div class="md:w-1/6">
-            <input v-model="dateEnd" type="date" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Sampai Tanggal">
+            <input v-model="dateEnd" type="date" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Sampai Tanggal">
         </div>
       </div>
 
@@ -97,7 +97,7 @@
                     <button @click="printFinanceSlip(shipment)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">Cetak
                       Finance</button>
-                    <button @click="showQRModal(shipment)"
+                    <button @click="handlePrintQRLabel(shipment)"
                       class="bg-blue-600 text-white hover:bg-blue-700 px-2 py-1 rounded text-xs">
                       Cetak Label QR
                     </button>
@@ -232,7 +232,7 @@
                         </span>
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyWadah) }}</td>
-                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ parseInt(item.qtyUnit) }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{{ formatNumber(item.qtyUnit) }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">
                         <div class="flex gap-1">
                           <span v-if="item.kondisiBaik"
@@ -388,6 +388,66 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Modal Status Selector untuk Cetak Label QR -->
+      <div v-if="showStatusSelectorModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg max-w-md w-full mx-4">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-semibold text-gray-900">Pilih Status Label QR</h3>
+              <button @click="closeStatusSelector" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="mb-6">
+              <p class="text-sm text-gray-600 mb-4">
+                Material ini memiliki multiple status. Pilih status yang ingin dicetak:
+              </p>
+              <div class="space-y-3">
+                <button 
+                  v-for="status in availableStatuses" 
+                  :key="status"
+                  @click="printLabelByStatus(status)"
+                  :class="getStatusButtonClass(status)"
+                  class="w-full px-4 py-3 rounded-lg font-semibold text-left flex items-center justify-between hover:opacity-80 transition-opacity">
+                  <span>Cetak Label {{ status }}</span>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button @click="closeStatusSelector" 
+                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Overlay saat Generate QR Label -->
+      <div v-if="isGeneratingLabel"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center">
+          <div class="mb-4">
+            <svg class="animate-spin h-12 w-12 mx-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Generating Labels...</h3>
+          <p class="text-sm text-gray-600">Mohon tunggu, sedang membuat label QR</p>
         </div>
       </div>
 
@@ -1105,6 +1165,10 @@ const isSaving = ref(false)
 const showModal = ref(false)
 const showQRCodeModal = ref(false)
 const showDetailModal = ref(false)
+const showStatusSelectorModal = ref(false)
+const availableStatuses = ref([])
+const selectedShipmentForPrint = ref(null)
+const isGeneratingLabel = ref(false)
 const selectedShipment = ref(null)
 
 const newShipment = ref({
@@ -1155,8 +1219,58 @@ const currentItemCodeGroup = computed(() => {
   return null
 })
 
+// Computed property untuk validasi semua wizard groups
+const areAllWizardStepsValid = computed(() => {
+  if (!wizardMode.value) return true; // Not in wizard mode, skip this validation
+  
+  // 1. Cek Header dulu
+  const isHeaderValid = newShipment.value.noPo &&
+    newShipment.value.noSuratJalan &&
+    newShipment.value.supplier &&
+    newShipment.value.noKendaraan &&
+    newShipment.value.namaDriver &&
+    newShipment.value.kategori && 
+    newShipment.value.subCategory;
+
+  if (!isHeaderValid) return false;
+
+  // 2. Simpan current step items ke group sebelum validasi
+  if (itemCodeGroups.value.length > 0 && currentStepIndex.value >= 0) {
+    itemCodeGroups.value[currentStepIndex.value].items = JSON.parse(JSON.stringify(newShipment.value.items));
+  }
+
+  // 3. Validasi SEMUA groups
+  for (const group of itemCodeGroups.value) {
+    if (!group.items || group.items.length === 0) {
+      return false; // Group tidak boleh kosong
+    }
+    
+    // Setiap item di group harus valid
+    const allItemsValid = group.items.every(item => {
+      return item.kodeItem && 
+             item.batchLot && 
+             item.expDate && 
+             item.qtyWadah && 
+             item.qtyUnit &&
+             item.binTarget; // Bin target juga wajib
+    });
+    
+    if (!allItemsValid) {
+      return false; // Ada item yang tidak valid di group ini
+    }
+  }
+  
+  return true; // Semua group valid
+});
+
 // Computed
 const isFormValid = computed(() => {
+  // Jika dalam wizard mode, gunakan validasi wizard
+  if (wizardMode.value) {
+    return areAllWizardStepsValid.value;
+  }
+  
+  // Mode normal (non-wizard): validasi seperti biasa
   // 1. Cek Header
   const isHeaderValid = newShipment.value.noPo &&
     newShipment.value.noSuratJalan &&
@@ -1923,6 +2037,367 @@ const formatDateOnly = (dateString) => {
     day: '2-digit'
   });
 }
+
+// Format angka dengan separator titik untuk ribuan (1000 -> 1.000)
+const formatNumber = (value) => {
+  if (!value && value !== 0) return '-';
+  const num = parseInt(value);
+  if (isNaN(num)) return '-';
+  return num.toLocaleString('id-ID'); // Format Indonesia menggunakan titik sebagai separator ribuan
+}
+
+const formatInteger = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return Math.round(parseFloat(value));
+}
+
+// Helper function untuk generate QR Code Data URL
+const generateQRDataURL = async (qrContent) => {
+  try {
+    const url = await QRCode.toDataURL(qrContent, {
+      width: 150,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+    return url;
+  } catch (err) {
+    console.error("Gagal generate QR Data URL:", err);
+    return "";
+  }
+};
+
+const LOGO_URL = "https://gondowangi.com/assets/logo/Logo-gondowangi-berwarna.png";
+
+// Generate HTML untuk satu label QR
+const generateLabelHTML = (status, item, qrDataURL, labelIndex, totalLabels) => {
+  const statusText = status === 'REJECTED' ? 'R E J E C T' : 
+                     status === 'RELEASED' ? 'R E L E A S E D' : 
+                     'K A R A N T I N A';
+  const borderColor = '#171917';
+  const textColor = '#000000'; // Hitam untuk semua status (warna dihilangkan)
+
+  const noLot = item.noLot || item.batchLot || 'N/A';
+  const expDatePrint = formatDateOnly(item.expDate || 'N/A');
+  const tanggalTerimaPrint = formatDateOnly(item.tanggalTerima || 'N/A');
+  const itemCodeAndName = `[${item.kodeItem || 'N/A'}] ${item.namaMaterial || 'N/A'}`;
+  const createdBy = usePage().props.auth?.user?.name || 'Logistik';
+
+  const qtyUnitPerWadah = item.qtyUnitPerWadah || item.qtyUnit || 0;
+  const jmlBarangDisplay = `${formatInteger(qtyUnitPerWadah)} ${item.uom || 'PCS'}`;
+
+  const qtyWadahTotal = item.qtyWadah || 1;
+  const wadahDetail = qtyWadahTotal > 0 ? `${qtyUnitPerWadah} x ${qtyWadahTotal} box` : '';
+  
+  const qrContentHtml = qrDataURL ?
+    `<img src="${qrDataURL}" class="qr-code" alt="QR Code">` :
+    `<div class="qr-placeholder">NO QR</div>`;
+
+  return `
+    <div class="label-wrapper">
+      <div class="label-container" style="border-color: ${borderColor};">
+        <div class="header" style="border-bottom-color: ${borderColor};">
+          <img src="${LOGO_URL}" alt="Logo Gondowangi" class="logo-img">
+          <div class="status-box" style="color: ${textColor}; border-top-color: ${borderColor};">${statusText}</div>
+        </div>
+        
+        <div class="content">
+          <div class="info-section">
+            <div class="info-row">
+              <div class="info-label">Nama Barang</div>
+              <div class="info-value" style="font-size: 11px;">: ${itemCodeAndName}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Kode Barang</div>
+              <div class="info-value">: ${item.kodeItem || 'N/A'}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">No Lot</div>
+              <div class="info-value">: ${noLot}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Supplier</div>
+              <div class="info-value">: ${item.supplier || 'N/A'}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Jmlh Barang</div>
+              <div class="info-value">: ${jmlBarangDisplay}</div>
+            </div>
+            ${wadahDetail ? `<div class="info-row">
+              <div class="info-label">Detail Wadah</div>
+              <div class="info-value multi-line">: ${wadahDetail}</div>
+            </div>` : ''}
+            <div class="info-row">
+              <div class="info-label">Wadah Ke</div>
+              <div class="info-value">: ${labelIndex} / ${qtyWadahTotal}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Tgl Datang</div>
+              <div class="info-value">: ${tanggalTerimaPrint}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Exp. Date</div>
+              <div class="info-value">: ${expDatePrint}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Dibuat Oleh</div>
+              <div class="info-value">: ${createdBy}</div>
+            </div>
+          </div>
+          
+          <div class="qr-section">
+            ${qrContentHtml}
+          </div>
+        </div>
+        
+        <div class="footer" style="border-top-color: ${borderColor};">
+          <span class="footer-left">Logistik</span>
+          <span class="footer-right">QL1001-01 Rev. 02</span>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+// Create complete print document
+const createPrintDocument = async (item, status) => {
+  // PENTING: Gunakan qtyWadah untuk menentukan jumlah label yang dicetak
+  const totalWadah = parseInt(item.qtyWadah) || 1;
+  const labelsPerPage = 6;
+  let pagesHTML = '';
+  
+  if (totalWadah <= 0) {
+    throw new Error("Jumlah wadah tidak valid untuk dicetak. Qty Wadah harus lebih dari 0.");
+  }
+
+  // Optimasi: Generate QR codes dengan batch untuk menghindari browser freeze
+  console.log(`Generating ${totalWadah} label(s) based on Qty Wadah...`);
+  
+  for (let i = 0; i < totalWadah; i += labelsPerPage) {
+    let labelsInPageHTML = '';
+    const pageLabelsCount = Math.min(labelsPerPage, totalWadah - i);
+
+    for (let j = 0; j < pageLabelsCount; j++) {
+      const currentWadahIndex = i + j + 1;
+      
+      const qrContent = item.qrCode || `${item.batchLot}|${item.kodeItem}|${status}|${item.qtyUnitPerWadah || item.qtyUnit}|${item.expDate}|${currentWadahIndex}/${totalWadah}`;
+      const qrDataURL = await generateQRDataURL(qrContent);
+
+      const labelHTML = generateLabelHTML(status, item, qrDataURL, currentWadahIndex, totalWadah);
+      labelsInPageHTML += labelHTML;
+    }
+
+    pagesHTML += `
+      <div class="print-page" style="${i > 0 ? 'page-break-before: always;' : ''}">
+        ${labelsInPageHTML}
+      </div>
+    `;
+    
+    // Beri jeda kecil setiap halaman untuk mencegah browser freeze
+    if (i + labelsPerPage < totalWadah) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  }
+
+  console.log('Label generation complete!');
+  const borderColor = status === 'REJECTED' ? 'red' : status === 'RELEASED' ? 'green' : '#FFA500';
+
+  return `
+    <html>
+    <head>
+      <title>Cetak Label QR - ${item.kodeItem} (${totalWadah} Wadah)</title>
+      <style>
+        @page { size: A4; margin: 0.5cm; }
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background: white; font-size: 10px; }
+        .print-page { width: 20cm; height: 28.7cm; margin: 0.5cm auto; box-sizing: border-box; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: space-between; }
+        .label-wrapper { width: 9.9cm; height: calc(33.33% - 0.4cm); padding: 0; box-sizing: border-box; margin-bottom: 0.4cm; margin-right: 0.1cm; margin-left: 0.1cm; }
+        .label-container { width: 100%; height: 100%; border: 2px solid ${borderColor}; padding: 5px; box-sizing: border-box; background-color: #fff; display: flex; flex-direction: column; font-size: 10px; }
+        .header { display: flex; flex-direction: column; align-items: center; border-bottom: 2px solid ${borderColor}; padding-bottom: 5px; margin-bottom: 5px; }
+        .logo-img { width: 130px; height: auto; margin-bottom: 5px; }
+        .status-box { margin-top: 5px; border-top: 0.8px solid #000; padding: 2px 5px; font-weight: bold; font-size: 14px; width: 100%; text-align: center; }
+        .content { display: flex; flex-grow: 1; padding-top: 5px; gap: 10px; }
+        .info-section { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .info-row { display: flex; margin-bottom: 2px; align-items: baseline; }
+        .info-label { width: 80px; min-width: 80px; font-weight: normal; flex-shrink: 0; }
+        .info-value { flex: 1; font-weight: bold; overflow: hidden; text-overflow: ellipsis; }
+        .info-value.multi-line { white-space: normal; }
+        .qr-section { width: 80px; height: 80px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end; flex-shrink: 0; }
+        .qr-code { width: 100%; height: 100%; border: 1px solid #ccc; }
+        .qr-placeholder { width: 100%; height: 100%; border: 1px dashed #999; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; font-weight: bold; }
+        .footer { display: flex; justify-content: space-between; font-size: 10px; border-top: 2px solid ${borderColor}; padding-top: 25px; margin-top: 5px; }
+        .footer-left { font-style: italic; }
+        .footer-right { font-weight: bold; }
+        @media print {
+          .print-page { page-break-after: always; width: initial; height: initial; padding: 1px; margin: 0 auto; }
+          .print-page:last-child { page-break-after: avoid; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; display: block; margin: 0; }
+          .label-container { border-top: 0.8px solid #000; padding: 2px; }
+          .header { border-bottom: 0.8px solid #000; padding: 2px; padding-bottom: 0px; margin-bottom: 0px; }
+          .footer { border-top: 0.8px solid #000; padding-top: 30px; margin-top: 3px; }
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHTML}
+    </body>
+    </html>
+  `;
+}
+
+// Print functions untuk masing-masing status
+const printKarantinaQRLabel = async (item) => {
+  try {
+    isGeneratingLabel.value = true; // Show loading
+    const loadingMsg = `Generating ${item.qtyWadah || 1} label(s)...`;
+    console.log(loadingMsg);
+    
+    const htmlContent = await createPrintDocument(item, 'KARANTINA');
+    
+    isGeneratingLabel.value = false; // Hide loading
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+    } else {
+      alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+    }
+  } catch (error) {
+    isGeneratingLabel.value = false; // Hide loading on error
+    console.error("Error saat mencetak label KARANTINA:", error);
+    alert(error.message || "Terjadi kesalahan saat mencetak label.");
+  }
+};
+
+const printReleaseQRLabel = async (item) => {
+  try {
+    isGeneratingLabel.value = true; // Show loading
+    const loadingMsg = `Generating ${item.qtyWadah || 1} label(s)...`;
+    console.log(loadingMsg);
+    
+    const htmlContent = await createPrintDocument(item, 'RELEASED');
+    
+    isGeneratingLabel.value = false; // Hide loading
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+    } else {
+      alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+    }
+  } catch (error) {
+    isGeneratingLabel.value = false; // Hide loading on error
+    console.error("Error saat mencetak label RELEASED:", error);
+    alert(error.message || "Terjadi kesalahan saat mencetak label.");
+  }
+};
+
+const printRejectQRLabel = async (item) => {
+  try {
+    isGeneratingLabel.value = true; // Show loading
+    const loadingMsg = `Generating ${item.qtyWadah || 1} label(s)...`;
+    console.log(loadingMsg);
+    
+    const htmlContent = await createPrintDocument(item, 'REJECTED');
+    
+    isGeneratingLabel.value = false; // Hide loading
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+    } else {
+      alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+    }
+  } catch (error) {
+    isGeneratingLabel.value = false; // Hide loading on error
+    console.error("Error saat mencetak label REJECTED:", error);
+    alert(error.message || "Terjadi kesalahan saat mencetak label.");
+  }
+};
+
+// Handler functions untuk status selector
+const handlePrintQRLabel = async (shipment) => {
+  try {
+    const response = await axios.get(`/transaction/goods-receipt/${shipment.id}/statuses`);
+    
+    const { available_statuses, shipment_data } = response.data;
+    
+    // DEBUG: Cek data yang diterima dari backend
+    console.log('=== DEBUG PRINT QR ===');
+    console.log('Data dari backend:', shipment_data);
+    console.log('qtyWadah (jumlah label):', shipment_data.qtyWadah);
+    console.log('qtyUnit (qty per wadah):', shipment_data.qtyUnit);
+    console.log('======================');
+    
+    selectedShipmentForPrint.value = {
+      ...shipment_data,
+      id: shipment.id
+    };
+    
+    if (available_statuses.length === 0) {
+      alert('Tidak ada status tersedia untuk material ini');
+      return;
+    }
+    
+    // Logic baru: Jika ada RELEASED atau REJECTED, munculkan popup
+    // Popup akan menampilkan pilihan antara KARANTINA dengan RELEASED/REJECTED
+    const hasReleasedOrRejected = available_statuses.some(status => 
+      status === 'RELEASED' || status === 'REJECTED'
+    );
+    
+    if (hasReleasedOrRejected) {
+      // Ada RELEASED/REJECTED → tampilkan popup dengan semua opsi termasuk KARANTINA
+      // Pastikan KARANTINA selalu ada sebagai opsi
+      const allOptions = ['KARANTINA', ...available_statuses.filter(s => s !== 'KARANTINA')];
+      availableStatuses.value = allOptions;
+      showStatusSelectorModal.value = true;
+    } else {
+      // Hanya KARANTINA → langsung cetak
+      printKarantinaQRLabel(selectedShipmentForPrint.value);
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error);
+    alert('Gagal mengambil data status: ' + (error.response?.data?.error || error.message));
+  }
+};
+
+const closeStatusSelector = () => {
+  showStatusSelectorModal.value = false;
+  availableStatuses.value = [];
+  selectedShipmentForPrint.value = null;
+};
+
+const printLabelByStatus = (status) => {
+  if (!selectedShipmentForPrint.value) {
+    alert('Data shipment tidak ditemukan');
+    return;
+  }
+  
+  if (status === 'KARANTINA') {
+    printKarantinaQRLabel(selectedShipmentForPrint.value);
+  } else if (status === 'RELEASED') {
+    printReleaseQRLabel(selectedShipmentForPrint.value);
+  } else if (status === 'REJECTED') {
+    printRejectQRLabel(selectedShipmentForPrint.value);
+  }
+  
+  closeStatusSelector();
+};
+
+const getStatusButtonClass = (status) => {
+  const classMap = {
+    'KARANTINA': 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300',
+    'RELEASED': 'bg-green-100 text-green-800 border-2 border-green-300',
+    'REJECTED': 'bg-red-100 text-red-800 border-2 border-red-300',
+  };
+  return classMap[status] || 'bg-gray-100 text-gray-800 border-2 border-gray-300';
+};
 
 const getCountdown = (dateString) => {
   if (!dateString) return { text: 'N/A', class: 'text-gray-500' };

@@ -121,20 +121,19 @@
                       Periksa QC
                     </button>
 
-                    <!-- <button v-if="item.statusQC === 'PASS'" @click="printGRSlip(item)"
-                      class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
-                      Cetak GR Slip
-                    </button> -->
+                    <!-- Detail Button for Completed QC -->
+                    <button v-if="item.statusQC === 'PASS' || item.statusQC === 'REJECT'" @click="showQCDetailModal(item)"
+                      class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1 rounded text-xs flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Detail
+                    </button>
 
                     <button v-if="item.statusQC === 'PASS'" @click="printReleaseQRLabel(item)"
                       class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
                       Cetak Label QR (RELEASED)
                     </button>
-
-                    <!-- <button v-if="item.statusQC === 'REJECT'" @click="printReturnSlip(item)"
-                      class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
-                      Cetak Slip Return
-                    </button> -->
 
                     <button v-if="item.statusQC === 'REJECT'" @click="printRejectQRLabel(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
@@ -298,9 +297,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Reference</label>
-                <input v-model="qcForm.reference" type="text"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Batch Lot</label>
+                <input v-model="qcForm.batchLot" type="text" readonly
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
               </div>
 
               <div>
@@ -311,12 +310,8 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                <select v-model="qcForm.kategori"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-                  <option value="">Pilih Kategori</option>
-                  <option value="Raw Material">Raw Material</option>
-                  <option value="Packaging Material">Packaging Material</option>
-                </select>
+                <input v-model="qcForm.kategori" type="text" readonly
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
               </div>
 
               <div>
@@ -525,6 +520,227 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal: QC Detail (for completed QC) -->
+      <div v-if="showQCDetail"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Detail QC - {{ qcDetailData?.kodeItem }}
+              </h3>
+              <button @click="closeQCDetailModal" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Content -->
+            <div class="space-y-6">
+              <!-- Material Information -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Informasi Material
+                </h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="text-gray-600">Kode Item:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.kodeItem }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Nama Material:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.namaMaterial }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Batch Lot:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.batchLot }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Supplier:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.supplier }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">No PO:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.noPo }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">No Surat Jalan:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ qcDetailData?.noSuratJalan }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- QC Results -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Hasil QC
+                </h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="text-gray-600">Status QC:</span>
+                    <span :class="qcDetailData?.statusQC === 'PASS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+                      class="ml-2 px-2 py-1 text-xs font-semibold rounded-full">
+                      {{ qcDetailData?.statusQC }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Qty Sampel Diambil:</span>
+                    <span class="ml-2 font-medium text-blue-600">{{ qcDetailData?.qcSampleQty }} {{ qcDetailData?.uom }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Total Incoming:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ formatNumber(qcDetailData?.qtyDatangTotal) }} {{ qcDetailData?.uom }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Qty Tersisa:</span>
+                    <span class="ml-2 font-medium text-gray-900">{{ formatNumber(qcDetailData?.qtyReceived) }} {{ qcDetailData?.uom }}</span>
+                  </div>
+                </div>
+
+                <!-- Movement History Dropdown -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <button @click="showMovementHistory = !showMovementHistory" 
+                    class="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                    <div class="flex items-center gap-2">
+                      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Riwayat Pergerakan Material</span>
+                      <span class="text-xs text-gray-500">({{ qcDetailData?.movements?.length || 0 }} transaksi)</span>
+                    </div>
+                    <svg :class="showMovementHistory ? 'rotate-180' : ''" 
+                      class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  <!-- History Content (Expandable) -->
+                  <div v-if="showMovementHistory" class="mt-3 space-y-2 max-h-64 overflow-y-auto">
+                    <div v-if="qcDetailData?.movements && qcDetailData.movements.length > 0">
+                      <div v-for="(movement, index) in qcDetailData.movements" :key="index"
+                        class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors">
+                        <div class="flex items-start justify-between">
+                          <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span :class="getMovementTypeClass(movement.movement_type)" 
+                                class="px-2 py-0.5 text-xs font-semibold rounded-full">
+                                {{ getMovementTypeLabel(movement.movement_type) }}
+                              </span>
+                              <span class="text-xs text-gray-500">{{ movement.movement_date }}</span>
+                            </div>
+                            <div class="text-sm text-gray-700">
+                              <span class="font-medium">{{ movement.notes || '-' }}</span>
+                            </div>
+                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                              <div>
+                                <span class="text-gray-500">Qty:</span>
+                                <span :class="movement.qty < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'">
+                                  {{ movement.qty > 0 ? '+' : '' }}{{ movement.qty }} {{ movement.uom }}
+                                </span>
+                              </div>
+                              <div v-if="movement.from_bin">
+                                <span class="text-gray-500">From:</span>
+                                <span class="font-medium">{{ movement.from_bin }}</span>
+                              </div>
+                              <div v-if="movement.to_bin">
+                                <span class="text-gray-500">To:</span>
+                                <span class="font-medium">{{ movement.to_bin }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="text-sm text-gray-500 italic text-center py-4">
+                      Tidak ada riwayat pergerakan
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- QC Details -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Detail Pemeriksaan
+                </h4>
+                <div class="space-y-3 text-sm">
+                  <div v-if="qcDetailData?.catatanQC">
+                    <span class="text-gray-600 font-medium">Catatan QC:</span>
+                    <div class="mt-1 p-3 bg-white rounded border border-gray-200 text-gray-900">
+                      {{ qcDetailData?.catatanQC }}
+                    </div>
+                  </div>
+                  <div v-else>
+                    <span class="text-gray-500 italic">Tidak ada catatan QC</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- User & Timestamp Information -->
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Informasi QC
+                </h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="text-blue-700">Diperiksa Oleh:</span>
+                    <span class="ml-2 font-semibold text-blue-900">{{ qcDetailData?.qc_by_name || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-blue-700">Tanggal QC:</span>
+                    <span class="ml-2 font-medium text-blue-900">{{ qcDetailData?.qc_date || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-blue-700">No Form Checklist:</span>
+                    <span class="ml-2 font-medium text-blue-900">{{ qcDetailData?.no_form_checklist || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-blue-700">Kategori:</span>
+                    <span class="ml-2 font-medium text-blue-900">{{ qcDetailData?.kategori || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Re-QC Badge if applicable -->
+              <div v-if="qcDetailData?.is_reqc" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div class="flex items-center gap-2 text-orange-800">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="font-semibold">Material Re-QC ({{ qcDetailData?.reqc_count }}x)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex justify-end mt-6 pt-6 border-t border-gray-200">
+              <button @click="closeQCDetailModal"
+                class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -587,6 +803,9 @@ watch([search, dateStart, dateEnd, limit, status], () => {
 
 // Data reaktif
 const showDetailModal = ref(false)
+const showQCDetail = ref(false)
+const qcDetailData = ref(null) as any
+const showMovementHistory = ref(false)
 const showQCModal = ref(false)
 const showQRScanner = ref(false)
 const selectedItem = ref(null) as any
@@ -614,7 +833,7 @@ const qcForm = ref({
   noSuratJalan: '',
   kodeItem: '',
   namaMaterial: '',
-  reference: '',
+  batchLot: '',
   supplier: '',
   kategori: '',
   qtySample: 0,
@@ -644,8 +863,11 @@ const formatInteger = (value: number | string | null | undefined): number | stri
   if (value === null || value === undefined || value === '') {
     return '';
   }
-  // Mengubah ke float lalu membulatkan ke integer terdekat
-  return Math.round(parseFloat(value as string));
+  // Mengubah ke float dan tampilkan dengan 2 desimal
+  const numValue = parseFloat(value as string);
+  // Jika angkanya bulat (tidak ada desimal), tampilkan tanpa desimal
+  // Jika ada desimal, tampilkan dengan maksimal 2 digit desimal
+  return numValue % 1 === 0 ? numValue.toFixed(0) : numValue.toFixed(2);
 }
 
 const getDisplayQtyReceived = (item: any): number => {
@@ -707,6 +929,60 @@ const showItemDetail = (item) => {
   showDetailModal.value = true
 }
 
+const showQCDetailModal = async (item) => {
+  try {
+    // Fetch full QC details including user info from backend
+    const response = await axios.get(`/transaction/quality-control/${item.id}/detail`)
+    qcDetailData.value = response.data
+    showQCDetail.value = true
+  } catch (error) {
+    console.error('Error fetching QC details:', error)
+    alert('Gagal mengambil detail QC')
+  }
+}
+
+const closeQCDetailModal = () => {
+  showQCDetail.value = false
+  qcDetailData.value = null
+  showMovementHistory.value = false
+}
+
+const getMovementTypeLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    'QC_SAMPLING': 'Pengambilan Sampel QC',
+    'STATUS_CHANGE': 'Perubahan Status',
+    'RESERVATION': 'Reservasi',
+    'PICKING': 'Picking',
+    'PUTAWAY': 'Putaway',
+    'BIN_TRANSFER': 'Transfer Bin',
+    'RETURN': 'Retur',
+    'ADJUSTMENT': 'Penyesuaian'
+  }
+  return labels[type] || type
+}
+
+const getMovementTypeClass = (type: string): string => {
+  const classes: Record<string, string> = {
+    'QC_SAMPLING': 'bg-purple-100 text-purple-800',
+    'STATUS_CHANGE': 'bg-blue-100 text-blue-800',
+    'RESERVATION': 'bg-yellow-100 text-yellow-800',
+    'PICKING': 'bg-orange-100 text-orange-800',
+    'PUTAWAY': 'bg-green-100 text-green-800',
+    'BIN_TRANSFER': 'bg-indigo-100 text-indigo-800',
+    'RETURN': 'bg-red-100 text-red-800',
+    'ADJUSTMENT': 'bg-gray-100 text-gray-800'
+  }
+  return classes[type] || 'bg-gray-100 text-gray-800'
+}
+
+const formatNumber = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined) return '0'
+  const num = typeof value === 'string' ? parseFloat(value) : value
+  if (isNaN(num)) return '0'
+  // Format with thousand separator and up to 2 decimal places
+  return num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
 const closeDetailModal = () => {
   showDetailModal.value = false
   selectedItem.value = null
@@ -726,7 +1002,7 @@ const openQCModal = () => {
     noSuratJalan: selectedItem.value.noSuratJalan,
     kodeItem: selectedItem.value.kodeItem,
     namaMaterial: selectedItem.value.namaMaterial,
-    reference: '',
+    batchLot: selectedItem.value.batchLot || '',
     supplier: selectedItem.value.supplier,
     kategori: selectedItem.value.kategori,
     qtySample: 0,
@@ -765,7 +1041,7 @@ const resetQCForm = () => {
     noSuratJalan: '',
     kodeItem: '',
     namaMaterial: '',
-    reference: '',
+    batchLot: '',
     supplier: '',
     kategori: '',
     qtySample: 0,

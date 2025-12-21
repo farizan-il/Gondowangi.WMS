@@ -24,14 +24,15 @@
               'ring-2 ring-yellow-500 ring-offset-2': activeAlertFilter === 'expiringSoon' && alert.id === '1',
 
               // Tambahkan indikator bisa diklik untuk alert yang ingin difilter
-              'cursor-pointer hover:shadow-md transition duration-150 ease-in-out': ['0', '3', '1'].includes(alert.id)
+              'cursor-pointer hover:shadow-md transition duration-150 ease-in-out': ['0', '3', '1', '2'].includes(alert.id)
             }
           ]"
           class="p-3 rounded-lg flex items-center justify-between"
           @click="
             alert.id === '0' ? toggleAlertFilter('putAwayRequired') :
             alert.id === '3' ? toggleAlertFilter('requiresQC') :
-            alert.id === '1' ? toggleAlertFilter('expiringSoon') : null
+            alert.id === '1' ? toggleAlertFilter('expiringSoon') :
+            alert.id === '2' ? showExpiredMaterialsModal() : null
           " >
           <div class="flex items-center space-x-2">
             <svg v-if="alert.id === '0'" class="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,6 +54,83 @@
           </button>
         </div>
       </div>
+
+        <!-- Modal: Expired Materials List -->
+        <div v-if="showExpiredModal"
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+          @click.self="closeExpiredModal">
+          <div class="bg-white rounded-lg max-w-6xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div class="p-6">
+              <!-- Header -->
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-red-600 flex items-center gap-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Material Expired / Near Expiry ({{ expiredMaterialsCount }})
+                </h3>
+                <button @click="closeExpiredModal" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Table -->
+              <div class="overflow-y-auto max-h-[60vh]">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lokasi</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expired Date</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="material in expiredMaterials" :key="material.id" class="hover:bg-gray-50">
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.kode }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.nama }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.lot }}</td>
+                      <td class="px-4 py-3 text-sm">
+                        <span :class="isInQrtBin(material.lokasi) ? 'text-blue-600 font-medium' : 'text-orange-600 font-medium'">{{ material.lokasi }}</span>
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.qty }} {{ material.uom }}</td>
+                      <td class="px-4 py-3 text-sm">
+                        <div class="flex flex-col gap-1">
+                          <span :class="getExpiredClass(material.expiredDate)">{{ formatDate(material.expiredDate) }}</span>
+                          <span :class="getExpiredBadgeClass(material.expiredDate)" class="px-2 py-0.5 text-xs font-semibold rounded-full inline-flex items-center gap-1 w-fit">
+                            <svg v-if="getDaysUntilExpired(material.expiredDate) < 0" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <svg v-else class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                            </svg>
+                            {{ getExpiredBadgeText(material.expiredDate) }}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span :class="getStatusClass(material.status)" class="px-2 py-1 text-xs font-semibold rounded-full">{{ material.status }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Footer -->
+              <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <button @click="closeExpiredModal"
+                  class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Expired Materials Widget -->
         <div v-if="expiredMaterialsCount > 0" class="mb-6">
@@ -564,10 +642,10 @@
                     <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <div class="flex-1 text-sm">
                       <div class="flex justify-between items-start">
-                        <span class="text-gray-900 font-medium">{{ history.action }}</span>
+                        <span class="text-gray-900 font-medium">{{ getSimpleMovementLabel(history.action) }}</span>
                         <span class="text-gray-500 text-xs">{{ formatDateTime(history.date) }}</span>
                       </div>
-                      <p class="text-gray-600 text-xs mt-1">{{ history.detail }}</p>
+                      <p class="text-gray-600 text-xs mt-1">{{ getSimpleMovementDetail(history.action, history.detail) }}</p>
                       <p class="text-gray-500 text-xs">Oleh: {{ history.user }}</p>
                     </div>
                   </div>
@@ -920,6 +998,7 @@ const expiredMaterialsCount = computed(() => {
 const selectedExpiredMaterials = ref<string[]>([])
 const showErrorModal = ref(false)
 const errorModalMessage = ref('')
+const showExpiredModal = ref(false)
 
 // Re-QC Methods
 const toggleSelectAllExpired = () => {
@@ -996,6 +1075,14 @@ const toggleAlertFilter = (filterKey: string) => {
     filterLocation.value = '';
     searchQuery.value = '';
   }
+}
+
+const showExpiredMaterialsModal = () => {
+  showExpiredModal.value = true
+}
+
+const closeExpiredModal = () => {
+  showExpiredModal.value = false
 }
 
 // Fungsi untuk memicu filter put away
@@ -1103,6 +1190,103 @@ const formatDateTime = (date: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// Helper untuk menghitung hari sampai expired
+const getDaysUntilExpired = (expiredDate: string): number => {
+  const now = new Date()
+  const expired = new Date(expiredDate)
+  return Math.ceil((expired.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// Helper untuk mendapatkan text badge expired
+const getExpiredBadgeText = (expiredDate: string): string => {
+  const days = getDaysUntilExpired(expiredDate)
+  
+  if (days < 0) return 'KADALUARSA'
+  if (days === 0) return 'EXPIRED HARI INI'
+  if (days === 1) return '1 HARI LAGI'
+  return `${days} HARI LAGI`
+}
+
+// Helper untuk mendapatkan class badge expired
+const getExpiredBadgeClass = (expiredDate: string): string => {
+  const days = getDaysUntilExpired(expiredDate)
+  
+  if (days < 0) return 'bg-red-600 text-white'
+  if (days === 0) return 'bg-red-500 text-white'
+  if (days <= 7) return 'bg-orange-500 text-white'
+  if (days <= 30) return 'bg-yellow-500 text-gray-900'
+  return 'bg-green-500 text-white'
+}
+
+// Helper untuk mengubah label pergerakan teknis menjadi bahasa sederhana
+const getSimpleMovementLabel = (action: string): string => {
+  const simpleLabels: Record<string, string> = {
+    // Movement types from technical to simple
+    'QC_SAMPLING': 'Pengambilan Sampel',
+    'STATUS_CHANGE': 'Perubahan Status',
+    'RESERVATION': 'Material Dipesan',
+    'PICKING': 'Pengambilan Material',
+    'PUTAWAY': 'Penyimpanan Material',
+    'BIN_TRANSFER': 'Pemindahan Lokasi',
+    'RETURN': 'Pengembalian', 
+    'ADJUSTMENT': 'Penyesuaian Stok',
+    'RECEIVING': 'Penerimaan Barang',
+    'GR': 'Penerimaan Barang',
+    'GOODS_RECEIPT': 'Material Masuk',
+    'INCOMING': 'Barang Datang'
+  }
+  
+  // Check if exact match exists
+  if (simpleLabels[action]) {
+    return simpleLabels[action]
+  }
+  
+  // Fallback: Try partial matching for compound labels
+  for (const [key, value] of Object.entries(simpleLabels)) {
+    if (action.toUpperCase().includes(key)) {
+      return value
+    }
+  }
+  
+  // If no match, return original but capitalize properly
+  return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// Helper untuk menyederhanakan detail pergerakan
+const getSimpleMovementDetail = (action: string, detail: string): string => {
+  if (!detail) return ''
+  
+  // Ganti istilah teknis dengan bahasa yang lebih mudah dipahami
+  let simpleDetail = detail
+    // Movement specific terms
+    .replace(/QC_SAMPLING/gi, 'pengambilan sampel untuk pemeriksaan kualitas')
+    .replace(/STATUS_CHANGE/gi, 'perubahan status')
+    .replace(/RESERVATION/gi, 'pemesanan material')
+    .replace(/PICKING/gi, 'pengambilan material dari gudang')
+    .replace(/PUTAWAY/gi, 'penyimpanan ke lokasi')
+    .replace(/BIN_TRANSFER/gi, 'perpindahan antar lokasi')
+    .replace(/RETURN/gi, 'pengembalian')
+    .replace(/ADJUSTMENT/gi, 'penyesuaian jumlah')
+    
+    // Technical terms to simple Indonesian
+    .replace(/from bin/gi, 'dari lokasi')
+    .replace(/to bin/gi, 'ke lokasi')
+    .replace(/bin/gi, 'lokasi')
+    .replace(/qty/gi, 'jumlah')
+    .replace(/quantity/gi, 'jumlah')
+    .replace(/stock/gi, 'stok')
+    .replace(/inventory/gi, 'persediaan')
+    .replace(/warehouse/gi, 'gudang')
+    .replace(/material/gi, 'barang')
+    .replace(/item/gi, 'barang')
+    .replace(/released/gi, 'dilepas')
+    .replace(/rejected/gi, 'ditolak')
+    .replace(/karantina/gi, 'dalam pemeriksaan')
+    .replace(/sample/gi, 'sampel')
+    
+  return simpleDetail
 }
 
 const generateQRUrl = async (item: MaterialItem) => {

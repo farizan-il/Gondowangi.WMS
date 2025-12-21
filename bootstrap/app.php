@@ -13,9 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
+            \App\Http\Middleware\DatabaseSwitcher::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\UpdateLastSeen::class,
-            \App\Http\Middleware\DatabaseSwitcher::class,
         ]);
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,

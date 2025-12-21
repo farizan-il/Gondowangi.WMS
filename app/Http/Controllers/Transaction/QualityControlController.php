@@ -856,7 +856,6 @@ class QualityControlController extends Controller
     private function getNextMovementSequence()
     {
         // Menggunakan DB::transaction() mandiri untuk menjamin ATOMICITY dan LOCK
-        // Gunakan LOCK FOR UPDATE pada query saat mencari nomor urut terakhir.
         $nextSequence = DB::transaction(function () {
             $today = now()->toDateString();
             
@@ -875,6 +874,105 @@ class QualityControlController extends Controller
         });
 
         return $nextSequence;
+    }
+
+    public function getQCDetail($id)
+    {
+        try {
+            $incomingItem = IncomingGoodsItem::with([
+                'incomingGood.purchaseOrder',
+                'incomingGood.supplier',
+                'material',
+                'qcChecklist.qcChecklistDetail',
+                'qcChecklist.qcBy'
+            ])->findOrFail($id);
+
+            $qcChecklist = $incomingItem->qcChecklist;
+            $qcDetail = $qcChecklist->qcChecklistDetail ?? null;
+
+            if (!$qcChecklist) {
+                return response()->json([
+                    'error' => 'QC data not found'
+                ], 404);
+            }
+
+            // Get inventory stock for current quantity
+            $inventoryStock = $this->getQuarantineStock($incomingItem);
+            $qtyCurrentStock = $inventoryStock ? $inventoryStock->qty_on_hand : 0;
+
+            // Get Re-QC info
+            $isReqc = false;
+            $reqcCount = 0;
+            if ($inventoryStock) {
+                $reqcCount = QcReqcHistory::where('inventory_stock_id', $inventoryStock->id)->count();
+                $isReqc = $reqcCount > 0;
+            }
+
+            // Get Stock Movements for this material (batch_lot)
+            $movements = [];
+            if ($inventoryStock) {
+                $stockMovements = StockMovement::where('material_id', $incomingItem->material_id)
+                    ->where('batch_lot', $incomingItem->batch_lot)
+                    ->with(['fromBin', 'toBin'])
+                    ->orderBy('movement_date', 'desc')
+                    ->limit(20) // Limit to last 20 movements
+                    ->get();
+
+                $movements = $stockMovements->map(function($movement) {
+                    return [
+                        'movement_type' => $movement->movement_type,
+                        'movement_date' => $movement->movement_date->format('d/m/Y H:i'),
+                        'qty' => (float)$movement->qty,
+                        'uom' => $movement->uom,
+                        'from_bin' => $movement->fromBin ? $movement->fromBin->bin_code : null,
+                        'to_bin' => $movement->toBin ? $movement->toBin->bin_code : null,
+                        'notes' => $movement->notes,
+                    ];
+                })->toArray();
+            }
+
+            $data = [
+                'id' => $incomingItem->id,
+                'kodeItem' => $incomingItem->material->kode_item ?? '',
+                'namaMaterial' => $incomingItem->material->nama_material ?? '',
+                'batchLot' => $incomingItem->batch_lot,
+                'supplier' => $incomingItem->incomingGood->supplier->nama_supplier ?? '',
+                'noPo' => $incomingItem->incomingGood->purchaseOrder->no_po ?? '',
+                'noSuratJalan' => $incomingItem->incomingGood->no_surat_jalan,
+                'statusQC' => $incomingItem->status_qc,
+                'uom' => $incomingItem->satuan,
+                
+                // QC Quantities
+                'qcSampleQty' => $qcDetail ? (float)$qcDetail->qty_sample : 0,
+                'qtyDatangTotal' => (float)($incomingItem->qty_wadah * $incomingItem->getOriginal('qty_unit')),
+                'qtyReceived' => (float)$qtyCurrentStock,
+                
+                // QC Details
+                'catatanQC' => $qcDetail ? $qcDetail->catatan_qc : null,
+                'no_form_checklist' => $qcChecklist->no_form_checklist,
+                'kategori' => $qcChecklist->kategori,
+                
+                // User & Timestamp
+                'qc_by_name' => $qcChecklist->qcBy ? $qcChecklist->qcBy->name : 'N/A',
+                'qc_date' => $qcChecklist->tanggal_qc ? $qcChecklist->tanggal_qc->format('d/m/Y H:i') : 'N/A',
+                
+                // Re-QC Info
+                'is_reqc' => $isReqc,
+                'reqc_count' => $reqcCount,
+
+                // Stock Movements History
+                'movements' => $movements,
+            ];
+
+            return response()->json($data);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching QC detail: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch QC details',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     private function generateMovementNumber($sequence = 1)

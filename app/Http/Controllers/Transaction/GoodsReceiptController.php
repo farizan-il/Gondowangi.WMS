@@ -667,6 +667,64 @@ class GoodsReceiptController extends Controller
         }
     }
 
+    /**
+     * Get available statuses for a shipment from inventory
+     * Used for QR label printing with status selector
+     */
+    public function getAvailableStatuses($shipmentId)
+    {
+        try {
+            $shipment = IncomingGood::with(['items.material', 'supplier'])->findOrFail($shipmentId);
+            
+            // Get first item (karena 1 shipment = 1 item code)
+            $firstItem = $shipment->items->first();
+            
+            if (!$firstItem) {
+                return response()->json(['error' => 'No items found in this shipment'], 404);
+            }
+            
+            // Cek status yang tersedia di inventory untuk material + batch lot ini
+            $availableStatuses = InventoryStock::where('material_id', $firstItem->material_id)
+                ->where('batch_lot', $firstItem->batch_lot)
+                ->where('qty_on_hand', '>', 0) // Hanya ambil yang masih ada stocknya
+                ->distinct()
+                ->pluck('status')
+                ->toArray();
+            
+            // Prepare shipment data untuk printing
+            $shipmentData = [
+                'kodeItem' => $firstItem->material->kode_item,
+                'namaMaterial' => $firstItem->material->nama_material,
+                'batchLot' => $firstItem->batch_lot,
+                'noLot' => $firstItem->batch_lot, // alias
+                'expDate' => $firstItem->exp_date,
+                // PERBAIKAN: Nama kolom database SUDAH BENAR
+                // qty_wadah di database = jumlah wadah (misal: 10 box)
+                // qty_unit di database = qty per wadah (misal: 500 Kg per box)
+                'qtyWadah' => $firstItem->qty_wadah, // Jumlah wadah (untuk cetak QR) - DIPERBAIKI
+                'qtyUnit' => $firstItem->qty_unit, // Qty per wadah - DIPERBAIKI
+                'qtyUnitPerWadah' => $firstItem->qty_unit, // Sama dengan qtyUnit
+                'supplier' => $shipment->supplier->nama_supplier ?? 'N/A',
+                'tanggalTerima' => $shipment->tanggal_terima,
+                'uom' => $firstItem->material->satuan,
+                'qrCode' => $firstItem->qr_code,
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'shipment_id' => $shipmentId,
+                'available_statuses' => $availableStatuses,
+                'shipment_data' => $shipmentData,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     private function generateQRCode($incomingNumber, $itemCode, $batchLot, $qty, $expDate)
     {
         return implode('|', [

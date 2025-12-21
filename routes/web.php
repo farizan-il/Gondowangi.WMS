@@ -156,6 +156,9 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::post('/goods-receipt/store-multiple', [GoodsReceiptController::class, 'storeMultiple'])
             // ->middleware('permission:incoming.create')
             ->name('goods-receipt.store-multiple');
+        Route::get('/goods-receipt/{id}/statuses', [GoodsReceiptController::class, 'getAvailableStatuses'])
+            // ->middleware('permission:incoming.view')
+            ->name('goods-receipt.statuses');
         Route::get('/goods-receipt/po/{id}', [GoodsReceiptController::class, 'getPoDetails'])
             // ->middleware('permission:incoming.view')
             ->name('goods-receipt.po-details');
@@ -169,6 +172,10 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::post('/quality-control/scan', [QualityControlController::class, 'scanQR'])
             // ->middleware('permission:qc.view')
             ->name('quality-control.scan');
+
+        Route::get('/quality-control/{id}/detail', [QualityControlController::class, 'getQCDetail'])
+            // ->middleware('permission:qc.view')
+            ->name('quality-control.detail');
 
         Route::post('/quality-control', [QualityControlController::class, 'store'])
             // ->middleware('permission:qc.create')
