@@ -47,7 +47,7 @@ class PickingListController extends Controller
             'qtyPicked' => (float) $reservationDetail->picked_qty,
             'uom' => $reservationDetail->uom,
             'status' => $reservationDetail->status, // Status alokasi (Reserved, Picked, etc.)
-            'expDate' => $reservationDetail->expiry_date,
+            'expDate' => $reservationDetail->exp_date,
             
             // Data untuk mempermudah grouping di frontend:
             'reservationRequestItemId' => $requestItem->id ?? null,
@@ -68,7 +68,7 @@ class PickingListController extends Controller
         if ($request->request_type) {
             if ($request->request_type === 'raw-material') {
                 $batchRecord = $request->no_bets ?? '-';
-            } elseif (in_array($request->request_type, ['packaging', 'add'])) {
+            } elseif (in_array($request->request_type, ['packaging', 'add', 'foh-rs'])) {
                 $batchRecord = $request->no_bets_filling ?? '-';
             }
         }
@@ -140,7 +140,7 @@ class PickingListController extends Controller
             $warningThreshold = $today->copy()->addDays(30); // 30 days warning
             
             foreach ($reservationRequest->reservations as $reservation) {
-                $expiryDate = $reservation->expiry_date ? Carbon::parse($reservation->expiry_date) : null;
+                $expiryDate = $reservation->exp_date ? Carbon::parse($reservation->exp_date) : null;
                 $status = 'ok';
                 $daysUntilExpiry = null;
                 
@@ -217,8 +217,8 @@ class PickingListController extends Controller
                         $daysUntilExpiry = null;
                         $removalReason = 'manual';
                         
-                        if ($reservation->expiry_date) {
-                            $expiryDate = Carbon::parse($reservation->expiry_date);
+                        if ($reservation->exp_date) {
+                            $expiryDate = Carbon::parse($reservation->exp_date);
                             $daysUntilExpiry = Carbon::today()->diffInDays($expiryDate, false);
                             
                             if ($daysUntilExpiry < 0) {
@@ -235,7 +235,7 @@ class PickingListController extends Controller
                             'material_code' => $reservation->material->kode_item ?? 'N/A',
                             'material_name' => $reservation->material->nama_material ?? 'N/A',
                             'batch_lot' => $reservation->batch_lot,
-                            'expiry_date' => $reservation->expiry_date,
+                            'expiry_date' => $reservation->exp_date,
                             'qty_removed' => $reservation->qty_reserved,
                             'uom' => $reservation->uom,
                             'removal_reason' => $removalReason,
@@ -303,6 +303,167 @@ class PickingListController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal generate TO Number: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Find replacement materials for expired items
+    public function findReplacement(Request $request)
+    {
+        try {
+            $materialCode = $request->materialCode;
+            $qtyNeeded = $request->qtyNeeded;
+            $uom = $request->uom;
+            $reservationId = $request->reservationId;
+            
+            // Get the original reservation to know material_id
+            $originalReservation = Reservation::with('material')->findOrFail($reservationId);
+            
+            // Find available stocks with same material, not expired, has available qty
+            $today = Carbon::today();
+            
+            $availableStocks = InventoryStock::where('material_id', $originalReservation->material_id)
+                ->where('qty_available', '>', 0)
+                ->where(function($q) use ($today) {
+                    $q->whereNull('exp_date')
+                      ->orWhere('exp_date', '>', $today);
+                })
+                ->with(['bin', 'material'])
+                ->get();
+            
+            if ($availableStocks->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'hasReplacement' => false,
+                    'message' => 'Tidak ada stock pengganti yang tersedia'
+                ]);
+            }
+            
+            // FEFO Logic: Sort by expiry date (closest first)
+            // No minimum threshold - as long as not expired, include it
+            $sortedStocks = $availableStocks->sortBy(function($stock) {
+                return $stock->exp_date ?? '9999-12-31';
+            });
+            
+            // Allocate qty from sorted stocks (FEFO)
+            $replacements = [];
+            $remainingQty = $qtyNeeded;
+            
+            foreach ($sortedStocks as $stock) {
+                if ($remainingQty <= 0) break;
+                
+                $qtyToAllocate = min($stock->qty_available, $remainingQty);
+                
+                $replacements[] = [
+                    'stockId' => $stock->id,
+                    'materialId' => $stock->material_id,
+                    'batchLot' => $stock->batch_lot,
+                    'expiryDate' => $stock->exp_date ? $stock->exp_date->format('Y-m-d') : null,
+                    'qtyAvailable' => (float) $stock->qty_available,
+                    'qtyToAllocate' => $qtyToAllocate,
+                    'daysUntilExpiry' => $stock->exp_date ? 
+                        Carbon::today()->diffInDays(Carbon::parse($stock->exp_date), false) : null,
+                    'binId' => $stock->bin_id,
+                    'binCode' => $stock->bin->code ?? 'Unknown',
+                    'warehouseId' => $stock->warehouse_id,
+                ];
+                
+                $remainingQty -= $qtyToAllocate;
+            }
+            
+            $totalAllocated = $qtyNeeded - $remainingQty;
+            
+            return response()->json([
+                'success' => true,
+                'hasReplacement' => !empty($replacements),
+                'replacements' => $replacements,
+                'totalAllocated' => $totalAllocated,
+                'fullyAllocated' => $remainingQty <= 0,
+                'shortfall' => max(0, $remainingQty)
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mencari pengganti: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Replace expired material with fresh stock
+    public function replaceMaterial(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $oldReservation = Reservation::with('material')->findOrFail($request->oldReservationId);
+            $reservationRequestId = $oldReservation->reservation_request_id;
+            
+            // 1. Log the removal of old reservation
+            MaterialRemovalLog::create([
+                'reservation_request_id' => $reservationRequestId,
+                'reservation_id' => $oldReservation->id,
+                'material_code' => $oldReservation->material->kode_item ?? 'N/A',
+                'material_name' => $oldReservation->material->nama_material ?? 'N/A',
+                'batch_lot' => $oldReservation->batch_lot,
+                'expiry_date' => $oldReservation->exp_date,
+                'qty_removed' => $oldReservation->qty_reserved,
+                'uom' => $oldReservation->uom,
+                'removal_reason' => 'expired',
+                'days_until_expiry' => $oldReservation->exp_date ? 
+                    Carbon::today()->diffInDays(Carbon::parse($oldReservation->exp_date), false) : null,
+                'removed_by' => Auth::id(),
+                'notes' => 'Replaced with fresh material via auto-replacement'
+            ]);
+            
+            // 2. Return old reserved qty to available
+            $oldStock = InventoryStock::where('material_id', $oldReservation->material_id)
+                ->where('batch_lot', $oldReservation->batch_lot)
+                ->where('bin_id', $oldReservation->bin_id)
+                ->first();
+            
+            if ($oldStock) {
+                $oldStock->decrement('qty_reserved', $oldReservation->qty_reserved);
+                $oldStock->updateAvailableQty();
+            }
+            
+            // 3. Delete old reservation
+            $oldReservation->delete();
+            
+            // 4. Create new reservations for replacements
+            foreach ($request->replacements as $replacement) {
+                $stock = InventoryStock::findOrFail($replacement['stockId']);
+                
+                // Create new reservation
+                Reservation::create([
+                    'reservation_request_id' => $reservationRequestId,
+                    'material_id' => $replacement['materialId'],
+                    'batch_lot' => $stock->batch_lot,
+                    'expiry_date' => $stock->exp_date,
+                    'qty_reserved' => $replacement['qtyToAllocate'],
+                    'uom' => $stock->uom,
+                    'bin_id' => $replacement['binId'],
+                    'warehouse_id' => $replacement['warehouseId'],
+                    'status' => 'Reserved'
+                ]);
+                
+                // Update stock
+                $stock->increment('qty_reserved', $replacement['qtyToAllocate']);
+                $stock->updateAvailableQty();
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Material berhasil diganti dengan stock yang lebih fresh!',
+                'replacementCount' => count($request->replacements)
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengganti material: ' . $e->getMessage()
             ], 500);
         }
     }

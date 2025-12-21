@@ -254,14 +254,38 @@ class ReservationController extends Controller
             }
             // ** END VALIDASI DUPLICATE NO BETS **
 
+            // ** NEW: SMART CATEGORY FILTERING **
+            // Map request type to expected material category
+            $expectedCategory = null;
+            if ($requestType === 'raw-material') {
+                $expectedCategory = 'Raw Material';
+            } elseif ($requestType === 'packaging' || $requestType === 'add') {
+                $expectedCategory = 'Packaging Material';
+            }
+            // foh-rs tidak memiliki kategori specific, jadi $expectedCategory tetap null
+
             $resultMaterials = [];
             $notFoundMaterials = [];
+            $skippedCategoryMismatch = []; // NEW: Items skipped due to category mismatch
 
             foreach ($allParsedItems as $parsedItem) {
                 // Lookup ke database menggunakan fungsi getMaterialAndStock yang sudah ada di kode Anda
                 $materialData = $this->getMaterialAndStock($parsedItem['code'], 'All', $parsedItem['uom']);
                 
                 if ($materialData) {
+                    // NEW: Check category match
+                    if ($expectedCategory && $materialData['kategori'] !== $expectedCategory) {
+                        // Material found but category doesn't match
+                        $skippedCategoryMismatch[] = [
+                            'kode' => $parsedItem['code'],
+                            'nama' => $materialData['namaBahan'] ?? $materialData['namaMaterial'],
+                            'kategori' => $materialData['kategori'],
+                            'expectedKategori' => $expectedCategory,
+                            'message' => "Material '{$parsedItem['code']}' adalah '{$materialData['kategori']}', tidak sesuai dengan kategori yang dipilih '{$expectedCategory}'."
+                        ];
+                        continue; // Skip this item
+                    }
+
                     $item = $materialData;
                     // Masukkan Qty dari PDF ke field yang sesuai kategori
                     if ($requestType === 'raw-material') {
@@ -284,6 +308,8 @@ class ReservationController extends Controller
                 'header' => $headerInfo,
                 'materials' => $resultMaterials,
                 'notFoundMaterials' => $notFoundMaterials,
+                'skippedCategoryMismatch' => $skippedCategoryMismatch, // NEW
+                'hasSkippedItems' => count($skippedCategoryMismatch) > 0, // NEW
                 'message' => '✅ Sukses'
             ]);
         } catch (\Exception $e) {

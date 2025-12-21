@@ -14,26 +14,52 @@
       </div>
 
       <!-- Filter Section -->
-      <div class="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:items-center md:space-x-4">
-        <div class="md:w-1/6">
-           <select v-model="limit" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-             <option value="10">Show 10</option>
-             <option value="25">Show 25</option>
-             <option value="50">Show 50</option>
-             <option value="100">Show 100</option>
-             <option value="all">Show All</option>
-           </select>
-        </div>
-        <div class="flex-1">
-          <input v-model="search" type="text" placeholder="Cari No PO, SJ, Kendaraan..."
-            class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-        </div>
-        <!-- Supplier Filter Removed -->
-        <div class="md:w-1/6">
-            <input v-model="dateStart" type="date" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Dari Tanggal">
-        </div>
-        <div class="md:w-1/6">
-            <input v-model="dateEnd" type="date" class="w-full px-4 py-2.5 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Sampai Tanggal">
+      <div class="bg-white p-4 rounded-lg shadow space-y-3">
+        <!-- Row 1: Show Limit -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Show Entries</label>
+            <select v-model="limit" class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+              <option value="10">Show 10</option>
+              <option value="25">Show 25</option>
+              <option value="50">Show 50</option>
+              <option value="100">Show 100</option>
+              <option value="all">Show All</option>
+            </select>
+          </div>
+          
+          <!-- Search Fields -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">No PO</label>
+            <input v-model="searchPO" type="text" placeholder="Cari No PO..."
+              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">No Incoming</label>
+            <input v-model="searchIncoming" type="text" placeholder="Cari No Incoming..."
+              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Nama Material</label>
+            <input v-model="searchMaterial" type="text" placeholder="Cari Material..."
+              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
+          </div>
+          
+          <!-- Date Filters in same row -->
+          <div class="md:col-span-1">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Dari</label>
+                <input v-model="dateStart" type="date" class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Sampai</label>
+                <input v-model="dateEnd" type="date" class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

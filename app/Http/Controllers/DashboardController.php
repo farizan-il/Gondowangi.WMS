@@ -94,6 +94,13 @@ class DashboardController extends Controller
                     $displayStatus = 'HOLD (Menunggu Persetujuan)';
                 }
 
+                // Fetch incoming data for this batch
+                $incomingItem = IncomingGoodsItem::where('material_id', $item->material_id)
+                    ->where('batch_lot', $item->batch_lot)
+                    ->with('incomingGood.purchaseOrder')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
                 return [
                     'id' => 'INV-' . $item->id,
                     'source_table' => 'inventory_stock',
@@ -120,6 +127,16 @@ class DashboardController extends Controller
                     'isRejectedPutaway' => $isRejectedPutaway,
                     'requiresQC' => $requiresQC,
                     'entry_date' => $item->created_at->toISOString(),
+                    // Document Information
+                    'no_po' => $incomingItem && $incomingItem->incomingGood && $incomingItem->incomingGood->purchaseOrder 
+                        ? $incomingItem->incomingGood->purchaseOrder->no_po 
+                        : null,
+                    'no_surat_jalan' => $incomingItem && $incomingItem->incomingGood 
+                        ? $incomingItem->incomingGood->no_surat_jalan 
+                        : null,
+                    'no_incoming' => $incomingItem && $incomingItem->incomingGood 
+                        ? $incomingItem->incomingGood->incoming_number 
+                        : null,
                 ];
             });
         

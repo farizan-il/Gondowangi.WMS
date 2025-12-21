@@ -72,6 +72,10 @@
                   Semua
                 </button>
                 
+                <button @click="filterStatus = 'Ready to Pick'" :class="filterStatus === 'Ready to Pick' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-purple-500 hover:text-white">
+                  Ready to Pick
+                </button>
+                
                 <button @click="filterStatus = 'In Progress'" :class="filterStatus === 'In Progress' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded text-sm hover:bg-yellow-500 hover:text-white">
                   Dalam Proses
                 </button>
@@ -136,9 +140,14 @@
                   <button @click="viewDetail(task)" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs">
                     Detail
                   </button>
-                  <button v-if="task.status === 'Pending' || task.status === 'Reserved' || task.status === 'In Progress' || task.status === 'Ready to Pick'" @click="startPicking(task)" class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
+                  <button v-if="task.toGenerated && (task.status === 'Pending' || task.status === 'Reserved' || task.status === 'In Progress' || task.status === 'Ready to Pick')" 
+                          @click="startPicking(task)" 
+                          class="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs">
                     Kerjakan
                   </button>
+                  <span v-else-if="!task.toGenerated" class="text-xs text-gray-400 italic">
+                    (TO belum digenerate)
+                  </span>
                   <button @click="printPickingList(task)" class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded text-xs">
                     Cetak Picking List
                   </button>
@@ -496,7 +505,7 @@
     </div>
 
     <!-- Modal: Expiry Analysis -->
-    <div v-if="showExpiryModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+    <div v-if="showExpiryModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
       <div class="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
         <div class="p-6">
           <div class="flex justify-between items-center mb-6 border-b pb-4">
@@ -550,6 +559,7 @@
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Exp Date</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -571,6 +581,20 @@
                       </span>
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ material.qtyAllocated }} {{ material.uom }}</td>
+                    <td class="px-4 py-3 text-center">
+                      <button v-if="material.status === 'expired'" 
+                              @click="findReplacement(material)"
+                              :disabled="material.searchingReplacement"
+                              class="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-xs font-medium transition-colors inline-flex items-center space-x-1">
+                        <svg v-if="material.searchingReplacement" class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span v-if="material.searchingReplacement">Mencari...</span>
+                        <span v-else>🔄 Ganti</span>
+                      </button>
+                      <span v-else class="text-gray-400 text-xs">-</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -601,6 +625,67 @@
               <span v-if="selectedMaterialsToRemove.length > 0" class="bg-white text-blue-600 px-2 py-1 rounded text-xs font-bold">
                 -{{ selectedMaterialsToRemove.length }}
               </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Confirm Replacement -->
+    <div v-if="showReplacementModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[10000]">
+      <div class="bg-white rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h3 class="text-xl font-bold text-gray-900 flex items-center space-x-2">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Konfirmasi Penggantian Material</span>
+            </h3>
+            <button @click="closeReplacementModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!--Expired Material Info -->
+          <div class="mb-6 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+            <p class="text-sm text-red-600 font-semibold mb-2">Material Lama (Expired - Akan Dihapus)</p>
+            <p class="font-semibold text-gray-900">{{ replacementData.oldMaterial?.materialName }}</p>
+            <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+              <div><span class="text-gray-600">Batch:</span> <span class="font-mono">{{ replacementData.oldMaterial?.batchLot }}</span></div>
+              <div><span class="text-gray-600">Exp:</span> <span class="text-red-600">{{ formatDate(replacementData.oldMaterial?.expiryDate) }}</span></div>
+            </div>
+          </div>
+          
+          <!-- Replacements -->
+          <div class="mb-4">
+            <p class="text-sm text-green-600 font-semibold mb-3">Material Pengganti ({{ replacementData.replacements?.length || 0 }} Batch)</p>
+            <div v-for="(rep, idx) in replacementData.replacements" :key="idx" class="bg-green-50 border border-green-200 rounded-lg p-4 mb-2">
+              <div class="flex justify-between">
+                <div>
+                  <p class="font-mono font-bold">{{ rep.batchLot }}</p>
+                  <p class="text-sm text-gray-600">Exp: {{ formatDate(rep.expiryDate) }} ({{ rep.daysUntilExpiry }} hari)</p>
+                  <p class="text-sm">Bin: {{ rep.binCode }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-2xl font-bold text-green-700">{{ rep.qtyToAllocate }}</p>
+                  <p class="text-xs">{{ replacementData.oldMaterial?.uom }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="!replacementData.fullyAllocated" class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+            <p class="text-yellow-800 font-medium">⚠️ Stock tidak mencukupi. Kurang: {{ replacementData.shortfall }} {{ replacementData.oldMaterial?.uom }}</p>
+          </div>
+          
+          <div class="flex justify-end space-x-3">
+            <button @click="closeReplacementModal" class="px-4 py-2 bg-gray-200 rounded">Batal</button>
+            <button @click="confirmReplacement" :disabled="replacingMaterial"
+                    class="px-6 py-2 bg-green-600 text-white rounded disabled:bg-gray-400">
+              {{ replacingMaterial ? 'Mengganti...' : '✅ Konfirmasi Ganti' }}
             </button>
           </div>
         </div>
@@ -669,6 +754,17 @@ const expiryAnalysis = ref({ hasIssues: false, materials: [] })
 const selectedMaterialsToRemove = ref([])
 const selectAllMaterials = ref(false)
 const generatingTO = ref(false)
+
+// NEW: Material Replacement Variables
+const showReplacementModal = ref(false)
+const replacementData = ref({
+  oldMaterial: null,
+  replacements: [],
+  fullyAllocated: false,
+  shortfall: 0,
+  totalAllocated: 0
+})
+const replacingMaterial = ref(false)
 
 // Computed properties
 const getTotalItemsCount = computed(() => {
@@ -853,7 +949,7 @@ const filteredTasks = computed(() => {
         const batchQuery = filterBatch.value.toLowerCase().trim();
         const matchesBatch = !batchQuery || (task.batchRecord && task.batchRecord.toLowerCase().includes(batchQuery));
 
-        // NEW: Only show tasks that have TO generated
+        // Only show tasks that have TO generated
         const hasTO = task.toGenerated;
 
         return matchesStatus && matchesBatch && hasTO;
@@ -1376,13 +1472,9 @@ const startToGeneration = async (task) => {
     if (response.data.success) {
       expiryAnalysis.value = response.data
       
-      // If no issues, directly generate TO
-      if (!response.data.hasIssues) {
-        await confirmToGeneration()
-      } else {
-        // Show modal for review
-        showExpiryModal.value = true
-      }
+      // CHANGED: ALWAYS show modal for review (don't auto-generate)
+      // Admin should always review materials before generating TO
+      showExpiryModal.value = true
     } else {
       alert('Gagal menganalisis materials: ' + response.data.message)
     }
@@ -1417,7 +1509,25 @@ const confirmToGeneration = async () => {
       closeExpiryModal()
       
       // Refresh picking list
+      console.log('🔄 Fetching updated picking list...')
       await fetchPickingList()
+      
+      console.log('📊 Data after refresh:', {
+        totalTasks: pickingTasks.value.length,
+        pendingCount: pickingTasks.value.filter(t => !t.toGenerated).length,
+        generatedCount: pickingTasks.value.filter(t => t.toGenerated).length,
+        tasks: pickingTasks.value.map(t => ({
+          id: t.id,
+          noReservasi: t.noReservasi,
+          toNumber: t.toNumber,
+          toGenerated: t.toGenerated,
+          status: t.status
+        }))
+      })
+      
+      // Auto-select ALL filter to show newly generated tasks
+      filterStatus.value = 'ALL'
+      console.log('✅ Filter changed to ALL')
     } else {
       alert('❌ Gagal generate TO: ' + response.data.message)
     }
@@ -1436,6 +1546,88 @@ const closeExpiryModal = () => {
   selectedMaterialsToRemove.value = []
   selectAllMaterials.value = false
   generatingTO.value = false
+}
+
+// NEW: Material Replacement Workflow Functions
+const findReplacement = async (material) => {
+  // Set loading state on the material object
+  material.searchingReplacement = true
+  
+  try {
+    const response = await axios.post('/transaction/picking-list/find-replacement', {
+      reservationId: material.reservationId,
+      materialCode: material.materialCode,
+      qtyNeeded: material.qtyAllocated,
+      uom: material.uom
+    })
+    
+    if (response.data.success && response.data.hasReplacement) {
+      // Show replacement modal
+      replacementData.value = {
+        oldMaterial: material,
+        replacements: response.data.replacements,
+        fullyAllocated: response.data.fullyAllocated,
+        shortfall: response.data.shortfall || 0,
+        totalAllocated: response.data.totalAllocated
+      }
+      showReplacementModal.value = true
+    } else {
+      alert('❌ Tidak ada stock pengganti yang tersedia untuk material ini')
+    }
+  } catch (error) {
+    console.error('Find replacement failed:', error)
+    alert('Gagal mencari pengganti: ' + (error.response?.data?.message || error.message))
+  } finally {
+    material.searchingReplacement = false
+  }
+}
+
+const confirmReplacement = async () => {
+  if (replacingMaterial.value) return
+  
+  try {
+    replacingMaterial.value = true
+    
+    const response = await axios.post('/transaction/picking-list/replace-material', {
+      oldReservationId: replacementData.value.oldMaterial.reservationId,
+      replacements: replacementData.value.replacements.map(r => ({
+        stockId: r.stockId,
+        qtyToAllocate: r.qtyToAllocate,
+        binId: r.binId,
+        materialId: r.materialId,
+        warehouseId: r.warehouseId
+      }))
+    })
+    
+    if (response.data.success) {
+      alert(`✅ ${response.data.message}\n\nDiganti dengan ${response.data.replacementCount} batch baru`)
+      
+      // Close replacement modal
+      closeReplacementModal()
+      
+      // Re-analyze to see updated materials
+      await startToGeneration(selectedTaskForGeneration.value)
+    } else {
+      alert('❌ Gagal mengganti material: ' + response.data.message)
+    }
+  } catch (error) {
+    console.error('Replace material failed:', error)
+    alert('❌ Gagal mengganti material: ' + (error.response?.data?.message || error.message))
+  } finally {
+    replacingMaterial.value = false
+  }
+}
+
+const closeReplacementModal = () => {
+  showReplacementModal.value = false
+  replacementData.value = {
+    oldMaterial: null,
+    replacements: [],
+    fullyAllocated: false,
+    shortfall: 0,
+    totalAllocated: 0
+  }
+  replacingMaterial.value = false
 }
 
 // Lifecycle

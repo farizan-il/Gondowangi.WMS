@@ -773,6 +773,88 @@
         </div>
       </div>
     </div>
+
+    <!-- Category Mismatch Warning Modal -->
+    <div v-if="showCategoryMismatchModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999]">
+      <div class="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden shadow-2xl">
+        <div class="p-6">
+          <!-- Header -->
+          <div class="flex items-center gap-3 mb-6">
+            <div class="bg-yellow-100 p-3 rounded-full">
+              <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-gray-900">Material Kategori Tidak Sesuai</h3>
+              <p class="text-sm text-gray-600 mt-1">
+                {{ categoryMismatchItems.length }} item dilewati karena kategori tidak cocok
+              </p>
+            </div>
+            <button @click="showCategoryMismatchModal = false" class="text-gray-400 hover:text-gray-600 transition">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Alert Info -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div class="flex items-start gap-2">
+              <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+              <p class="text-sm text-blue-800">
+                <strong>ℹ️ Informasi:</strong> Item-item berikut <strong>TIDAK</strong> dimasukkan ke reservasi 
+                karena kategorinya berbeda dengan yang dipilih (<strong>{{ expectedCategory }}</strong>).
+              </p>
+            </div>
+          </div>
+
+          <!-- Table of Skipped Items -->
+          <div class="overflow-hidden border border-gray-200 rounded-lg">
+            <div class="overflow-y-auto max-h-[50vh]">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori Actual</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="(item, index) in categoryMismatchItems" :key="index" class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.kode }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
+                    <td class="px-4 py-3 text-sm">
+                      <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                        {{ item.kategori }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                      <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                        {{ item.expectedKategori }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+            <button @click="showCategoryMismatchModal = false"
+              class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm">
+              OK, Saya Mengerti
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
@@ -800,6 +882,12 @@ const uploadStatus = ref(null);
 const materialSuggestions = ref([]);
 const activeSearchIndex = ref(null); // { index: number, field: string }
 let searchTimeout = null;
+
+// Category Mismatch Modal State
+const showCategoryMismatchModal = ref(false);
+const categoryMismatchItems = ref([]);
+const expectedCategory = ref('');
+
 
 // Filter state
 const filters = ref({
@@ -908,6 +996,13 @@ const uploadFileAndParse = async () => {
         const materials = response.data.materials || [];
         if (materials.length > 0) {
             formData.value.items = materials;
+        }
+
+        // NEW: Check for category mismatch and show modal
+        if (response.data.hasSkippedItems && response.data.skippedCategoryMismatch.length > 0) {
+            categoryMismatchItems.value = response.data.skippedCategoryMismatch;
+            expectedCategory.value = response.data.skippedCategoryMismatch[0]?.expectedKategori || '';
+            showCategoryMismatchModal.value = true;
         }
 
 

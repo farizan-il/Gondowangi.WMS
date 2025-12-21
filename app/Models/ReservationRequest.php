@@ -28,6 +28,10 @@ class ReservationRequest extends Model
         'rejection_reason',
         'picking_started_at',
         'picking_completed_at',
+        // TO Number Generation Fields
+        'to_number',
+        'to_generated_at',
+        'to_generated_by',
     ];
 
     protected $casts = [
@@ -37,6 +41,7 @@ class ReservationRequest extends Model
         'rejected_at' => 'datetime',
         'picking_started_at' => 'datetime',
         'picking_completed_at' => 'datetime',
+        'to_generated_at' => 'datetime',
     ];
 
     public function requestedBy(): BelongsTo

@@ -299,6 +299,14 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::post('/picking-list/generate-to/{id}', [PickingListController::class, 'generateToNumber'])
             // ->middleware('permission:picking.create')
             ->name('picking-list.generate-to');
+        
+        // NEW: Material Replacement
+        Route::post('/picking-list/find-replacement', [PickingListController::class, 'findReplacement'])
+            // ->middleware('permission:picking.create')
+            ->name('picking-list.find-replacement');
+        Route::post('/picking-list/replace-material', [PickingListController::class, 'replaceMaterial'])
+            // ->middleware('permission:picking.create')
+            ->name('picking-list.replace-material');
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])

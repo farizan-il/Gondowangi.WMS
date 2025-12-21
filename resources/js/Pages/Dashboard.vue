@@ -624,12 +624,16 @@
                 </div>
                 <div class="mt-3 space-y-1 text-sm">
                   <div class="flex justify-between">
-                    <span class="text-gray-600">PO Number:</span>
-                    <span class="text-blue-600 cursor-pointer hover:underline">PO-2024-001</span>
+                    <span class="text-gray-600">No PO:</span>
+                    <span class="text-blue-600 font-medium">{{ selectedItem.no_po || '-' }}</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-gray-600">GR Number:</span>
-                    <span class="text-blue-600 cursor-pointer hover:underline">GR-2024-001</span>
+                    <span class="text-gray-600">No Surat Jalan:</span>
+                    <span class="text-blue-600 font-medium">{{ selectedItem.no_surat_jalan || '-' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">No Incoming:</span>
+                    <span class="text-blue-600 font-medium">{{ selectedItem.no_incoming || '-' }}</span>
                   </div>
                 </div>
               </div>
@@ -784,6 +788,9 @@ interface MaterialItem {
   qr_data?: string // Added for consistency
   qr_image_url?: string // Added to store generated image URL
   entry_date?: string // Added for sorting
+  no_po?: string // Purchase Order Number
+  no_surat_jalan?: string // Delivery Note Number
+  no_incoming?: string // Incoming Goods Number
 }
 
 interface HistoryItem {
