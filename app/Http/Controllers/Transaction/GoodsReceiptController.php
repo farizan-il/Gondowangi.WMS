@@ -30,15 +30,23 @@ class GoodsReceiptController extends Controller
         ])
         ->orderBy('created_at', 'desc');
 
-        // Filter: Search (No PO, No SJ, No Kendaraan, Nama Driver)
+        // Filter: Search (No Incoming, No PO, No SJ, No Kendaraan, Nama Driver, Material Name)
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('incoming_number', 'LIKE', "%{$search}%")
                   ->orWhere('no_surat_jalan', 'LIKE', "%{$search}%")
-                  ->orWhere('po_id', 'LIKE', "%{$search}%")
                   ->orWhere('no_kendaraan', 'LIKE', "%{$search}%")
-                  ->orWhere('nama_driver', 'LIKE', "%{$search}%");
+                  ->orWhere('nama_driver', 'LIKE', "%{$search}%")
+                  // Search PO number from relationship (not po_id)
+                  ->orWhereHas('purchaseOrder', function($subQ) use ($search) {
+                      $subQ->where('no_po', 'LIKE', "%{$search}%");
+                  })
+                  // Search material names from items
+                  ->orWhereHas('items.material', function($subQ) use ($search) {
+                      $subQ->where('nama_material', 'LIKE', "%{$search}%")
+                           ->orWhere('kode_item', 'LIKE', "%{$search}%");
+                  });
             });
         }
 

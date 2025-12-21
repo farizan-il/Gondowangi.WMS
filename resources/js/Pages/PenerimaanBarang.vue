@@ -14,9 +14,9 @@
       </div>
 
       <!-- Filter Section -->
-      <div class="bg-white p-4 rounded-lg shadow space-y-3">
-        <!-- Row 1: Show Limit -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div class="bg-white p-4 rounded-lg shadow">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <!-- Show Entries -->
           <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">Show Entries</label>
             <select v-model="limit" class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
@@ -28,36 +28,33 @@
             </select>
           </div>
           
-          <!-- Search Fields -->
-          <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">No PO</label>
-            <input v-model="searchPO" type="text" placeholder="Cari No PO..."
-              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
+          <!-- Unified Search -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-700 mb-1">Pencarian</label>
+            <input 
+              v-model="search" 
+              type="text" 
+              placeholder="Cari No PO, No Incoming, No Surat Jalan, No Kendaraan, atau Nama Driver..."
+              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" 
+            />
           </div>
           
+          <!-- Date Range Filters -->
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">No Incoming</label>
-            <input v-model="searchIncoming" type="text" placeholder="Cari No Incoming..."
-              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
-          </div>
-          
-          <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Nama Material</label>
-            <input v-model="searchMaterial" type="text" placeholder="Cari Material..."
-              class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" />
-          </div>
-          
-          <!-- Date Filters in same row -->
-          <div class="md:col-span-1">
+            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal</label>
             <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Dari</label>
-                <input v-model="dateStart" type="date" class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Sampai</label>
-                <input v-model="dateEnd" type="date" class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
-              </div>
+              <input 
+                v-model="dateStart" 
+                type="date" 
+                placeholder="Dari"
+                class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+              <input 
+                v-model="dateEnd" 
+                type="date" 
+                placeholder="Sampai"
+                class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
             </div>
           </div>
         </div>
@@ -68,6 +65,7 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Incoming</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No PO</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
@@ -84,6 +82,9 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="shipment in shipments.data" :key="shipment.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span class="font-mono text-xs">{{ shipment.incomingNumber }}</span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noPo }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">
                   <div v-if="shipment.items && shipment.items.length > 0">

@@ -260,7 +260,7 @@ class ReservationController extends Controller
             if ($requestType === 'raw-material') {
                 $expectedCategory = 'Raw Material';
             } elseif ($requestType === 'packaging' || $requestType === 'add') {
-                $expectedCategory = 'Packaging Material';
+                $expectedCategory = 'Packaging';
             }
             // foh-rs tidak memiliki kategori specific, jadi $expectedCategory tetap null
 
@@ -472,7 +472,13 @@ class ReservationController extends Controller
         // Material KARANTINA tidak boleh dialokasikan untuk reservation
         $availableStocksQuery = InventoryStock::where('material_id', $material->id)
             ->where('status', 'RELEASED')
-            ->where('qty_available', '>', 0);
+            ->where('qty_available', '>', 0)
+            // ** CRITICAL FIX: Filter out EXPIRED materials **
+            // FEFO hanya berlaku untuk material yang BELUM kadaluarsa!
+            ->where(function($q) {
+                $q->whereNull('exp_date')  // Material tanpa exp_date = OK
+                  ->orWhere('exp_date', '>', now());  // Material belum kadaluarsa = OK
+            });
             
             // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
             
