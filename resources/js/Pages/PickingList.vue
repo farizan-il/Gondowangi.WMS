@@ -30,8 +30,8 @@
         </div>
 
         <div class="md:col-span-1 lg:col-span-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Batch/Lot</label>
-            <input v-model="filterBatch" type="text" placeholder="BCH-123..."
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Batch Record</label>
+            <input v-model="filterBatch" type="text" placeholder="Cari No Bets..."
                 class="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
       </div>
@@ -45,7 +45,7 @@
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TO Number</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Reservasi</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch/Lot Utama</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Record (MO)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requester / Departemen</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -66,7 +66,7 @@
                 {{ task.noReservasi }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                 {{ task.items && task.items.length > 0 ? task.items[0].lotSerial : 'N/A' }}
+                 {{ task.batchRecord || 'N/A' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(task.tanggalDibuat) }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ task.requester }} / {{ task.departemen }}</td>
@@ -676,11 +676,9 @@ const filteredTasks = computed(() => {
         // Filter Status
         const matchesStatus = filterStatus.value === 'ALL' || task.status === filterStatus.value || (filterStatus.value === 'Pending' && (task.status === 'Reserved' || task.status === 'Ready to Pick'));
         
-        // Filter Batch/Lot
+        // Filter Batch Record (MO)
         const batchQuery = filterBatch.value.toLowerCase().trim();
-        const matchesBatch = !batchQuery || task.items.some(item => 
-            item.lotSerial && item.lotSerial.toLowerCase().includes(batchQuery)
-        );
+        const matchesBatch = !batchQuery || (task.batchRecord && task.batchRecord.toLowerCase().includes(batchQuery));
 
         return matchesStatus && matchesBatch;
     });

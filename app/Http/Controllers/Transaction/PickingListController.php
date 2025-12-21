@@ -61,10 +61,21 @@ class PickingListController extends Controller
         // Fallback ke departemen user jika di request kosong
         $departemen = $request->departemen ?? optional($request->requestedBy)->departement ?? '-';
 
+        // TAMBAHAN: Tentukan Batch Record (MO) berdasarkan request_type/kategori
+        $batchRecord = '-';
+        if ($request->request_type) {
+            if ($request->request_type === 'raw-material') {
+                $batchRecord = $request->no_bets ?? '-';
+            } elseif (in_array($request->request_type, ['packaging', 'add'])) {
+                $batchRecord = $request->no_bets_filling ?? '-';
+            }
+        }
+
         return [
             'id' => $request->id,
             'toNumber' => 'TO-' . $request->no_reservasi, 
             'noReservasi' => $request->no_reservasi,
+            'batchRecord' => $batchRecord, // << FIELD BARU: Batch Record (MO)
             'tanggalDibuat' => $request->created_at,
             'requester' => $requesterName, 
             'departemen' => $departemen,

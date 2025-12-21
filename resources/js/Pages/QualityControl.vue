@@ -431,12 +431,16 @@
 
             <!-- Footer Modal -->
             <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
-              <button @click="backToDetail" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+              <button @click="backToDetail" :disabled="isSubmittingQC" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                 Kembali ke Detail
               </button>
-              <button @click="submitQC" :disabled="!isQCFormValid"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400">
-                Simpan Hasil QC
+              <button @click="submitQC" :disabled="!isQCFormValid || isSubmittingQC"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+                <svg v-if="isSubmittingQC" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>{{ isSubmittingQC ? 'Menyimpan...' : 'Simpan Hasil QC' }}</span>
               </button>
             </div>
           </div>
@@ -600,74 +604,6 @@
                     <span class="text-gray-600">Qty Sampel Diambil:</span>
                     <span class="ml-2 font-medium text-blue-600">{{ qcDetailData?.qcSampleQty }} {{ qcDetailData?.uom }}</span>
                   </div>
-                  <div>
-                    <span class="text-gray-600">Total Incoming:</span>
-                    <span class="ml-2 font-medium text-gray-900">{{ formatNumber(qcDetailData?.qtyDatangTotal) }} {{ qcDetailData?.uom }}</span>
-                  </div>
-                  <div>
-                    <span class="text-gray-600">Qty Tersisa:</span>
-                    <span class="ml-2 font-medium text-gray-900">{{ formatNumber(qcDetailData?.qtyReceived) }} {{ qcDetailData?.uom }}</span>
-                  </div>
-                </div>
-
-                <!-- Movement History Dropdown -->
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                  <button @click="showMovementHistory = !showMovementHistory" 
-                    class="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                    <div class="flex items-center gap-2">
-                      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Riwayat Pergerakan Material</span>
-                      <span class="text-xs text-gray-500">({{ qcDetailData?.movements?.length || 0 }} transaksi)</span>
-                    </div>
-                    <svg :class="showMovementHistory ? 'rotate-180' : ''" 
-                      class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  <!-- History Content (Expandable) -->
-                  <div v-if="showMovementHistory" class="mt-3 space-y-2 max-h-64 overflow-y-auto">
-                    <div v-if="qcDetailData?.movements && qcDetailData.movements.length > 0">
-                      <div v-for="(movement, index) in qcDetailData.movements" :key="index"
-                        class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors">
-                        <div class="flex items-start justify-between">
-                          <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span :class="getMovementTypeClass(movement.movement_type)" 
-                                class="px-2 py-0.5 text-xs font-semibold rounded-full">
-                                {{ getMovementTypeLabel(movement.movement_type) }}
-                              </span>
-                              <span class="text-xs text-gray-500">{{ movement.movement_date }}</span>
-                            </div>
-                            <div class="text-sm text-gray-700">
-                              <span class="font-medium">{{ movement.notes || '-' }}</span>
-                            </div>
-                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-600">
-                              <div>
-                                <span class="text-gray-500">Qty:</span>
-                                <span :class="movement.qty < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'">
-                                  {{ movement.qty > 0 ? '+' : '' }}{{ movement.qty }} {{ movement.uom }}
-                                </span>
-                              </div>
-                              <div v-if="movement.from_bin">
-                                <span class="text-gray-500">From:</span>
-                                <span class="font-medium">{{ movement.from_bin }}</span>
-                              </div>
-                              <div v-if="movement.to_bin">
-                                <span class="text-gray-500">To:</span>
-                                <span class="font-medium">{{ movement.to_bin }}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-else class="text-sm text-gray-500 italic text-center py-4">
-                      Tidak ada riwayat pergerakan
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -818,6 +754,7 @@ const cameraReady = ref(false)
 const cameraError = ref('')
 const scanResult = ref('')
 const scanInterval = ref(null)
+const isSubmittingQC = ref(false)
 
 // QR Scanner variables
 const html5QrCode = ref(null)
@@ -1073,6 +1010,9 @@ const submitQC = () => {
     return
   }
 
+  // Set loading state to prevent duplicate submissions
+  isSubmittingQC.value = true
+
   const formData = new FormData()
   formData.append('incoming_item_id', qcForm.value.incoming_item_id)
   formData.append('reference', qcForm.value.reference || '')
@@ -1101,6 +1041,7 @@ const submitQC = () => {
     preserveScroll: true,
     onSuccess: (page) => {
       console.log('QC berhasil disimpan!', page)
+      isSubmittingQC.value = false
       closeQCModal()
 
       // Tampilkan pesan sukses dari backend
@@ -1112,6 +1053,7 @@ const submitQC = () => {
     },
     onError: (errors) => {
       console.error('Validation errors:', errors)
+      isSubmittingQC.value = false
 
       // Tampilkan error lebih detail
       let errorMessage = 'Gagal menyimpan QC:\n\n'
@@ -1127,6 +1069,7 @@ const submitQC = () => {
     },
     onFinish: () => {
       console.log('Request finished')
+      isSubmittingQC.value = false
     }
   })
 }
