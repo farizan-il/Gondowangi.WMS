@@ -9,6 +9,59 @@
       </div>
     </div>
 
+    <!-- Pending TO Generation Section -->
+    <div v-if="pendingToGeneration.length > 0" class="bg-yellow-50 rounded-lg shadow-sm border-2 border-yellow-200 mb-6">
+      <div class="p-4 border-b border-yellow-200 bg-yellow-100">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 class="text-lg font-semibold text-yellow-900">
+              Reservasi Menunggu Generate TO Number ({{ pendingToGeneration.length }})
+            </h3>
+          </div>
+        </div>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-yellow-200">
+          <thead class="bg-yellow-100">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">No Reservasi</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">Batch Record (MO)</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">Tanggal Dibuat</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">Requester</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-yellow-900 uppercase tracking-wider">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-yellow-100">
+            <tr v-for="task in pendingToGeneration" :key="task.id" class="hover:bg-yellow-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ task.noReservasi }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ task.batchRecord || '-' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(task.tanggalDibuat) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ task.requester }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                  Pending TO
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <button @click="startToGeneration(task)" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Generate Picking List</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Filter Status -->
     <div class="bg-white rounded-lg p-4 shadow">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-end">
@@ -441,6 +494,118 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Expiry Analysis -->
+    <div v-if="showExpiryModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+      <div class="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h3 class="text-xl font-bold text-gray-900">
+              Analisis Material - {{ selectedTaskForGeneration?.noReservasi }}
+            </h3>
+            <button @click="closeExpiryModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Warning if has issues -->
+          <div v-if="expiryAnalysis.hasIssues" class="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start space-x-3">
+              <svg class="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p class="text-red-800 font-semibold text-lg">⚠️ Ditemukan material expired atau mendekati expired!</p>
+                <p class="text-red-700 text-sm mt-1">
+                  Silakan review material di bawah. Anda bisa centang dan hapus material yang bermasalah sebelum generate TO Number.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center space-x-3">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="text-green-800 font-semibold">✓ Semua material dalam kondisi baik!</p>
+            </div>
+          </div>
+          
+          <!-- Materials Table -->
+          <div class="border rounded-lg overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left">
+                      <input type="checkbox" @change="toggleSelectAll" v-model="selectAllMaterials"
+                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kode Material</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Material</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Batch/Lot</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Exp Date</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="material in expiryAnalysis.materials" :key="material.reservationId"
+                      :class="getRowClass(material.status)" class="hover:bg-gray-100">
+                    <td class="px-4 py-3">
+                      <input type="checkbox" 
+                             v-model="selectedMaterialsToRemove"
+                             :value="material.reservationId"
+                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    </td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ material.materialCode }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ material.materialName }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 font-mono">{{ material.batchLot }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ material.expiryDate ? formatDate(material.expiryDate) : '-' }}</td>
+                    <td class="px-4 py-3">
+                      <span :class="getStatusBadge(material.status)" class="px-2 py-1 rounded-full text-xs font-semibold">
+                        {{ getStatusText(material) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ material.qtyAllocated }} {{ material.uom }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Selected materials count -->
+          <div v-if="selectedMaterialsToRemove.length > 0" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p class="text-blue-800 text-sm font-medium">
+              {{ selectedMaterialsToRemove.length }} material dipilih untuk dihapus
+            </p>
+          </div>
+          
+          <!-- Actions -->
+          <div class="flex justify-between items-center mt-6 pt-4 border-t">
+            <button @click="closeExpiryModal" 
+                    class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
+              Batal
+            </button>
+            <button @click="confirmToGeneration" 
+                    :disabled="generatingTO"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center space-x-2">
+              <svg v-if="generatingTO" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Generate TO Number</span>
+              <span v-if="selectedMaterialsToRemove.length > 0" class="bg-white text-blue-600 px-2 py-1 rounded text-xs font-bold">
+                -{{ selectedMaterialsToRemove.length }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
     </AppLayout>
 </template>
@@ -496,6 +661,14 @@ const fetchPickingList = async () => {
         console.error('Error fetching picking list:', error)
     }
 }
+
+// NEW: TO Generation Workflow Variables
+const showExpiryModal = ref(false)
+const selectedTaskForGeneration = ref(null)
+const expiryAnalysis = ref({ hasIssues: false, materials: [] })
+const selectedMaterialsToRemove = ref([])
+const selectAllMaterials = ref(false)
+const generatingTO = ref(false)
 
 // Computed properties
 const getTotalItemsCount = computed(() => {
@@ -680,9 +853,17 @@ const filteredTasks = computed(() => {
         const batchQuery = filterBatch.value.toLowerCase().trim();
         const matchesBatch = !batchQuery || (task.batchRecord && task.batchRecord.toLowerCase().includes(batchQuery));
 
-        return matchesStatus && matchesBatch;
+        // NEW: Only show tasks that have TO generated
+        const hasTO = task.toGenerated;
+
+        return matchesStatus && matchesBatch && hasTO;
     });
 });
+
+// NEW: Computed for pending TO generation
+const pendingToGeneration = computed(() => {
+  return pickingTasks.value.filter(task => !task.toGenerated)
+})
 
 const getStatusClass = (status) => {
     const classes = {
@@ -1143,6 +1324,118 @@ const printPickingList = (task) => {
         printWindow.print()
         printWindow.close()
     }, 500)
+}
+
+// NEW: Helper functions for TO generation workflow
+const getRowClass = (status) => {
+  if (status === 'expired') return 'bg-red-50'
+  if (status === 'near-expiry') return 'bg-yellow-50'
+  return ''
+}
+
+const getStatusBadge = (status) => {
+  if (status === 'expired') return 'bg-red-100 text-red-700'
+  if (status === 'near-expiry') return 'bg-yellow-100 text-yellow-700'
+  return 'bg-green-100 text-green-700'
+}
+
+const getStatusText = (material) => {
+  if (material.status === 'expired') {
+    const days = Math.abs(material.daysUntilExpiry)
+    return `Expired (${days} hari lalu)`
+  }
+  if (material.status === 'near-expiry') {
+    return `Mendekati Expired (${material.daysUntilExpiry} hari lagi)`
+  }
+  return 'OK'
+}
+
+const toggleSelectAll = () => {
+  if (selectAllMaterials.value) {
+    // Select all materials (admin can decide which to remove)
+    selectedMaterialsToRemove.value = expiryAnalysis.value.materials.map(m => m.reservationId)
+  } else {
+    selectedMaterialsToRemove.value = []
+  }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// NEW: TO Generation Workflow Functions
+const startToGeneration = async (task) => {
+  selectedTaskForGeneration.value = task
+  
+  try {
+    // Call API to analyze expiry
+    const response = await axios.post(`/transaction/picking-list/analyze-expiry/${task.id}`)
+    
+    if (response.data.success) {
+      expiryAnalysis.value = response.data
+      
+      // If no issues, directly generate TO
+      if (!response.data.hasIssues) {
+        await confirmToGeneration()
+      } else {
+        // Show modal for review
+        showExpiryModal.value = true
+      }
+    } else {
+      alert('Gagal menganalisis materials: ' + response.data.message)
+    }
+  } catch (error) {
+    console.error('Expiry analysis failed:', error)
+    alert('Gagal menganalisis material: ' + (error.response?.data?.message || error.message))
+  }
+}
+
+const confirmToGeneration = async () => {
+  if (generatingTO.value) return
+  
+  try {
+    generatingTO.value = true
+    
+    // Call API to generate TO
+    const response = await axios.post(
+      `/transaction/picking-list/generate-to/${selectedTaskForGeneration.value.id}`,
+      {
+        removedReservationIds: selectedMaterialsToRemove.value
+      }
+    )
+    
+    if (response.data.success) {
+      alert(`✅ ${response.data.message}\n\nTO Number: ${response.data.toNumber}`)
+      
+      if (selectedMaterialsToRemove.value.length > 0) {
+        alert(`📋 ${selectedMaterialsToRemove.value.length} material telah dihapus dari picking list dan qty dikembalikan ke stok.`)
+      }
+      
+      // Close modal and reset
+      closeExpiryModal()
+      
+      // Refresh picking list
+      await fetchPickingList()
+    } else {
+      alert('❌ Gagal generate TO: ' + response.data.message)
+    }
+  } catch (error) {
+    console.error('TO generation failed:', error)
+    alert('❌ Gagal generate TO Number: ' + (error.response?.data?.message || error.message))
+  } finally {
+    generatingTO.value = false
+  }
+}
+
+const closeExpiryModal = () => {
+  showExpiryModal.value = false
+  selectedTaskForGeneration.value = null
+  expiryAnalysis.value = { hasIssues: false, materials: [] }
+  selectedMaterialsToRemove.value = []
+  selectAllMaterials.value = false
+  generatingTO.value = false
 }
 
 // Lifecycle
