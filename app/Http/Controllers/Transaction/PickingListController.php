@@ -8,6 +8,8 @@ use App\Models\Reservation;
 use App\Models\ReservationRequest;
 use App\Models\StockMovement;
 use App\Models\WarehouseBin;
+use App\Models\MaterialRemovalLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -73,7 +75,8 @@ class PickingListController extends Controller
 
         return [
             'id' => $request->id,
-            'toNumber' => 'TO-' . $request->no_reservasi, 
+            'toNumber' => $request->to_number ?? 'Belum Digenerate',
+            'toGenerated' => !is_null($request->to_number),
             'noReservasi' => $request->no_reservasi,
             'batchRecord' => $batchRecord, // << FIELD BARU: Batch Record (MO)
             'tanggalDibuat' => $request->created_at,
@@ -123,6 +126,185 @@ class PickingListController extends Controller
         $mappedPickingTasks = $pickingTasks->map(fn($task) => $this->mapPickingTaskToCamelCase($task));
         
         return response()->json($mappedPickingTasks);
+    }
+
+    // Analyze expiry for materials before generating TO
+    public function analyzeExpiry(Request $request, $reservationRequestId)
+    {
+        try {
+            $reservationRequest = ReservationRequest::with('reservations.material')->findOrFail($reservationRequestId);
+            
+            $materials = [];
+            $hasIssues = false;
+            $today = Carbon::today();
+            $warningThreshold = $today->copy()->addDays(30); // 30 days warning
+            
+            foreach ($reservationRequest->reservations as $reservation) {
+                $expiryDate = $reservation->expiry_date ? Carbon::parse($reservation->expiry_date) : null;
+                $status = 'ok';
+                $daysUntilExpiry = null;
+                
+                if ($expiryDate) {
+                    $daysUntilExpiry = $today->diffInDays($expiryDate, false);
+                    
+                    if ($expiryDate->lt($today)) {
+                        $status = 'expired';
+                        $hasIssues = true;
+                    } elseif ($expiryDate->lte($warningThreshold)) {
+                        $status = 'near-expiry';
+                        $hasIssues = true;
+                    }
+                }
+                
+                $materials[] = [
+                    'reservationId' => $reservation->id,
+                    'materialCode' => $reservation->material->kode_item ?? 'N/A',
+                    'materialName' => $reservation->material->nama_material ?? 'N/A',
+                    'batchLot' => $reservation->batch_lot,
+                    'expiryDate' => $expiryDate ? $expiryDate->format('Y-m-d') : null,
+                    'qtyAllocated' => (float) $reservation->qty_reserved,
+                    'uom' => $reservation->uom,
+                    'status' => $status,
+                    'daysUntilExpiry' => $daysUntilExpiry,
+                ];
+            }
+            
+            // Sort: expired first, then near-expiry, then ok
+            usort($materials, function($a, $b) {
+                $order = ['expired' => 0, 'near-expiry' => 1, 'ok' => 2];
+                return $order[$a['status']] <=> $order[$b['status']];
+            });
+            
+            return response()->json([
+                'success' => true,
+                'hasIssues' => $hasIssues,
+                'materials' => $materials,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal analyzing materials: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Generate TO Number after expiry analysis
+    public function generateToNumber(Request $request, $reservationRequestId)
+    {
+        DB::beginTransaction();
+        try {
+            $reservationRequest = ReservationRequest::with('reservations.material', 'reservations.bin')
+                ->findOrFail($reservationRequestId);
+            
+            // Check if TO already generated
+            if ($reservationRequest->to_number) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'TO Number sudah digenerate: ' . $reservationRequest->to_number
+                ], 400);
+            }
+            
+            $removedReservationIds = $request->input('removedReservationIds', []);
+            
+            // Remove selected materials and log them
+            if (!empty($removedReservationIds)) {
+                foreach ($removedReservationIds as $reservationId) {
+                    $reservation = Reservation::with('material')->find($reservationId);
+                    
+                    if ($reservation && $reservation->reservation_request_id == $reservationRequestId) {
+                        // Calculate days until expiry
+                        $daysUntilExpiry = null;
+                        $removalReason = 'manual';
+                        
+                        if ($reservation->expiry_date) {
+                            $expiryDate = Carbon::parse($reservation->expiry_date);
+                            $daysUntilExpiry = Carbon::today()->diffInDays($expiryDate, false);
+                            
+                            if ($daysUntilExpiry < 0) {
+                                $removalReason = 'expired';
+                            } elseif ($daysUntilExpiry <= 30) {
+                                $removalReason = 'near-expiry';
+                            }
+                        }
+                        
+                        // Log the removal
+                        MaterialRemovalLog::create([
+                            'reservation_request_id' => $reservationRequestId,
+                            'reservation_id' => $reservation->id,
+                            'material_code' => $reservation->material->kode_item ?? 'N/A',
+                            'material_name' => $reservation->material->nama_material ?? 'N/A',
+                            'batch_lot' => $reservation->batch_lot,
+                            'expiry_date' => $reservation->expiry_date,
+                            'qty_removed' => $reservation->qty_reserved,
+                            'uom' => $reservation->uom,
+                            'removal_reason' => $removalReason,
+                            'days_until_expiry' => $daysUntilExpiry,
+                            'removed_by' => Auth::id(),
+                            'notes' => 'Removed during TO generation',
+                        ]);
+                        
+                        // Return qty to available stock
+                        $stock = InventoryStock::where('material_id', $reservation->material_id)
+                            ->where('batch_lot', $reservation->batch_lot)
+                            ->where('bin_id', $reservation->bin_id)
+                            ->first();
+                        
+                        if ($stock) {
+                            $stock->decrement('qty_reserved', $reservation->qty_reserved);
+                            $stock->updateAvailableQty();
+                        }
+                        
+                        // Delete the reservation
+                        $reservation->delete();
+                    }
+                }
+            }
+            
+            // Check if still have materials after removal
+            $remainingReservations = $reservationRequest->reservations()->count();
+            if ($remainingReservations === 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat generate TO: Semua material telah dihapus. Tidak ada material tersisa untuk picking.'
+                ], 400);
+            }
+            
+            // Generate TO Number
+            $toNumber = 'TO-' . $reservationRequest->no_reservasi;
+            
+            // Update reservation request
+            $reservationRequest->update([
+                'to_number' => $toNumber,
+                'to_generated_at' => now(),
+                'to_generated_by' => Auth::id(),
+                'status' =>'Ready to Pick',
+            ]);
+            
+            // Log activity
+            $this->logActivity($reservationRequest, 'Generate TO Number', [
+                'description' => "TO Number {$toNumber} generated. Materials removed: " . count($removedReservationIds),
+                'to_number' => $toNumber,
+                'removed_count' => count($removedReservationIds),
+            ]);
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => '✅ TO Number berhasil digenerate!',
+                'toNumber' => $toNumber,
+                'removedCount' => count($removedReservationIds),
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal generate TO Number: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     public function store(Request $request)

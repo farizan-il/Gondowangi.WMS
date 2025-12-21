@@ -291,6 +291,14 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::post('/picking-list/update-status/{id}', [PickingListController::class, 'updateStatus'])
             // ->middleware('permission:picking.create')
             ->name('picking-list.update-status');
+        
+        // NEW: TO Generation Workflow
+        Route::post('/picking-list/analyze-expiry/{id}', [PickingListController::class, 'analyzeExpiry'])
+            // ->middleware('permission:picking.create')
+            ->name('picking-list.analyze-expiry');
+        Route::post('/picking-list/generate-to/{id}', [PickingListController::class, 'generateToNumber'])
+            // ->middleware('permission:picking.create')
+            ->name('picking-list.generate-to');
 
         // Return
         Route::get('/return', [ReturnController::class, 'index'])
