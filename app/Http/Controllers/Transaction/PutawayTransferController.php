@@ -74,31 +74,75 @@ class PutawayTransferController extends Controller
         $materials = InventoryStock::with([
             'material',
             'warehouse',
-            'bin'
+            'bin',
+            'goodReceipt',
+            'incomingGood'
         ])
         ->whereIn('status', ['RELEASED', 'REJECTED'])
-        ->where('qty_available', '>', 0)
+        ->where('qty_available', '>=', 0) // Changed from > to >= to include edge cases
         ->whereHas('bin', function ($query) {
             $query->where('bin_code', 'LIKE', 'QRT-%');
         })
+        // Order by updated_at first to prioritize recently re-QC'd materials
+        ->orderBy('updated_at', 'desc') // Recently re-QC'd materials first
+        ->orderBy('created_at', 'desc') // Then by creation date
         ->get()
         ->map(function ($stock) {
+            // Get GR reference - try both relationships
+            $grReference = null;
+            if ($stock->goodReceipt) {
+                $grReference = $stock->goodReceipt->gr_number ?? null;
+            } elseif ($stock->incomingGood) {
+                $grReference = $stock->incomingGood->no_incoming ?? null;
+            }
+
             return [
                 'itemCode' => $stock->material->kode_item,
                 'materialName' => $stock->material->nama_material,
                 'currentBin' => $stock->bin->bin_code,
+                'warehouseName' => $stock->warehouse->name ?? 'N/A',
                 'qty' => $stock->qty_available,
                 'uom' => $stock->uom,
                 'batchLot' => $stock->batch_lot,
                 'expDate' => $stock->exp_date,
                 'stockId' => $stock->id,
                 'status' => $stock->status,
+                'grReference' => $grReference,
+                'receivedDate' => $stock->created_at ? $stock->created_at->format('Y-m-d H:i') : null,
                 'selected' => false,
                 'destinationBin' => ''
             ];
         });
 
-        return response()->json($materials);
+        // Detect duplicates (same itemCode + batchLot)
+        $duplicateGroups = $materials->groupBy(function ($item) {
+            return $item['itemCode'] . '|' . ($item['batchLot'] ?? 'NO_BATCH');
+        });
+
+        // Add duplicate flag and sequence number to each material
+        $materialsWithDuplicateInfo = $materials->map(function ($material) use ($duplicateGroups) {
+            $key = $material['itemCode'] . '|' . ($material['batchLot'] ?? 'NO_BATCH');
+            $group = $duplicateGroups[$key];
+            
+            $isDuplicate = $group->count() > 1;
+            $sequenceNumber = 0;
+            
+            if ($isDuplicate) {
+                // Find the position of this material in the duplicate group
+                $sequenceNumber = $group->search(function ($item) use ($material) {
+                    return $item['stockId'] === $material['stockId'];
+                }) + 1;
+            }
+
+            return array_merge($material, [
+                'isDuplicate' => $isDuplicate,
+                'duplicateCount' => $group->count(),
+                'sequenceNumber' => $sequenceNumber,
+                'displaySuffix' => $isDuplicate ? " (Entry #{$sequenceNumber} dari {$group->count()})" : ''
+            ]);
+        });
+
+        return response()->json($materialsWithDuplicateInfo);
     }
 
     public function getAvailableBins(Request $request)

@@ -239,9 +239,51 @@ class WmsDashboardController extends Controller
             'period' => [
                 'start' => $startDate->format('Y-m-d'),
                 'end' => $endDate->format('Y-m-d'),
-            ]
+            ],
+            'incomingQtyDetails' => $this->calculateIncomingQtyDetails($startDate, $endDate)
         ]);
     }
+
+    /**
+     * Calculate incoming qty details for modal display
+     */
+    private function calculateIncomingQtyDetails($startDate, $endDate)
+    {
+        // 1. Total Qty Received from Incoming Goods
+        // Based on GoodsReceiptController logic:
+        // qty_unit (jumlah wadah) * qty_wadah (qty per wadah) = total qty received
+        $totalReceived = DB::table('incoming_goods_items as items')
+            ->join('incoming_goods as header', 'items.incoming_id', '=', 'header.id')
+            ->whereBetween('header.created_at', [$startDate, $endDate])
+            ->whereNotNull('items.qty_unit')
+            ->whereNotNull('items.qty_wadah')
+            ->selectRaw('SUM(items.qty_unit * items.qty_wadah) as total')
+            ->value('total') ?? 0;
+
+        // 2. Total Qty Picked from Picking Lists
+        // Sum of picked_qty from reservations that are completed
+        $totalPicked = DB::table('reservations as res')
+            ->join('reservation_requests as rr', 'res.reservation_request_id', '=', 'rr.id')
+            ->whereIn('rr.status', ['Completed', 'Short-Pick'])
+            ->whereNotNull('rr.picking_completed_at')
+            ->whereBetween('rr.picking_completed_at', [$startDate, $endDate])
+            ->whereNotNull('res.picked_qty')
+            ->selectRaw('SUM(res.picked_qty) as total')
+            ->value('total') ?? 0;
+
+        // 3. Calculate remaining and percentage
+        $remaining = $totalReceived - $totalPicked;
+        $percentage = $totalReceived > 0 ? round(($totalPicked / $totalReceived) * 100, 2) : 0;
+
+        return [
+            'totalReceived' => (float)$totalReceived,
+            'totalPicked' => (float)$totalPicked,
+            'remaining' => max(0, $remaining),
+            'percentage' => $percentage
+        ];
+    }
+
+
 
     private function formatDuration($minutes)
     {

@@ -606,7 +606,6 @@ class QualityControlController extends Controller
             // 5. Update incoming item status (dan Qty Unit yang tersisa)
             $incomingItem->update([
                 'status_qc' => $validated['hasil_qc'],
-                'qty_unit' => $qtyAfterSample,
             ]);
 
             // Handle photo uploads

@@ -20,7 +20,7 @@
       <!-- Summary Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <!-- Total Incoming -->
-        <div class="bg-white rounded-xl shadow p-5 border-l-4 border-blue-500">
+        <div class="bg-white rounded-xl shadow p-5 border-l-4 border-blue-500 hover:shadow-lg transition cursor-pointer" @click="showIncomingModal = true">
           <div class="flex justify-between items-start">
             <div>
               <p class="text-sm font-medium text-gray-500">Total Incoming</p>
@@ -30,7 +30,13 @@
               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
             </div>
           </div>
-          <p class="text-xs text-gray-400 mt-2">Receiving Documents</p>
+          <div class="flex items-center justify-between mt-2">
+            <p class="text-xs text-gray-400">Receiving Documents</p>
+            <button class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+              <span>View Details</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Total Outgoing -->
@@ -183,6 +189,91 @@
         </div>
 
     </div>
+
+    <!-- Incoming Qty Details Modal -->
+    <div v-if="showIncomingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);" @click.self="showIncomingModal = false">
+      <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="p-6">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-900">Detil Quantity Incoming</h3>
+            <button @click="showIncomingModal = false" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <!-- Total Qty Diterima -->
+            <div class="bg-blue-50 rounded-lg p-5 border-l-4 border-blue-500">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-blue-700">Total Qty Diterima</p>
+                  <h4 class="text-3xl font-bold text-blue-900 mt-2">{{ formatNumber(incomingQtyDetails.totalReceived) }}</h4>
+                  <p class="text-xs text-blue-600 mt-1">Dari {{ metrics.totalIncoming }} dokumen penerimaan</p>
+                </div>
+                <div class="p-3 bg-blue-100 rounded-lg">
+                  <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Total Qty Sudah Dipick -->
+            <div class="bg-green-50 rounded-lg p-5 border-l-4 border-green-500">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-green-700">Total Qty Sudah Dipick</p>
+                  <h4 class="text-3xl font-bold text-green-900 mt-2">{{ formatNumber(incomingQtyDetails.totalPicked) }}</h4>
+                  <p class="text-xs text-green-600 mt-1">Dari {{ metrics.totalOutgoing }} picking list</p>
+                </div>
+                <div class="p-3 bg-green-100 rounded-lg">
+                  <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Percentage Bar -->
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-gray-700">Persentase Qty yang Sudah Dipick</span>
+              <span class="text-sm font-bold text-gray-900">{{ incomingQtyDetails.percentage }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div class="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all" :style="{ width: incomingQtyDetails.percentage + '%' }"></div>
+            </div>
+          </div>
+
+          <!-- Period Info -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="font-medium text-gray-700">Periode:</span>
+                <span class="ml-2 text-gray-900">{{ formatDate(filters.date_start) }} - {{ formatDate(filters.date_end) }}</span>
+              </div>
+              <div>
+                <span class="font-medium text-gray-700">Sisa Qty Belum Dipick:</span>
+                <span class="ml-2 text-gray-900 font-semibold">{{ formatNumber(incomingQtyDetails.remaining) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex justify-end mt-6">
+            <button @click="showIncomingModal = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
@@ -206,6 +297,15 @@ const metrics = ref({
   leadTime: '0 Mins',
   stockAccuracy: 0,
   skuOnHand: 0
+});
+
+const showIncomingModal = ref(false);
+
+const incomingQtyDetails = ref({
+  totalReceived: 0,
+  totalPicked: 0,
+  remaining: 0,
+  percentage: 0
 });
 
 const rawCategoryData = ref([]);
@@ -261,6 +361,11 @@ const fetchData = async () => {
     metrics.value.leadTime = data.leadTime.toString().replace('-', '');
     metrics.value.stockAccuracy = data.stockAccuracy;
     metrics.value.skuOnHand = data.skuOnHand;
+
+    // Update Incoming Qty Details
+    if (data.incomingQtyDetails) {
+      incomingQtyDetails.value = data.incomingQtyDetails;
+    }
 
     // Save Raw Category Data
     rawCategoryData.value = data.incomingByCategory;
@@ -338,5 +443,24 @@ const sortedCategoryData = computed(() => {
 onMounted(() => {
   fetchData();
 });
+
+// Format number with thousand separator
+const formatNumber = (value) => {
+  if (!value && value !== 0) return '-';
+  const num = parseFloat(value);
+  if (isNaN(num)) return '-';
+  return num.toLocaleString('id-ID');
+};
+
+// Format date
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
 
 </script>

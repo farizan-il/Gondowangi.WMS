@@ -602,8 +602,8 @@
           </div>
           
           <!-- Selected materials count -->
-          <div v-if="selectedMaterialsToRemove.length > 0" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-            <p class="text-blue-800 text-sm font-medium">
+          <div v-if="selectedMaterialsToRemove.length > 0" class="mt-4 p-4 bg-red-50 border border-red-200 rounded">
+            <p class="text-red-800 text-xl text-end font-medium">
               {{ selectedMaterialsToRemove.length }} material dipilih untuk dihapus
             </p>
           </div>
@@ -742,6 +742,12 @@ const fetchPickingList = async () => {
         // FIX UTAMA: Menggunakan fungsi route() untuk mengatasi 404
         const response = await axios.get(route('transaction.api.picking-list'))
         pickingTasks.value = response.data
+        
+        // DEBUG: Check if batchRecord is present in response
+        console.log('=== DEBUG BATCH RECORD ===')
+        console.log('First task:', response.data[0])
+        console.log('Batch Record:', response.data[0]?.batchRecord)
+        console.log('==========================')
     } catch (error) {
         console.error('Error fetching picking list:', error)
     }

@@ -147,17 +147,20 @@ class ReservationController extends Controller
         
         // Regex Global untuk menangkap SEMUA item dari Bill of Material
         // Pattern: [Kode 5 digit] [Nama Material] [Qty dengan titik/koma] [UoM] [Status]
-        $globalPattern = '/(\d{5})\s+(.+?)\s+([\d.,]+)\s+(Kg|Pcs|L|Unit)\s+RM/i';
+        $globalPattern = '/(\d{5})\s+(.+?)\s+([\d.,]+)\s+(Kg|Pcs|L|Unit)\s+RM/is';
 
         if (preg_match_all($globalPattern, $BoMSection, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $m) {
+                // Clean up material name: remove newlines and extra whitespace
+                $materialName = trim(preg_replace('/\s+/', ' ', $m[2]));
+                
                 // Konversi quantity dengan cara yang sama
                 $qtyItem = str_replace('.', '', $m[3]);
                 $qtyItem = str_replace(',', '.', $qtyItem);
                 
                 $allMaterialsFromPdf[] = [
                     'code' => trim($m[1]),           // Kode Material (5 digit)
-                    'name' => trim($m[2]),           // Nama Material
+                    'name' => $materialName,         // Nama Material (cleaned)
                     'qty' => (float) $qtyItem,       // Quantity (float)
                     'uom' => trim($m[4])             // Unit of Measure
                 ];

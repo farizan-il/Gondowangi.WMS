@@ -34,7 +34,7 @@
             <input 
               v-model="search" 
               type="text" 
-              placeholder="Cari No PO, No Incoming, No Surat Jalan, No Kendaraan, atau Nama Driver..."
+              placeholder="Cari No PO, No Incoming, No Surat Jalan, Serial Number, atau Nama Driver..."
               class="w-full px-3 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" 
             />
           </div>
@@ -65,49 +65,49 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Terima</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Incoming</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No PO</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Material</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Surat
-                  Jalan</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Diterima</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Surat Jalan</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal
-                  Terima</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Kendaraan
-                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="shipment in shipments.data" :key="shipment.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(shipment.tanggalTerima) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <span class="font-mono text-xs">{{ shipment.incomingNumber }}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noPo }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">
-                  <div v-if="shipment.items && shipment.items.length > 0">
-                    <span class="font-mono text-xs">{{ shipment.items[0].kodeItem || '-' }}</span>
-                    <span v-if="shipment.items.length > 1" class="text-xs text-gray-500 ml-1">
+                  <div v-if="shipment.items && shipment.items.length > 0" class="max-w-xs">
+                    <div class="font-mono text-xs text-gray-600 mb-1">[{{ shipment.items[0].kodeItem || '-' }}]</div>
+                    <div class="truncate font-medium" :title="shipment.items[0].namaMaterial">
+                      {{ shipment.items[0].namaMaterial || '-' }}
+                    </div>
+                    <span v-if="shipment.items.length > 1" class="text-xs text-gray-500 mt-1 inline-block">
                       (+{{ shipment.items.length - 1 }} lainnya)
                     </span>
                   </div>
                   <span v-else class="text-gray-400">-</span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-900">
-                  <div v-if="shipment.items && shipment.items.length > 0" class="max-w-xs">
-                    <div class="truncate" :title="shipment.items[0].namaMaterial">
-                     {{ shipment.items[0].namaMaterial || '-' }}
-                    </div>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div v-if="shipment.items && shipment.items.length > 0">
+                    <span class="font-semibold">{{ formatNumber(calculateTotalQtyRaw(shipment.items[0])) }}</span>
+                    <span class="text-xs text-gray-600 ml-1">{{ shipment.items[0].uom || '-' }}</span>
                   </div>
                   <span v-else class="text-gray-400">-</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noSuratJalan }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.supplier }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(shipment.tanggalTerima) }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span class="font-mono text-xs">{{ shipment.items && shipment.items.length > 0 ? (shipment.items[0].batchLot || '-') : '-' }}</span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shipment.noKendaraan }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span :class="getStatusClass(shipment.status)"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -2071,6 +2071,23 @@ const formatNumber = (value) => {
   const num = parseInt(value);
   if (isNaN(num)) return '-';
   return num.toLocaleString('id-ID'); // Format Indonesia menggunakan titik sebagai separator ribuan
+}
+
+// Calculate total received qty (qty wadah * qty unit)
+const calculateTotalQty = (item) => {
+  if (!item) return '-';
+  const qtyWadah = parseFloat(item.qtyWadah) || 0;
+  const qtyUnit = parseFloat(item.qtyUnit) || 0;
+  const total = qtyWadah * qtyUnit;
+  return formatNumber(total);
+}
+
+// Calculate total received qty raw (returns number, not formatted string)
+const calculateTotalQtyRaw = (item) => {
+  if (!item) return 0;
+  const qtyWadah = parseFloat(item.qtyWadah) || 0;
+  const qtyUnit = parseFloat(item.qtyUnit) || 0;
+  return qtyWadah * qtyUnit;
 }
 
 const formatInteger = (value) => {

@@ -80,6 +80,7 @@ class GoodsReceiptController extends Controller
                         'kodeItem' => $item->material->kode_item ?? '',
                         'namaMaterial' => $item->material->nama_material ?? '',
                         'satuanMaterial' => $item->material->satuan ?? '',
+                        'uom' => $item->material->satuan ?? '', // UoM for display in table
                         'batchLot' => $item->batch_lot,
                         'expDate' => $item->exp_date,
                         'qtyWadah' => $item->qty_wadah,
