@@ -881,9 +881,10 @@ const filteredQcMaterials = computed(() => {
 
 const canCompleteTO = computed(() => {
   if (!selectedTO.value) return false
+  // Allow completion once all items have completed QR scanning (box, source bin, dest bin)
+  // Removed actualQty requirement per user request
   return selectedTO.value.items.every(item =>
-    item.boxScanned && item.sourceBinScanned && item.destBinScanned &&
-    (item.actualQty !== undefined && item.actualQty > 0)
+    item.boxScanned && item.sourceBinScanned && item.destBinScanned
   )
 })
 
