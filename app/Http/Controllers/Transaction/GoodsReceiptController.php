@@ -167,11 +167,18 @@ class GoodsReceiptController extends Controller
             // Ubah semua newline, tab, dan spasi ganda menjadi SATU spasi tunggal.
             $text = preg_replace('/\s+/', ' ', $text);
             $text = trim($text);
+            
+            // DEBUG: Log normalized text (temporary)
+            \Log::info('PDF Normalized Text (first 500 chars):', [
+                'text' => substr($text, 0, 500)
+            ]);
 
             $extractedData = [
                 'incoming_number' => '',
                 'no_surat_jalan' => 'N/A', // <--- DEFAULT VALUE (Permintaan Anda)
                 'no_po' => '',
+                'truck_number' => '',
+                'driver_name' => '',
                 'date' => '',
                 'items' => [],
                 'supplier_name' => '',
@@ -181,7 +188,7 @@ class GoodsReceiptController extends Controller
             // 2. HEADER EXTRACTION
             
             // Incoming Number
-            if (preg_match('/Incoming Shipment\s*[:]\s*([A-Z]{2}\/[0-9]+)/i', $text, $matches)) {
+            if (preg_match('/\b(IN\/\d+)\b/', $text, $matches)) {
                 $extractedData['incoming_number'] = trim($matches[1]);
                 if (IncomingGood::where('incoming_number', $extractedData['incoming_number'])->exists()) {
                      return response()->json(['error' => "Nomor {$extractedData['incoming_number']} sudah ada."], 422);
@@ -220,27 +227,102 @@ class GoodsReceiptController extends Controller
                 $extractedData['date'] = trim("{$dateMatch[1]} {$dateMatch[2]}");
             }
             
-            // Supplier
-            if (preg_match('/Supplier Address\s*:\s*(.*?)(?=\s+(?:Contact|Address|Kp\.|Jl\.|Komp|Jalan|Desa|Kecamatan|, PT))/i', $text, $matches)) {
-                 $extractedData['supplier_name'] = trim($matches[1]);
+            // Supplier - improved pattern
+            if (preg_match('/Supplier\s+([^\s].*?)(?=\s+Invoice|\s+Control|\s+Stock|\s+Truck|\s+Driver|\s+Purchase)/i', $text, $matches)) {
+                $extractedData['supplier_name'] = trim($matches[1]);
             }
-
-            // 3. ITEM EXTRACTION (Global Scan)
-            $globalPattern = '/\[(\d+)\]\s+(.*?)\s+([A-Za-z]{1,10})\s+([\d\.,]+)/';
-
-            if (preg_match_all($globalPattern, $text, $matches, PREG_SET_ORDER)) {
-                foreach ($matches as $match) {
-                    $qtyString = str_replace('.', '', $match[4]); 
-                    $qtyString = str_replace(',', '.', $qtyString); 
-
-                    $extractedData['items'][] = [
-                        'kode_material' => trim($match[1]), 
-                        'description' => trim($match[2]),
-                        'uom' => trim($match[3]),
-                        'quantity' => floatval($qtyString),
-                    ];
+            
+            
+            // Truck Number - careful to not capture "Driver" as the value
+            if (preg_match('/Truck\\s+Number\\s+([^\\n]+?)(?=\\s+Driver|\\s+Purchase|\\s+Creation)/i', $text, $matches)) {
+                $candidate = trim($matches[1]);
+                // Check if candidate is NOT a label (Driver, Purchase, Creation, etc)
+                if (!preg_match('/^(Driver|Purchase|Creation|Scheduled|Stock)/i', $candidate) && strlen($candidate) > 0) {
+                    $extractedData['truck_number'] = $candidate;
                 }
             }
+            
+            // Driver Name - careful to not capture "Purchase" as the value  
+            if (preg_match('/Driver\\s+Name\\s+([^\\n]+?)(?=\\s+Purchase|\\s+Creation|\\s+Scheduled)/i', $text, $matches)) {
+                $candidate = trim($matches[1]);
+                // Check if candidate is NOT a label
+                if (!preg_match('/^(Purchase|Creation|Scheduled|Stock|Source)/i', $candidate) && strlen($candidate) > 0) {
+                    $extractedData['driver_name'] = $candidate;
+                }
+            }
+
+            // 3. ITEM EXTRACTION (Two-step approach for better serial number matching)
+            // Step 1: Extract all serial numbers first (format: XX.K.XXXXXXXXXX)
+            $serialNumbers = [];
+            if (preg_match_all('/(\d+\.K\.\d+)/', $text, $serialMatches)) {
+                $serialNumbers = $serialMatches[1];
+            }
+            
+            // Pattern: [code] Description MiddleInt ActualQuantity Kg Kg
+            // Example: [60006] Ms 1000 2.720,0000 Kg Kg
+            $itemPattern = '/\\[(\\d+)\\]\\s+(\\w+)\\s+\\d+\\s+([\\d\\.,]+)\\s+Kg\\s+Kg/i';
+            
+            if (preg_match_all($itemPattern, $text, $matches, PREG_SET_ORDER)) {
+                $itemIndex = 0;
+                foreach ($matches as $match) {
+                    $qtyString = str_replace('.', '', $match[3]); 
+                    $qtyString = str_replace(',', '.', $qtyString); 
+                    
+                    // Description is now clean in match[2]
+                    $description = trim($match[2]);
+                    
+                    $itemData = [
+                        'kode_material' => trim($match[1]), 
+                        'description' => $description,
+                        'uom' => 'Kg',
+                        'quantity' => floatval($qtyString),
+                        'serial_number' => '',
+                    ];
+                    
+                    // Match serial number by index if available
+                    if (isset($serialNumbers[$itemIndex])) {
+                        $itemData['serial_number'] = $serialNumbers[$itemIndex];
+                    }
+                    
+                    $extractedData['items'][] = $itemData;
+                    $itemIndex++;
+                }
+            } else {
+                // Fallback: same pattern but without requiring "Kg Kg"
+                $fallbackPattern = '/\\[(\\d+)\\]\\s+(\\w+)\\s+\\d+\\s+([\\d\\.,]+)/';
+                if (preg_match_all($fallbackPattern, $text, $matches, PREG_SET_ORDER)) {
+                    $itemIndex = 0;
+                    foreach ($matches as $match) {
+                        $qtyString = str_replace('.', '', $match[3]); 
+                        $qtyString = str_replace(',', '.', $qtyString); 
+                        
+                        // Description is clean in match[2]
+                        $description = trim($match[2]);
+
+                        $itemData = [
+                            'kode_material' => trim($match[1]), 
+                            'description' => $description,
+                            'uom' => 'Kg',
+                            'quantity' => floatval($qtyString),
+                            'serial_number' => '',
+                        ];
+                        
+                        if (isset($serialNumbers[$itemIndex])) {
+                            $itemData['serial_number'] = $serialNumbers[$itemIndex];
+                        }
+                        
+                        $extractedData['items'][] = $itemData;
+                        $itemIndex++;
+                    }
+                }
+            }
+            
+            // DEBUG: Log extracted items (temporary)
+            \Log::info('PDF Extracted Items:', [
+                'items_count' => count($extractedData['items']),
+                'items' => $extractedData['items'],
+                'serial_numbers' => $serialNumbers
+            ]);
 
             // 4. FINALISASI
             // Format Tanggal
@@ -397,8 +479,8 @@ class GoodsReceiptController extends Controller
                     'material_id' => $material->id,
                     'batch_lot' => $itemData['batchLot'],
                     'exp_date' => $itemData['expDate'] ?? null,
-                    'qty_wadah' => $qtyPerWadah,
-                    'qty_unit' => $jumlahWadah, 
+                    'qty_wadah' => $jumlahWadah,   // Jumlah wadah (e.g., 1)
+                    'qty_unit' => $qtyPerWadah,    // Qty per wadah (e.g., 2720) 
 
                     'satuan' => $material->satuan,
                     
@@ -594,8 +676,8 @@ class GoodsReceiptController extends Controller
                         'material_id' => $material->id,
                         'batch_lot' => $itemData['batchLot'],
                         'exp_date' => $itemData['expDate'] ?? null,
-                        'qty_wadah' => $qtyPerWadah,
-                        'qty_unit' => $jumlahWadah,
+                        'qty_wadah' => $jumlahWadah,   // Jumlah wadah (e.g., 1)
+                        'qty_unit' => $qtyPerWadah,    // Qty per wadah (e.g., 2720)
                         'satuan' => $material->satuan,
                         'kondisi_baik' => $itemData['kondisiBaik'] ?? true,
                         'kondisi_tidak_baik' => $itemData['kondisiTidakBaik'] ?? false,

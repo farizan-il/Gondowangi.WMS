@@ -180,100 +180,30 @@
           <div class="space-y-6">
             <div>
               <h4 class="text-md font-medium text-gray-900 mb-3">Material yang sudah QC Released</h4>
-              
-              <!-- Info Box for Duplicate Materials -->
-              <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                  </svg>
-                  <div class="flex-1">
-                    <h5 class="text-sm font-semibold text-blue-900 mb-1">Informasi Material Duplikat</h5>
-                    <p class="text-xs text-blue-800">
-                      Material dengan <strong>kode item dan batch/lot yang sama</strong> akan ditandai dengan latar belakang kuning dan badge nomor urut. 
-                      Ini terjadi ketika ada material yang dikembalikan dari produksi ke QRT untuk re-QC. 
-                      Setiap entry memiliki <strong>Stock ID</strong> unik dan dapat diproses secara terpisah.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Filter for duplicates -->
-              <div class="mb-3 flex items-center gap-3">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" v-model="showOnlyDuplicates" 
-                    class="rounded border-gray-300 focus:ring-blue-500">
-                  <span class="text-sm font-medium text-gray-700">Tampilkan hanya material duplikat (Material return dari produksi)</span>
-                </label>
-                <span v-if="showOnlyDuplicates" class="text-xs text-gray-500">
-                  ({{ filteredQcMaterials.length }} dari {{ qcReleasedMaterials.length }} materials)
-                </span>
-              </div>
-
               <div class="overflow-x-auto">
                 <table class="w-full border border-gray-200 rounded-lg">
                   <thead class="bg-gray-50">
                     <tr>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Select</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock ID</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Code</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Name</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch/Lot</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Bin</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GR Reference</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <!-- Empty State -->
-                    <tr v-if="!filteredQcMaterials.length">
-                      <td colspan="12" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center justify-center">
-                          <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                          </svg>
-                          <h3 class="text-lg font-medium text-gray-900 mb-1">Tidak ada material QC Released di QRT</h3>
-                          <p class="text-sm text-gray-500 mb-2">{{ showOnlyDuplicates ? 'Tidak ditemukan material duplikat.' : 'Pastikan material sudah di-QC dan berada di bin QRT-xxx.' }}</p>
-                          <p class="text-xs text-gray-400">Material harus memiliki status RELEASED atau REJECTED dan qty_available > 0</p>
-                        </div>
-                      </td>
-                    </tr>
-                    
-                    <tr v-for="material in filteredQcMaterials" :key="material.stockId" 
-                        :class="{'bg-amber-50 hover:bg-amber-100': material.isDuplicate, 'hover:bg-gray-50': !material.isDuplicate}">
+                    <tr v-for="(material, index) in qcReleasedMaterials" :key="index" class="hover:bg-gray-50">
                       <td class="px-4 py-3">
                         <input type="checkbox" v-model="material.selected"
                           class="rounded border-gray-300 focus:ring-blue-500">
                       </td>
-                      <td class="px-4 py-3">
-                        <div class="flex items-center gap-2">
-                          <span class="text-sm font-mono text-gray-900">{{ material.stockId }}</span>
-                          <span v-if="material.isDuplicate" 
-                                class="px-2 py-0.5 bg-amber-200 text-amber-800 text-[10px] font-bold rounded uppercase"
-                                :title="'Material duplikat: ' + material.duplicateCount + ' entries dengan kode item dan batch/lot yang sama'">
-                            {{ material.sequenceNumber }}/{{ material.duplicateCount }}
-                          </span>
-                        </div>
-                      </td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.itemCode }}</td>
-                      <td class="px-4 py-3">
-                        <div class="text-sm text-gray-900">{{ material.materialName }}</div>
-                        <div v-if="material.status === 'REJECTED'" class="mt-1">
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.materialName }} <div v-if="material.status === 'REJECTED'" class="mt-1">
                           <span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Reject</span>
-                        </div>
-                        <div v-if="material.isDuplicate" class="text-xs text-amber-700 mt-1 font-medium">
-                          ⚠️ {{ material.displaySuffix }}
-                        </div>
-                      </td>
-                      <td class="px-4 py-3 text-sm text-gray-600 font-medium">{{ material.batchLot || '-' }}</td>
-                      <td class="px-4 py-3 text-sm text-blue-700 font-semibold">{{ material.currentBin }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.warehouseName }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-600">{{ material.grReference || '-' }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-600">{{ material.receivedDate || '-' }}</td>
+                        </div></td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.currentBin }}</td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.qty }}</td>
                       <td class="px-4 py-3 text-sm text-gray-900">
                         {{ material.uom }}
@@ -747,9 +677,6 @@ interface QCReleasedMaterial {
   itemCode: string
   materialName: string
   currentBin: string
-  warehouseName: string
-  grReference?: string
-  receivedDate?: string
   qty: number
   uom: string
   selected: boolean
@@ -760,10 +687,6 @@ interface QCReleasedMaterial {
   status: string // RELEASED | REJECTED
   binSearchQuery?: string // Untuk autocomplete
   showBinSuggestions?: boolean // State dropdown
-  isDuplicate?: boolean // Flag for duplicate materials
-  duplicateCount?: number // Total count of duplicates
-  sequenceNumber?: number // Sequence number in duplicate group
-  displaySuffix?: string // Display suffix for duplicates
 }
 
 interface BinInfo {
@@ -827,7 +750,6 @@ const searchBatch = ref('')
 const filterType = ref('')
 const filterStatus = ref('')
 const filterWarehouse = ref('')
-const showOnlyDuplicates = ref(false) // Filter for duplicate materials
 
 // Modals
 const showAutoPutawayModal = ref(false)
@@ -872,19 +794,11 @@ const selectedMaterials = computed(() => {
   return qcReleasedMaterials.value.filter(m => m.selected && m.destinationBin)
 })
 
-const filteredQcMaterials = computed(() => {
-  if (!showOnlyDuplicates.value) {
-    return qcReleasedMaterials.value
-  }
-  return qcReleasedMaterials.value.filter(m => m.isDuplicate)
-})
-
 const canCompleteTO = computed(() => {
   if (!selectedTO.value) return false
-  // Allow completion once all items have completed QR scanning (box, source bin, dest bin)
-  // Removed actualQty requirement per user request
   return selectedTO.value.items.every(item =>
-    item.boxScanned && item.sourceBinScanned && item.destBinScanned
+    item.boxScanned && item.sourceBinScanned && item.destBinScanned &&
+    (item.actualQty !== undefined && item.actualQty > 0)
   )
 })
 

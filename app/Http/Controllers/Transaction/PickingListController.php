@@ -73,7 +73,6 @@ class PickingListController extends Controller
                 // Packaging & ADD → ambil dari no_bets_filling
                 $batchRecord = $request->no_bets_filling ?? '-';
             }
-            // FOH-RS tidak memiliki batch record, jadi tetap '-'
         }
 
         return [
@@ -81,7 +80,7 @@ class PickingListController extends Controller
             'toNumber' => $request->to_number ?? 'Belum Digenerate',
             'toGenerated' => !is_null($request->to_number),
             'noReservasi' => $request->no_reservasi,
-            'batchRecord' => $batchRecord, // << FIELD BARU: Batch Record (MO)
+            'batchRecord' => $batchRecord, 
             'tanggalDibuat' => $request->created_at,
             'requester' => $requesterName, 
             'departemen' => $departemen,
@@ -91,10 +90,10 @@ class PickingListController extends Controller
             
             // PERUBAHAN UTAMA: Items sekarang adalah DETAIL ALOKASI BATCH (Reservations)
             'items' => $request->reservations
-                        ->map(fn($item) => $this->mapBatchDetailToCamelCase($item))
-                        ->sortBy('kodeItem') // Sort untuk grouping visual di FE
-                        ->values()
-                        ->all(),
+                ->map(fn($item) => $this->mapBatchDetailToCamelCase($item))
+                ->sortBy('kodeItem') // Sort untuk grouping visual di FE
+                ->values()
+                ->all(),
         ];
     }
 

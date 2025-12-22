@@ -770,11 +770,11 @@
                           class="w-36 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
-                        <input v-model="item.qtyUnit" type="number"
+                        <input v-model="item.qtyWadah" type="number"
                           class="w-24 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
-                        <input v-model="item.qtyWadah" type="number"
+                        <input v-model="item.qtyUnit" type="number"
                           class="w-24 text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900">
                       </td>
                       <td class="px-3 py-2 whitespace-nowrap">
@@ -1420,10 +1420,10 @@ const processErpPdf = async () => {
             kodeItem: materialDetail ? materialDetail.id : '',
             kodeItemDisplay: itemData.kode_material,
             namaMaterial: materialDetail ? materialDetail.name : itemData.description,
-            batchLot: '',
+            batchLot: itemData.serial_number || '',
             expDate: '',
-            qtyWadah: itemData.quantity,
-            qtyUnit: '1',
+            qtyWadah: '1',
+            qtyUnit: itemData.quantity,
             pabrikPembuat: parsedData.supplier_name || '',
             skuSearch: itemData.kode_material,
             filteredMaterials: [],
@@ -1455,8 +1455,8 @@ const processErpPdf = async () => {
           ? parsedData.no_surat_jalan 
           : 'N/A'
       newShipment.value.noPo = parsedData.no_po || ''
-      newShipment.value.noKendaraan = parsedData.no_truck || '-'
-      newShipment.value.namaDriver = parsedData.driver_name || '-'
+      newShipment.value.noKendaraan = parsedData.truck_number || ''
+      newShipment.value.namaDriver = parsedData.driver_name || ''
       
       if (parsedData.tanggal_terima) {
         newShipment.value.tanggalTerima = parsedData.tanggal_terima
@@ -1505,8 +1505,8 @@ const processErpPdf = async () => {
           : 'N/A'
       newShipment.value.noPo = parsedData.no_po || ''
 
-      newShipment.value.noKendaraan = parsedData.no_truck || '-' 
-      newShipment.value.namaDriver = parsedData.driver_name || '-'
+      newShipment.value.noKendaraan = parsedData.truck_number || ''
+      newShipment.value.namaDriver = parsedData.driver_name || ''
       
       if (parsedData.tanggal_terima) {
            newShipment.value.tanggalTerima = parsedData.tanggal_terima
@@ -1550,10 +1550,10 @@ const processErpPdf = async () => {
           kodeItem: materialDetail ? materialDetail.id : '', 
           kodeItemDisplay: itemData.kode_material, 
           namaMaterial: materialDetail ? materialDetail.name : itemData.description, 
-          batchLot: '', 
+          batchLot: itemData.serial_number || '', 
           expDate: '', 
-          qtyWadah: itemData.quantity, // 4995 untuk baris 1, 1008 untuk baris 2
-          qtyUnit: '1', 
+          qtyWadah: '1',
+          qtyUnit: itemData.quantity, 
           pabrikPembuat: newShipment.value.supplierName || '', 
           skuSearch: itemData.kode_material,
           filteredMaterials: [],
@@ -3316,8 +3316,8 @@ const printSingleQR = (labelData) => {
     const formattedExpDate = formatDateOnly(labelData.expDate);
 
 
-    const qtyBoxDescription = `${labelData.qtyUnit} Pcs`;
-    const qtyBoxDetail = labelData.qtyWadah > 0 ? `${labelData.qtyUnit / labelData.qtyWadah} x ${labelData.qtyWadah} box` : '';
+    const qtyBoxDescription = `${Math.floor(labelData.qtyUnit)} Pcs`;
+    const qtyBoxDetail = labelData.qtyWadah > 0 ? `${Math.floor(labelData.qtyUnit / labelData.qtyWadah)} x ${Math.floor(labelData.qtyWadah)} box` : '';
 
 
     printWindow.document.write(`
@@ -3482,7 +3482,7 @@ const printSingleQR = (labelData) => {
                                 <div class="info-value">: ${labelData.kodeItem}</div>
                             </div>
                             <div class="info-row">
-                                <div class="info-label">No Lot</div>
+                                <div class="info-label">Serial Lot</div>
                                 <div class="info-value">: ${labelData.batchLot}</div>
                             </div>
                             <div class="info-row">
@@ -3585,8 +3585,8 @@ const printAllQR = () => {
       const formattedTglDatang = formatDateOnly(selectedShipment.value.tanggalTerima);
       const formattedExpDate = formatDateOnly(labelData.expDate);
 
-      const qtyBoxDescription = `${labelData.qtyUnit} Pcs`;
-      const qtyBoxDetail = labelData.qtyWadah > 0 ? `${labelData.qtyUnit / labelData.qtyWadah} x ${labelData.qtyWadah} box` : '';
+      const qtyBoxDescription = `${Math.floor(labelData.qtyUnit)} Pcs`;
+      const qtyBoxDetail = labelData.qtyWadah > 0 ? `${Math.floor(labelData.qtyUnit / labelData.qtyWadah)} x ${Math.floor(labelData.qtyWadah)} box` : '';
 
       labelsInPageHTML += `
           <div class="label-wrapper">
@@ -3607,7 +3607,7 @@ const printAllQR = () => {
                               <div class="info-value">: ${labelData.kodeItem}</div>
                           </div>
                           <div class="info-row">
-                              <div class="info-label">No Lot</div>
+                              <div class="info-label">Serial Lot</div>
                               <div class="info-value">: ${labelData.batchLot}</div>
                           </div>
                           <div class="info-row">
@@ -3624,7 +3624,7 @@ const printAllQR = () => {
                           </div>` : ''}
                           <div class="info-row">
                               <div class="info-label">Wadah Ke</div>
-                              <div class="info-value">: ${labelData.wadahKe} / ${labelData.qtyWadah}</div>
+                              <div class="info-value">: ${Math.floor(labelData.wadahKe)} / ${Math.floor(labelData.qtyWadah)}</div>
                           </div>
                           <div class="info-row">
                               <div class="info-label">Tgl Datang</div>
