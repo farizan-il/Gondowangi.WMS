@@ -919,8 +919,8 @@
                       <div>
                         <div class="font-medium text-gray-900 mb-2">{{ item.kodeItem }} - {{ item.namaMaterial }}</div>
                         <div class="text-sm text-gray-600 space-y-1">
-                          <div>Batch: {{ item.batchLot }}</div>
-                          <div>Qty: {{ item.qtyUnit }}</div>
+                          <div>Serial Lot: {{ item.batchLot }}</div>
+                          <div>Qty: {{ Math.floor(item.qtyUnit) }}</div>
                           <div>Exp: {{ formatDateOnly(item.expDate) }}</div>
                         </div>
                         <div class="bg-gray-100 p-2 rounded font-mono text-xs text-gray-800 mt-3">
