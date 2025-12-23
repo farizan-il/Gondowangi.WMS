@@ -2132,7 +2132,7 @@ const generateLabelHTML = (status, item, qrDataURL, labelIndex, totalLabels) => 
   const jmlBarangDisplay = `${formatInteger(qtyUnitPerWadah)} ${item.uom || 'PCS'}`;
 
   const qtyWadahTotal = item.qtyWadah || 1;
-  const wadahDetail = qtyWadahTotal > 0 ? `${qtyUnitPerWadah} x ${qtyWadahTotal} box` : '';
+  const wadahDetail = qtyWadahTotal > 0 ? `${parseInt(qtyUnitPerWadah)} x ${parseInt(qtyWadahTotal)} box` : '';
   
   const qrContentHtml = qrDataURL ?
     `<img src="${qrDataURL}" class="qr-code" alt="QR Code">` :
@@ -2157,7 +2157,7 @@ const generateLabelHTML = (status, item, qrDataURL, labelIndex, totalLabels) => 
               <div class="info-value">: ${item.kodeItem || 'N/A'}</div>
             </div>
             <div class="info-row">
-              <div class="info-label">No Lot</div>
+              <div class="info-label">Serial Lot</div>
               <div class="info-value">: ${noLot}</div>
             </div>
             <div class="info-row">
@@ -2174,7 +2174,7 @@ const generateLabelHTML = (status, item, qrDataURL, labelIndex, totalLabels) => 
             </div>` : ''}
             <div class="info-row">
               <div class="info-label">Wadah Ke</div>
-              <div class="info-value">: ${labelIndex} / ${qtyWadahTotal}</div>
+              <div class="info-value">: ${parseInt(labelIndex)} / ${parseInt(qtyWadahTotal)}</div>
             </div>
             <div class="info-row">
               <div class="info-label">Tgl Datang</div>
