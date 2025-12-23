@@ -71,23 +71,45 @@ class PutawayTransferController extends Controller
 
     public function getQcReleasedMaterials()
     {
+        // Query untuk mendapatkan semua material di QRT bins
         $materials = InventoryStock::with([
             'material',
             'warehouse',
             'bin'
         ])
         ->whereIn('status', ['RELEASED', 'REJECTED'])
-        ->where('qty_available', '>', 0)
+        ->where('qty_on_hand', '>', 0) // Changed from qty_available to qty_on_hand
         ->whereHas('bin', function ($query) {
             $query->where('bin_code', 'LIKE', 'QRT-%');
         })
-        ->get()
-        ->map(function ($stock) {
+        ->get();
+
+        // Log untuk debugging
+        \Log::info('QC Released Materials Query Result', [
+            'total_found' => $materials->count(),
+            'materials' => $materials->map(function($stock) {
+                return [
+                    'id' => $stock->id,
+                    'material' => $stock->material->kode_item ?? 'N/A',
+                    'batch_lot' => $stock->batch_lot,
+                    'bin' => $stock->bin->bin_code ?? 'N/A',
+                    'qty_on_hand' => $stock->qty_on_hand,
+                    'qty_available' => $stock->qty_available,
+                    'qty_reserved' => $stock->qty_reserved,
+                    'status' => $stock->status
+                ];
+            })
+        ]);
+
+        $result = $materials->map(function ($stock) {
             return [
                 'itemCode' => $stock->material->kode_item,
                 'materialName' => $stock->material->nama_material,
                 'currentBin' => $stock->bin->bin_code,
-                'qty' => $stock->qty_available,
+                'currentBinId' => $stock->bin->id,
+                'qty' => $stock->qty_on_hand, // Show qty_on_hand instead of qty_available
+                'qtyAvailable' => $stock->qty_available, // Keep for reference
+                'qtyReserved' => $stock->qty_reserved, // Keep for reference
                 'uom' => $stock->uom,
                 'batchLot' => $stock->batch_lot,
                 'expDate' => $stock->exp_date,
@@ -98,7 +120,7 @@ class PutawayTransferController extends Controller
             ];
         });
 
-        return response()->json($materials);
+        return response()->json($result);
     }
 
     public function getAvailableBins(Request $request)

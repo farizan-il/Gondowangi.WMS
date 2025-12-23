@@ -54,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                     $q->where('qty_reserved', '>', 0);
                 })->count() : 0,
             'pendingPutawayCount' => $user ? \App\Models\TransferOrder::where('status', 'Pending')->count() : 0,
+            'inProgressReservationCount' => $user ? \App\Models\ReservationRequest::where('status', 'In Progress')->count() : 0,
             'selectedDatabase' => $request->session()->get('selected_database', 'mysql'), // Share selected database
         ]);
     }

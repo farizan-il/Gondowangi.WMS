@@ -2694,17 +2694,16 @@ const printChecklist = (shipment) => {
             .form-number-section {
                 position: absolute;
                 right: 10px;
-                top: 15px;
+                top: 10px;
                 width: 120px;
                 text-align: center;
             }
             
-            .form-number-box {
-                background: #000;
-                color: white;
-                padding: 3px;
-                font-size: 9px;
-                font-weight: bold;
+            .logo-right {
+                width: 100%;
+                height: auto;
+                max-height: 60px;
+                object-fit: contain;
             }
             
             .header-title {
@@ -2879,7 +2878,7 @@ const printChecklist = (shipment) => {
                     </div>
                     
                     <div class="form-number-section">
-                        ${formChecklistNumber}
+                        <img src="https://karir-production.nos.jkt-1.neo.id/logos/05/6980305/logo_gondowangi.png" alt="Logo Gondowangi" class="logo-right">
                     </div>
                     
                     <div class="header-title">E-FORM CHECKLIST PENERIMAAN MATERIAL DARI VENDOR</div>
@@ -3023,15 +3022,15 @@ const printChecklist = (shipment) => {
                     <div class="signature-left">
                         <div class="signature-title">Dilaporkan oleh</div>
                         <div class="signature-fields">
-                            <div>Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
-                            <div>Tanggal &nbsp;&nbsp;:</div>
+                            <div>Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${usePage().props.auth?.user?.name || '-'}</div>
+                            <div>Tanggal &nbsp;&nbsp;: ${formatDateOnly(shipment.tanggalTerima)}</div>
                         </div>
                     </div>
                     <div class="signature-right">
                         <div class="signature-title">Diperiksa Oleh</div>
                         <div class="signature-fields">
-                            <div>Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
-                            <div>Tanggal &nbsp;&nbsp;:</div>
+                            <div>Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Reza Rizky Permadi</div>
+                            <div>Tanggal &nbsp;&nbsp;: ${formatDateOnly(shipment.tanggalTerima)}</div>
                         </div>
                     </div>
                 </div>

@@ -168,7 +168,14 @@
                             <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 2v4M8 2v4"/>
                         </svg>
-                        <span v-show="sidebarOpen" class="font-medium">Reservation</span>
+                        <span v-show="sidebarOpen" class="font-medium flex-1">Reservation</span>
+                        <span 
+                            v-if="$page.props.inProgressReservationCount > 0" 
+                            v-show="sidebarOpen"
+                            class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                        >
+                            {{ $page.props.inProgressReservationCount }}
+                        </span>
                     </Link>
 
                     <!-- Picking List -->
