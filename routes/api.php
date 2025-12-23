@@ -1,6 +1,11 @@
 <?php
 use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\InventoryStatsController;
 use Illuminate\Support\Facades\Route;
+
+// Public routes (no auth required)
+Route::get('/inventory/stats', [InventoryStatsController::class, 'getInventoryStats']);
+Route::get('/inventory/print-all', [InventoryStatsController::class, 'getAllMaterialsForPrint']);
 
 Route::middleware('auth:sanctum')->get('/master-data/all', [MasterDataController::class, 'getAllData']);
 
@@ -23,8 +28,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/master-data/bin/{id}', [MasterDataController::class, 'updateBin']);
     Route::delete('/master-data/bin/{id}', [MasterDataController::class, 'deleteBin']);
     
+    
     // User
     Route::post('/master-data/user', [MasterDataController::class, 'storeUser']);
     Route::put('/master-data/user/{id}', [MasterDataController::class, 'updateUser']);
     Route::delete('/master-data/user/{id}', [MasterDataController::class, 'deleteUser']);
+
+
 });

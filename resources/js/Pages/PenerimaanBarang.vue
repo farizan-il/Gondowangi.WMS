@@ -480,6 +480,130 @@
         </div>
       </div>
 
+      <!-- Print All QR Modal  -->
+      <div v-if="showPrintAllQRModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-bold text-gray-900">Print All QR Codes</h3>
+              <button @click="closePrintAllModal" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Statistics Display -->
+            <div v-if="inventoryStats" class="space-y-4 mb-6">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="font-semibold text-blue-900 mb-3 flex items-center">
+                  <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                  </svg>
+                  Statistik Inventory On-Hand
+                </h4>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div class="bg-white rounded p-3 border border-green-200">
+                    <div class="text-gray-600 text-xs font-medium">Released</div>
+                    <div class="text-green-700 text-2xl font-bold">{{ inventoryStats.released }}</div>
+                    <div class="text-gray-500 text-xs">SKU</div>
+                  </div>
+                  <div class="bg-white rounded p-3 border border-orange-200">
+                    <div class="text-gray-600 text-xs font-medium">Karantina</div>
+                    <div class="text-orange-700 text-2xl font-bold">{{ inventoryStats.karantina }}</div>
+                    <div class="text-gray-500 text-xs">SKU</div>
+                  </div>
+                  <div class="bg-white rounded p-3 border border-red-200">
+                    <div class="text-gray-600 text-xs font-medium">Rejected</div>
+                    <div class="text-red-700 text-2xl font-bold">{{ inventoryStats.rejected }}</div>
+                    <div class="text-gray-500 text-xs">SKU</div>
+                  </div>
+                  <div class="bg-white rounded p-3 border border-yellow-200" v-if="inventoryStats.expired > 0">
+                    <div class="text-gray-600 text-xs font-medium">Expired</div>
+                    <div class="text-yellow-700 text-2xl font-bold">{{ inventoryStats.expired }}</div>
+                    <div class="text-gray-500 text-xs">SKU</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-purple-900">Total QR Codes:</span>
+                  <span class="text-2xl font-bold text-purple-700">{{ formatNumber(inventoryStats.total_qr_codes) }}</span>
+                </div>
+                <div class="flex items-center justify-between text-xs text-purple-700">
+                  <span>Estimasi Waktu:</span>
+                  <span class="font-semibold">~{{ Math.ceil(inventoryStats.estimated_time_seconds / 60) }} menit</span>
+                </div>
+              </div>
+
+              <div v-if="inventoryStats.expired > 0" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+                <div class="flex items-center">
+                  <svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                  <div class="text-sm">
+                    <span class="font-semibold text-yellow-900">Perhatian!</span>
+                    <span class="text-yellow-800"> Material expired akan tetap dicetak.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button @click="closePrintAllModal"
+                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                Batal
+              </button>
+              <button @click="proceedToPrintAll"
+                :disabled="isPrintingAllQR"
+                class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 flex items-center">
+                <svg v-if="!isPrintingAllQR" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <svg v-else class="animate-spin h-5 w-5 mr-2 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isPrintingAllQR ? 'Processing...' : 'Proceed to Print' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Bar for Print All QR -->
+      <div v-if="showPrintAllProgress"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[10000]"
+        style="background-color: rgba(43, 51, 63, 0.67);">
+        <div class="bg-white rounded-lg p-8 max-w-md mx-4 w-full">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Generating QR Codes</h3>
+          
+          <!-- Progress Bar -->
+          <div class="mb-4">
+            <div class="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Progress</span>
+              <span>{{ printAllProgress }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+              <div 
+                class="bg-purple-600 h-4 rounded-full transition-all duration-300 ease-out"
+                :style="{ width: printAllProgress + '%' }">
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Text -->
+          <div class="text-center text-sm text-gray-700">
+            <p class="font-medium">{{ printAllStatusText }}</p>
+            <p class="text-xs text-gray-500 mt-1">Mohon tunggu, jangan tutup browser...</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal Form Buat Penerimaan -->
       <div v-if="showModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
@@ -1202,6 +1326,16 @@ const availableStatuses = ref([])
 const selectedShipmentForPrint = ref(null)
 const isGeneratingLabel = ref(false)
 const selectedShipment = ref(null)
+
+// Print All QR States
+const showPrintAllQRModal = ref(false)
+const inventoryStats = ref(null)
+const isPrintingAllQR = ref(false)
+const showPrintAllProgress = ref(false)
+const printAllProgress = ref(0)
+const printAllStatusText = ref('')
+const allMaterialsData = ref([])
+
 
 const newShipment = ref({
   noPo: '',
@@ -3870,6 +4004,347 @@ const printAllQR = () => {
   setTimeout(() => {
     printWindow.print();
   }, 500);
+}
+
+// ===================================
+// PRINT ALL QR CODES FUNCTIONS
+// ===================================
+
+// Show Print All QR Modal
+const showPrintAllModal = async () => {
+  try {
+    // Fetch statistics from backend
+    const response = await axios.get('/api/inventory/stats');
+    
+    if (response.data.success) {
+      inventoryStats.value = response.data.data;
+      showPrintAllQRModal.value = true;
+    } else {
+      alert('Gagal mengambil statistik inventory');
+    }
+  } catch (error) {
+    console.error('Error fetching inventory stats:', error);
+    alert('Terjadi kesalahan saat mengambil statistik inventory');
+  }
+}
+
+// Close Print All Modal
+const closePrintAllModal = () => {
+  showPrintAllQRModal.value = false;
+  inventoryStats.value = null;
+}
+
+// Proceed to Print All QR
+const proceedToPrintAll = async () => {
+  if (!inventoryStats.value) return;
+
+  isPrintingAllQR.value = true;
+  showPrintAllQRModal.value = false;
+  showPrintAllProgress.value = true;
+  printAllProgress.value = 0;
+  allMaterialsData.value = [];
+
+  try {
+    const totalQRCodes = inventoryStats.value.total_qr_codes;
+    let offset = 0;
+    const batchSize = 100; // Fetch 100 stock records per batch
+    let allData = [];
+
+    printAllStatusText.value = `Fetching data... 0 / ${totalQRCodes} QR codes`;
+
+    // Fetch all data in batches
+    while (true) {
+      const response = await axios.get('/api/inventory/print-all', {
+        params: { offset, limit: batchSize }
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch materials');
+      }
+
+      const batchData = response.data.data;
+      allData = [...allData, ...batchData];
+
+      // Update progress
+      const fetchProgress = Math.min(50, Math.floor((allData.length / totalQRCodes) * 50));
+      printAllProgress.value = fetchProgress;
+      printAllStatusText.value = `Fetching data... ${allData.length} / ${totalQRCodes} QR codes`;
+
+      // Check if there's more data
+      if (!response.data.pagination.has_more) {
+        break;
+      }
+
+      offset += batchSize;
+    }
+
+    allMaterialsData.value = allData;
+    printAllStatusText.value = `Data fetched successfully. Generating QR codes...`;
+
+    // Generate QR codes and print
+    await generateAndPrintAllQR(allData);
+
+  } catch (error) {
+    console.error('Error in proceedToPrintAll:', error);
+    alert(`Error: ${error.message || 'Terjadi kesalahan saat memproses data'}`);
+  } finally {
+    isPrintingAllQR.value = false;
+    showPrintAllProgress.value = false;
+    printAllProgress.value = 0;
+    printAllStatusText.value = '';
+  }
+}
+
+// Generate and Print All QR Codes
+const generateAndPrintAllQR = async (materialsData) => {
+  const LABELS_PER_PAGE = 6; // 2 columns x 3 rows
+  const LOGO_URL = "https://gondowangi.com/assets/logo/Logo-gondowangi-berwarna.png";
+  const totalQRs = materialsData.length;
+  
+  let pagesHTML = '';
+  const currentUser = usePage().props.auth?.user?.name || 'Admin';
+
+  // Process in batches to update progress and avoid browser freeze
+  const GENERATION_BATCH_SIZE = 50;
+  
+  for (let i = 0; i < totalQRs; i += GENERATION_BATCH_SIZE) {
+    const batchEnd = Math.min(i + GENERATION_BATCH_SIZE, totalQRs);
+    
+    // Update progress
+    const generationProgress = 50 + Math.floor(((i+1) / totalQRs) * 50);
+    printAllProgress.value = generationProgress;
+    printAllStatusText.value = `Generating QR codes... ${i+1} / ${totalQRs}`;
+
+    // Generate QR codes for this batch
+    for (let j = i; j < batchEnd; j++) {
+      const material = materialsData[j];
+      
+      try {
+        // Generate QR code as data URL
+        const qrDataURL = await QRCode.toDataURL(material.qr_content, {
+          width: 150,
+          margin: 1,
+          errorCorrectionLevel: 'M'
+        });
+
+        // Create label HTML
+        const labelHTML = createCompactLabelHTML(material, qrDataURL, j + 1, totalQRs, currentUser);
+        
+        // Add label to page
+        if (j % LABELS_PER_PAGE === 0) {
+          // Start new page
+          if (j > 0) {
+            pagesHTML += `</div>`; // Close previous page
+          }
+          pagesHTML += `<div class="print-page">`;
+        }
+        
+        pagesHTML += labelHTML;
+        
+        // Close page if it's the last label or end of page
+        if ((j + 1) % LABELS_PER_PAGE === 0 || j === totalQRs - 1) {
+          pagesHTML += `</div>`;
+        }
+      } catch (error) {
+        console.error(`Error generating QR for ${material.kode_item}:`, error);
+      }
+    }
+
+    // Allow browser to update UI
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+
+  // Open print window
+  printAllStatusText.value = 'Opening print window...';
+  const printWindow = window.open('', '_blank');
+  
+  if(!printWindow) {
+    alert('Gagal membuka window print. Mohon izinkan popup.');
+    return;
+  }
+
+  printWindow.document.write(createPrintDocumentHTML(pagesHTML));
+  printWindow.document.close();
+  printWindow.focus();
+
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
+}
+
+// Create Compact Label HTML (minimal design)
+const createCompactLabelHTML = (material, qrDataURL, labelIndex, totalLabels, createdBy) => {
+  const statusColor = material.status === 'RELEASED' ? '#10B981' : 
+                      material.status === 'KARANTINA' ? '#F59E0B' : '#EF4444';
+  
+  return `
+    <div class="label-item">
+      <div class="label-container" style="border-color: ${statusColor};">
+        <div class="label-header" style="background-color: ${statusColor};">
+          <div class="status-text">${material.status}</div>
+          <div class="serial-number">#${material.serial_number}</div>
+        </div>
+        
+        <div class="label-body">
+          <div class="qr-code-section">
+            <img src="${qrDataURL}" class="qr-image" alt="QR Code"/>
+          </div>
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">Material:</span>
+              <span class="info-value">${material.kode_item}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Batch:</span>
+              <span class="info-value">${material.batch_lot}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Unit:</span>
+              <span class="info-value">${material.unit_number}/${material.total_units}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="label-footer">
+          <span>${new Date().toLocaleDateString('id-ID')}</span>
+          <span>QL1001-01</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Create Print Document HTML Wrapper
+const createPrintDocumentHTML = (pagesHTML) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Print All QR Codes</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; }
+        
+        .print-page {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: repeat(3, 1fr);
+          gap: 10px;
+          padding: 10px;
+          page-break-after: always;
+          width: 210mm;
+          height: 297mm;
+        }
+        
+        .print-page:last-child {
+          page-break-after: avoid;
+        }
+        
+        .label-item {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .label-container {
+          width: 95mm;
+          height: 90mm;
+          border: 2px solid #000;
+          display: flex;
+          flex-direction: column;
+        }
+        
+        .label-header {
+          background: #000;
+          color: white;
+          padding: 8px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: bold;
+        }
+        
+        .status-text {
+          font-size: 16px;
+          letter-spacing: 2px;
+        }
+        
+        .serial-number {
+          font-size: 12px;
+          font-family: monospace;
+        }
+        
+        .label-body {
+          flex: 1;
+          display: flex;
+          padding: 10px;
+          gap: 10px;
+        }
+        
+        .qr-code-section {
+          flex: 0 0 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .qr-image {
+          width: 80px;
+          height: 80px;
+        }
+        
+        .info-section {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 5px;
+        }
+        
+        .info-row {
+          display: flex;
+          font-size: 11px;
+        }
+        
+        .info-label {
+          width: 60px;
+          font-weight: bold;
+        }
+        
+        .info-value {
+          flex: 1;
+          font-family: monospace;
+        }
+        
+        .label-footer {
+          border-top: 1px solid #000;
+          padding: 5px 8px;
+          display: flex;
+          justify-content: space-between;
+          font-size: 9px;
+          font-weight: bold;
+        }
+        
+        @media print {
+          .print-page {
+            page-break-after: always;
+            margin: 0;
+          }
+          .print-page:last-child {
+            page-break-after: avoid;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHTML}
+    </body>
+    </html>
+  `;
 }
 
 // Lifecycle
