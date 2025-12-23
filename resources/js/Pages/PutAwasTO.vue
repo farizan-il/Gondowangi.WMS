@@ -1293,23 +1293,23 @@ const printTO = (to: TransferOrder) => {
         <td style="padding: 10px;">
           Diserahkan:
           <br><br><br><br>
-          (________________)
+          (${usePage().props.auth?.user?.name || 'Logistik'})
           <br>
-          Tgl: _______
+          Tgl: ${formatDateIndonesian(to.creationDate)}
         </td>
         <td style="padding: 10px;">
           Diterima:
           <br><br><br><br>
-          (________________)
+          (Rohiman / Hermansyah)
           <br>
-          Tgl: _______
+          Tgl: ${formatDateIndonesian(to.creationDate)}
         </td>
         <td style="padding: 10px;">
           Mengetahui:
           <br><br><br><br>
-          (________________)
+          (Reza Rizky Permadi)
           <br>
-          Tgl: _______
+          Tgl: ${formatDateIndonesian(to.creationDate)}
         </td>
       </tr>
     </table>
@@ -1361,6 +1361,21 @@ const formatDate = (date: Date | string) => {
     minute: '2-digit'
   }).format(dateObj)
 }
+
+const formatDateIndonesian = (date: Date | string) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Date'
+  }
+  
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(dateObj)
+}
+
 
 const getTypeClass = (type: string) => {
   const classes: Record<string, string> = {

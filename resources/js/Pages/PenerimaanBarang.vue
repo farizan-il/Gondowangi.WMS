@@ -41,18 +41,20 @@
           
           <!-- Date Range Filters -->
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal Mulai - Tanggal Selesai</label>
             <div class="grid grid-cols-2 gap-2">
               <input 
                 v-model="dateStart" 
                 type="date" 
                 placeholder="Dari"
+                :lang="'id-ID'"
                 class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
               <input 
                 v-model="dateEnd" 
                 type="date" 
                 placeholder="Sampai"
+                :lang="'id-ID'"
                 class="w-full px-2 py-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
             </div>
@@ -644,7 +646,10 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal & Waktu Terima</label>
                 <input v-model="newShipment.tanggalTerima" type="datetime-local"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                  :lang="'id-ID'"
+                  step="60">
+                <p class="text-xs text-gray-500 mt-1">Format: DD/MM/YYYY, Waktu 24 jam</p>
               </div>
 
               <div>

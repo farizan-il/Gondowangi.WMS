@@ -103,8 +103,8 @@ class ReservationController extends Controller
         'totalQuantity' => null
     ];
 
-    // 1. Ambil Production Order N°
-    if (preg_match('/Production Order N°\s*:\s*(\d+)/i', $pdfText, $matches)) {
+    // 1. Ambil Production Order N° (support angka + huruf, contoh: 025178FM)
+    if (preg_match('/Production Order N°\s*:\s*([\w]+)/i', $pdfText, $matches)) {
         $headerData['productionOrderNo'] = $matches[1];
     }
 
@@ -112,9 +112,16 @@ class ReservationController extends Controller
     // Normalisasi: Ubah semua line break dan multiple spaces jadi single space
     $normalizedText = preg_replace('/\s+/', ' ', $pdfText);
     
+    // Log untuk debugging
+    \Log::info('PDF Parsing - Normalized Text Sample:', [
+        'production_order' => $headerData['productionOrderNo'],
+        'text_sample' => substr($normalizedText, 0, 500)
+    ]);
+    
     // Ekstrak bagian tabel header (Source Document | Product | Quantity)
     // Lalu ambil data yang ada SETELAH header tersebut
-    if (preg_match('/Source Document\s+Product\s+Quantity\s+(.+?)\s+([\d.,]+)\s+Pcs/is', $normalizedText, $matches)) {
+    // Pattern 1: Format standar dengan "Source Document"
+    if (preg_match('/Source Document\s+Product\s+Quantity\s+(.+?)\s+([\d.,]+)\s+(Pcs|PCS|pcs|Kg|kg|KG)/is', $normalizedText, $matches)) {
         // Group 1: Nama Produk (bisa mengandung kata "Quantity" yang tidak diinginkan)
         $rawProductName = trim($matches[1]);
         
@@ -132,9 +139,31 @@ class ReservationController extends Controller
         $qtyClean = str_replace(',', '.', $qtyClean);  // 1241,0000 → 1241.0000
         $qtyFloat = (float) $qtyClean;                 // → 1241.0
         
-        // Format ulang dengan titik ribuan, TANPA desimal (1241.0 → "1.241")
-        // Catatan: Jika butuh desimal, ganti 0 dengan jumlah digit desimal yang diinginkan
-        $headerData['totalQuantity'] = number_format($qtyFloat, 0, ',', '.');
+        // Kirim sebagai float agar bisa diparse oleh frontend
+        $headerData['totalQuantity'] = $qtyFloat;
+        
+        \Log::info('PDF Parsing - Product & Quantity Extracted (Pattern 1):', [
+            'product_name' => $headerData['productName'],
+            'quantity' => $headerData['totalQuantity']
+        ]);
+    } 
+    // Pattern 2: Fallback - Coba pattern yang lebih sederhana
+    elseif (preg_match('/Product\s+Quantity[^\d]*([\d.,]+)\s*(Pcs|PCS|pcs|Kg|kg|KG)/is', $normalizedText, $matches)) {
+        // Jika pattern 1 gagal, coba ambil quantity langsung setelah kata "Quantity"
+        $qtyString = $matches[1];
+        $qtyClean = str_replace('.', '', $qtyString);
+        $qtyClean = str_replace(',', '.', $qtyClean);
+        $qtyFloat = (float) $qtyClean;
+        $headerData['totalQuantity'] = $qtyFloat;
+        
+        \Log::info('PDF Parsing - Quantity Extracted (Pattern 2 - Fallback):', [
+            'quantity' => $headerData['totalQuantity']
+        ]);
+    } else {
+        \Log::warning('PDF Parsing - Failed to extract Product Name and Quantity', [
+            'production_order' => $headerData['productionOrderNo'],
+            'text_around_product' => substr($normalizedText, strpos($normalizedText, 'Product') ?: 0, 200)
+        ]);
     }
 
     // --- Bagian Bill Of Material (Daftar Item) ---
