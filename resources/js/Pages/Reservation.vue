@@ -534,12 +534,10 @@
                               Permintaan melebihi stok!
                             </p>
                           </td>
-                          
                         </template>
 
                         <!-- ADD Row -->
                         <template v-if="selectedCategory === 'add'">
-
                           <td class="px-4 py-3 relative whitespace-nowrap z-10">
                             <input v-model="item.kodePM" type="text" @input="debounceSearch(item.kodePM, index, 'kodePM')"
                               @focus="startSearch(index, 'kodePM')" @blur="endSearch()"

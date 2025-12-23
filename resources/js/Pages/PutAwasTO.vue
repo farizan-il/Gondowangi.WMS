@@ -238,25 +238,24 @@
                             :class="{'bg-gray-100': !material.selected}"
                           />
                           
-                          <!-- Suggestions Dropdown -->
-                          <div v-if="material.showBinSuggestions && getFilteredBins(material.binSearchQuery).length > 0" 
-                               class="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            <div 
-                              v-for="bin in getFilteredBins(material.binSearchQuery)" 
-                              :key="bin.code"
-                              @mousedown.prevent="selectBin(material, bin)"
-                              class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 text-gray-900 border-b border-gray-100 last:border-0"
-                            >
-                              {{ bin.code }} [{{ bin.zone }} - {{ bin.currentItems }}/{{ bin.capacity }}]
-                            </div>
-                          </div>
-
                           <button @click="showBinDetails(material)" class="absolute right-2 top-1.5 text-blue-600 hover:text-blue-800"
                             title="Lihat detail bin" :disabled="!material.destinationBin">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </button>
+                        </div>
+                        <!-- Suggestions Dropdown -->
+                        <div v-if="material.showBinSuggestions && getFilteredBins(material.binSearchQuery).length > 0" 
+                            class="absolute z-[99999] w-max min-w-[150px] mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          <div 
+                            v-for="bin in getFilteredBins(material.binSearchQuery)" 
+                            :key="bin.code"
+                            @mousedown.prevent="selectBin(material, bin)"
+                            class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 text-gray-900 border-b border-gray-100 last:border-0 whitespace-nowrap"
+                          >
+                            {{ bin.code }} [{{ bin.zone }} - {{ bin.currentItems }}/{{ bin.capacity }}]
+                          </div>
                         </div>
                       </td>
                     </tr>

@@ -161,21 +161,22 @@ class GoodsReceiptController extends Controller
         try {
             $parser = new Parser();
             $pdf = $parser->parseFile($pdfFile->getPathname());
-            $text = $pdf->getText();
+            $rawText = $pdf->getText();
             
-            // 1. NORMALISASI TEKS
-            // Ubah semua newline, tab, dan spasi ganda menjadi SATU spasi tunggal.
-            $text = preg_replace('/\s+/', ' ', $text);
+            // STEP 1: NORMALISASI TEKS YANG LEBIH AGRESIF
+            // Hapus semua newline, tab, dan multiple spaces menjadi SATU spasi
+            $text = preg_replace('/[\r\n\t]+/', ' ', $rawText);
+            $text = preg_replace('/\s{2,}/', ' ', $text); // Multiple spaces -> single space
             $text = trim($text);
             
-            // DEBUG: Log normalized text (temporary)
-            \Log::info('PDF Normalized Text (first 500 chars):', [
-                'text' => substr($text, 0, 500)
+            \Log::info('PDF Normalized Text:', [
+                'length' => strlen($text),
+                'preview' => substr($text, 0, 800)
             ]);
 
             $extractedData = [
                 'incoming_number' => '',
-                'no_surat_jalan' => 'N/A', // <--- DEFAULT VALUE (Permintaan Anda)
+                'no_surat_jalan' => 'N/A', // Default jika tidak ada
                 'no_po' => '',
                 'truck_number' => '',
                 'driver_name' => '',
@@ -185,175 +186,127 @@ class GoodsReceiptController extends Controller
                 'supplier_code' => '',
             ];
             
-            // 2. HEADER EXTRACTION
-            
-            // Incoming Number
-            if (preg_match('/\b(IN\/\d+)\b/', $text, $matches)) {
+            // STEP 2: EXTRACT INCOMING NUMBER
+            // Pattern: IN/angka5digit (misal: IN/27866)
+            if (preg_match('/\b(IN\/\d{5})\b/i', $text, $matches)) {
                 $extractedData['incoming_number'] = trim($matches[1]);
+                
+                // Cek duplikasi
                 if (IncomingGood::where('incoming_number', $extractedData['incoming_number'])->exists()) {
-                     return response()->json(['error' => "Nomor {$extractedData['incoming_number']} sudah ada."], 422);
+                    return response()->json([
+                        'error' => "Nomor {$extractedData['incoming_number']} sudah ada dalam sistem."
+                    ], 422);
                 }
             }
             
-            // No PO (Anchor utama kita)
-            if (preg_match('/(PO[0-9]+)/', $text, $poMatch)) {
+            // STEP 3: EXTRACT NO PO (ANCHOR UTAMA)
+            // Pattern: PO diikuti angka (PO66666, PO54196, dll)
+            if (preg_match('/\b(PO\d+)\b/i', $text, $poMatch)) {
                 $extractedData['no_po'] = $poMatch[1];
                 
-                // --- LOGIKA BARU UNTUK NO SURAT JALAN ---
-                // Idenya: No SJ pasti berada tepat SEBELUM No PO.
-                // Regex: Ambil string ([A-Z0-9\/\.\-]+) sebelum spasi dan kata PO...
-                // Kita gunakan preg_match dengan logika lookahead posisi PO
+                // EXTRACT NO SURAT JALAN (SEBELUM NO PO)
+                // Strategi: Cari string alfanumerik dengan slash/strip SEBELUM PO
+                // Hindari kata kunci seperti "Supplier", "Order", "Invoice"
+                $blacklistWords = [
+                    'Supplier', 'Invoice', 'Control', 'Stock', 'Journal', 
+                    'Truck', 'Driver', 'Purchase', 'Order', 'Creation', 
+                    'Date', 'Scheduled', 'Time', 'Source', 'Document',
+                    'To', 'Be', 'Invoiced', 'Physical', 'Locations'
+                ];
                 
-                // Cari kata apa saja (huruf/angka/garis miring/strip) tepat sebelum PO yang ditemukan
-                // Pattern: KataSpasiPO -> ambil Katanya
-                $escapedPO = preg_quote($poMatch[1], '/');
-                if (preg_match('/([A-Z0-9\/\.\-]+)\s+' . $escapedPO . '/', $text, $sjMatch)) {
-                    $candidateSJ = trim($sjMatch[1]);
+                // Ambil 100 karakter sebelum PO untuk mencari kandidat No SJ
+                $poPosition = strpos($text, $poMatch[1]);
+                $textBeforePO = substr($text, max(0, $poPosition - 100), 100);
+                
+                // Pattern: Kata terakhir sebelum PO (bisa punya slash, strip, titik)
+                if (preg_match('/([A-Z0-9\/\.\-]{3,30})\s+' . preg_quote($poMatch[1], '/') . '/i', $text, $sjMatch)) {
+                    $candidate = trim($sjMatch[1]);
                     
-                    // Filter: Karena teks di-flatten, bisa jadi kata sebelumnya adalah Header Kolom
-                    // Daftar kata yang MUNGKIN muncul jika No SJ kosong:
-                    $blacklistWords = ['Order(Origin)', 'Origin)', 'Origin', 'Date', 'SJ', 'No', 'Input', 'Name', 'Truck'];
-                    
-                    // Jika kata yang ditemukan TIDAK ada di blacklist, berarti itu No SJ beneran
-                    if (!in_array($candidateSJ, $blacklistWords) && strlen($candidateSJ) > 2) {
-                        $extractedData['no_surat_jalan'] = $candidateSJ;
+                    // Filter: Pastikan bukan header/label
+                    if (!in_array($candidate, $blacklistWords) && 
+                        strlen($candidate) >= 3 &&
+                        !preg_match('/^(Supplier|Order|Document|Source)$/i', $candidate)) {
+                        
+                        $extractedData['no_surat_jalan'] = $candidate;
                     }
                 }
-                // -----------------------------------------
             }
 
-            // Tanggal
-            if (preg_match('/([0-9]{2}\/[0-9]{2}\/[0-9]{4})\s+([0-9]{2}:[0-9]{2}:[0-9]{2})/', $text, $dateMatch)) {
-                $extractedData['date'] = trim("{$dateMatch[1]} {$dateMatch[2]}");
+            // STEP 4: EXTRACT SUPPLIER NAME
+            // Pattern: "Supplier" diikuti nama (bisa multi-kata dengan koma)
+            // Contoh: "Supplier Bahtera Adi Jaya, PT Invoice" -> ambil "Bahtera Adi Jaya, PT"
+            if (preg_match('/Supplier\s+([A-Za-z0-9\s,\.]+?)(?=\s+Invoice|\s+Stock|\s+Truck|\s+PO)/i', $text, $supplierMatch)) {
+                $extractedData['supplier_name'] = trim($supplierMatch[1]);
             }
             
-            // Supplier - improved pattern
-            if (preg_match('/Supplier\s+([^\s].*?)(?=\s+Invoice|\s+Control|\s+Stock|\s+Truck|\s+Driver|\s+Purchase)/i', $text, $matches)) {
-                $extractedData['supplier_name'] = trim($matches[1]);
-            }
+            // STEP 5: EXTRACT TRUCK NUMBER & DRIVER NAME
+            // Pattern lebih fleksibel dengan lookahead untuk menghindari ambiguitas
             
-            
-            // Truck Number - careful to not capture "Driver" as the value
-            if (preg_match('/Truck\\s+Number\\s+([^\\n]+?)(?=\\s+Driver|\\s+Purchase|\\s+Creation)/i', $text, $matches)) {
-                $candidate = trim($matches[1]);
-                // Check if candidate is NOT a label (Driver, Purchase, Creation, etc)
-                if (!preg_match('/^(Driver|Purchase|Creation|Scheduled|Stock)/i', $candidate) && strlen($candidate) > 0) {
+            // Truck Number: Ambil value setelah "Truck Number" sampai sebelum "Driver"
+            if (preg_match('/Truck\s+Number\s+([^\s]+(?:\s+[^\s]+)?)(?=\s+Driver)/i', $text, $truckMatch)) {
+                $candidate = trim($truckMatch[1]);
+                // Pastikan bukan label
+                if (!preg_match('/^(Driver|Purchase|Creation|Scheduled)/i', $candidate)) {
                     $extractedData['truck_number'] = $candidate;
                 }
             }
             
-            // Driver Name - careful to not capture "Purchase" as the value  
-            if (preg_match('/Driver\\s+Name\\s+([^\\n]+?)(?=\\s+Purchase|\\s+Creation|\\s+Scheduled)/i', $text, $matches)) {
-                $candidate = trim($matches[1]);
-                // Check if candidate is NOT a label
-                if (!preg_match('/^(Purchase|Creation|Scheduled|Stock|Source)/i', $candidate) && strlen($candidate) > 0) {
+            // Driver Name: Ambil value setelah "Driver Name" sampai sebelum "Purchase" atau "Creation"
+            if (preg_match('/Driver\s+Name\s+([^\s]+(?:\s+[^\s]+)?)(?=\s+Purchase|\s+Creation|\s+Scheduled)/i', $text, $driverMatch)) {
+                $candidate = trim($driverMatch[1]);
+                if (!preg_match('/^(Purchase|Creation|Scheduled|Stock)/i', $candidate)) {
                     $extractedData['driver_name'] = $candidate;
                 }
             }
 
-            // 3. ITEM EXTRACTION (Two-step approach for better serial number matching)
-            // Step 1: Extract all serial numbers first (format: XX.K.XXXXXXXXXX)
-            $serialNumbers = [];
-            if (preg_match_all('/(\d+\.K\.\d+)/', $text, $serialMatches)) {
-                $serialNumbers = $serialMatches[1];
+            // STEP 6: EXTRACT DATE (CREATION DATE)
+            // Pattern: DD/MM/YYYY HH:MM:SS
+            if (preg_match('/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})/i', $text, $dateMatch)) {
+                $extractedData['date'] = trim("{$dateMatch[1]} {$dateMatch[2]}");
             }
             
-            // Pattern: [code] Description MiddleInt ActualQuantity Kg Kg
-            // Example: [60006] Ms 1000 2.720,0000 Kg Kg
-            $itemPattern = '/\\[(\\d+)\\]\\s+(\\w+)\\s+\\d+\\s+([\\d\\.,]+)\\s+Kg\\s+Kg/i';
+            // STEP 7: EXTRACT ITEMS (PALING KRUSIAL - IMPROVED LOGIC)
+            $extractedData['items'] = $this->extractItems($text);
             
-            if (preg_match_all($itemPattern, $text, $matches, PREG_SET_ORDER)) {
-                $itemIndex = 0;
-                foreach ($matches as $match) {
-                    $qtyString = str_replace('.', '', $match[3]); 
-                    $qtyString = str_replace(',', '.', $qtyString); 
-                    
-                    // Description is now clean in match[2]
-                    $description = trim($match[2]);
-                    
-                    $itemData = [
-                        'kode_material' => trim($match[1]), 
-                        'description' => $description,
-                        'uom' => 'Kg',
-                        'quantity' => floatval($qtyString),
-                        'serial_number' => '',
-                    ];
-                    
-                    // Match serial number by index if available
-                    if (isset($serialNumbers[$itemIndex])) {
-                        $itemData['serial_number'] = $serialNumbers[$itemIndex];
-                    }
-                    
-                    $extractedData['items'][] = $itemData;
-                    $itemIndex++;
-                }
-            } else {
-                // Fallback: same pattern but without requiring "Kg Kg"
-                $fallbackPattern = '/\\[(\\d+)\\]\\s+(\\w+)\\s+\\d+\\s+([\\d\\.,]+)/';
-                if (preg_match_all($fallbackPattern, $text, $matches, PREG_SET_ORDER)) {
-                    $itemIndex = 0;
-                    foreach ($matches as $match) {
-                        $qtyString = str_replace('.', '', $match[3]); 
-                        $qtyString = str_replace(',', '.', $qtyString); 
-                        
-                        // Description is clean in match[2]
-                        $description = trim($match[2]);
-
-                        $itemData = [
-                            'kode_material' => trim($match[1]), 
-                            'description' => $description,
-                            'uom' => 'Kg',
-                            'quantity' => floatval($qtyString),
-                            'serial_number' => '',
-                        ];
-                        
-                        if (isset($serialNumbers[$itemIndex])) {
-                            $itemData['serial_number'] = $serialNumbers[$itemIndex];
-                        }
-                        
-                        $extractedData['items'][] = $itemData;
-                        $itemIndex++;
-                    }
-                }
-            }
-            
-            // DEBUG: Log extracted items (temporary)
             \Log::info('PDF Extracted Items:', [
-                'items_count' => count($extractedData['items']),
-                'items' => $extractedData['items'],
-                'serial_numbers' => $serialNumbers
+                'count' => count($extractedData['items']),
+                'items' => $extractedData['items']
             ]);
 
-            // 4. FINALISASI
-            // Format Tanggal
+            // STEP 8: FINALISASI
+            // Format tanggal untuk input datetime-local
             if (!empty($extractedData['date'])) {
                 try {
                     $dateObj = \DateTime::createFromFormat('d/m/Y H:i:s', $extractedData['date']);
-                    if (!$dateObj) $dateObj = \DateTime::createFromFormat('d/m/Y', $extractedData['date']);
+                    if (!$dateObj) {
+                        $dateObj = \DateTime::createFromFormat('d/m/Y', $extractedData['date']);
+                    }
                     $extractedData['tanggal_terima'] = $dateObj ? $dateObj->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i');
-                } catch (\Exception $e) { $extractedData['tanggal_terima'] = now()->format('Y-m-d\TH:i'); }
+                } catch (\Exception $e) {
+                    $extractedData['tanggal_terima'] = now()->format('Y-m-d\TH:i');
+                }
             } else {
                 $extractedData['tanggal_terima'] = now()->format('Y-m-d\TH:i');
             }
 
-            // Lookup Supplier
+            // Lookup Supplier di database
             if (!empty($extractedData['supplier_name'])) {
-                $searchName = explode(',', $extractedData['supplier_name'])[0]; 
-                $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . $searchName . '%')->first();
+                $searchName = explode(',', $extractedData['supplier_name'])[0];
+                $supplier = Supplier::where('nama_supplier', 'LIKE', '%' . trim($searchName) . '%')->first();
+                
                 if ($supplier) {
                     $extractedData['supplier_name'] = $supplier->nama_supplier;
                     $extractedData['supplier_code'] = $supplier->kode_supplier;
                 }
             }
 
-            // 5. DETECT MULTIPLE ITEM CODES
+            // STEP 9: DETECT MULTIPLE ITEM CODES (WIZARD MODE)
             $uniqueItemCodes = array_unique(array_column($extractedData['items'], 'kode_material'));
             $hasMultipleItemCodes = count($uniqueItemCodes) > 1;
             
             $extractedData['has_multiple_item_codes'] = $hasMultipleItemCodes;
             $extractedData['unique_item_codes'] = array_values($uniqueItemCodes);
             
-            // 6. GROUP ITEMS BY KODE_MATERIAL (untuk wizard mode)
             if ($hasMultipleItemCodes) {
                 $extractedData['items_grouped_by_code'] = $this->groupItemsByCode($extractedData['items']);
             }
@@ -361,8 +314,189 @@ class GoodsReceiptController extends Controller
             return response()->json($extractedData);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Gagal memproses PDF.', 'details' => $e->getMessage()], 500); 
+            \Log::error('PDF Parse Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Gagal memproses PDF.',
+                'details' => $e->getMessage()
+            ], 500);
         }
+    }
+
+    private function extractItems($text)
+    {
+        $items = [];
+        
+        // STRATEGY 1: Extract semua serial numbers dulu dengan pattern yang lebih fleksibel
+        // Format yang didukung:
+        // - 27.A.250028 (angka.huruf.angka)
+        // - 27.K.KIA121PU1B (angka.huruf.alfanumerik)
+        // - 30.B.AB0511 (angka.huruf.alfanumerik)
+        // - 26.K.0029792187 (angka.huruf.angka panjang)
+        // - 50003031125 (angka saja, 11+ digit)
+        $serialNumbers = [];
+        
+        $serialPatterns = [
+            // Pattern 1: XX.X.XXXXXX (titik sebagai separator, bisa huruf & angka)
+            '/\b(\d{2,3}\.[A-Z]\.[A-Z0-9]{6,})\b/i',
+            
+            // Pattern 2: Angka panjang tanpa titik (min 10 digit)
+            '/\b(\d{10,})\b/',
+        ];
+        
+        foreach ($serialPatterns as $pattern) {
+            if (preg_match_all($pattern, $text, $matches)) {
+                foreach ($matches[1] as $serial) {
+                    // Filter: Skip jika ini adalah angka quantity (biasanya ada koma/titik desimal)
+                    if (!preg_match('/[\d,\.]{4,}\s+(Kg|Pcs|Ltr)/i', $serial)) {
+                        $serialNumbers[] = trim($serial);
+                    }
+                }
+            }
+        }
+        
+        // Deduplicate serial numbers
+        $serialNumbers = array_unique($serialNumbers);
+        $serialNumbers = array_values($serialNumbers); // Re-index
+        
+        \Log::info('Found Serial Numbers:', [
+            'count' => count($serialNumbers),
+            'serials' => $serialNumbers
+        ]);
+        
+        // STRATEGY 2: Pattern untuk material items
+        // Format umum: [KODE] Nama Angka Qty Kg Kg
+        // Contoh:
+        // - [60006] Ms 1000 2.720,0000 Kg Kg
+        // - [14063] Propylene Glycol USP 645,0000 Kg Kg
+        // - [50003] Sim 003 201,0000 Kg Kg
+        
+        // Pattern FLEKSIBEL untuk menangkap berbagai format:
+        $patterns = [
+            // Pattern 1: [kode] Nama (multi-kata) angka qty Kg Kg Serial
+            // Contoh: [14063] Propylene Glycol USP 645,0000 Kg Kg 27.K.KIA121PU1B
+            '/\[(\d+)\]\s+([A-Za-z0-9\s]+?)\s+\d+\s+([\d\.,]+)\s+Kg\s+Kg\s+([^\s]+)?/i',
+            
+            // Pattern 2: [kode] Nama qty Kg Kg Serial (tanpa angka tengah)
+            // Contoh: [14201] Ekstrak Swertia Japonica 4,0000 Kg Kg 27.A.250028
+            '/\[(\d+)\]\s+([A-Za-z0-9\s]+?)\s+([\d\.,]+)\s+Kg\s+Kg\s+([^\s]+)?/i',
+            
+            // Pattern 3: [kode] Nama qty Kg Serial (tanpa double Kg)
+            '/\[(\d+)\]\s+([A-Za-z0-9\s]+?)\s+([\d\.,]+)\s+Kg\s+([^\s]+)?(?!\s+Kg)/i',
+            
+            // Pattern 4: [kode] Nama qty Kg (tanpa serial, akan match dari array)
+            '/\[(\d+)\]\s+([A-Za-z0-9\s]+?)\s+([\d\.,]+)\s+Kg/i',
+        ];
+        
+        foreach ($patterns as $patternIndex => $pattern) {
+            if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
+                $itemIndex = 0;
+                
+                foreach ($matches as $match) {
+                    // Normalisasi quantity (2.720,0000 -> 2720.0000)
+                    $qtyString = str_replace('.', '', $match[3]); // Hapus separator ribuan
+                    $qtyString = str_replace(',', '.', $qtyString); // Koma -> titik desimal
+                    $quantity = floatval($qtyString);
+                    
+                    // Clean description (hapus extra spaces)
+                    $description = preg_replace('/\s+/', ' ', trim($match[2]));
+                    
+                    // Skip jika quantity 0 atau deskripsi kosong
+                    if ($quantity <= 0 || empty($description)) {
+                        continue;
+                    }
+                    
+                    // Serial Number Logic (Prioritas):
+                    // 1. Dari capture group pattern (jika ada)
+                    // 2. Dari array serialNumbers (match by index)
+                    // 3. Kosong
+                    $serialNumber = '';
+                    
+                    if (isset($match[4]) && !empty($match[4])) {
+                        // Serial number tertangkap langsung dari pattern
+                        $serialNumber = trim($match[4]);
+                    } elseif (isset($serialNumbers[$itemIndex])) {
+                        // Ambil dari array serial numbers
+                        $serialNumber = $serialNumbers[$itemIndex];
+                    }
+                    
+                    $itemData = [
+                        'kode_material' => trim($match[1]),
+                        'description' => $description,
+                        'uom' => 'Kg',
+                        'quantity' => $quantity,
+                        'serial_number' => $serialNumber,
+                    ];
+                    
+                    // Hindari duplikat (cek kode material + quantity yang sama)
+                    $isDuplicate = false;
+                    foreach ($items as $existingItem) {
+                        if ($existingItem['kode_material'] === $itemData['kode_material'] &&
+                            abs($existingItem['quantity'] - $itemData['quantity']) < 0.01) {
+                            $isDuplicate = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$isDuplicate) {
+                        $items[] = $itemData;
+                        $itemIndex++;
+                    }
+                }
+                
+                // Jika pattern ini berhasil, tidak perlu coba pattern lain
+                if (count($items) > 0) {
+                    \Log::info("Pattern {$patternIndex} berhasil, found " . count($items) . " items");
+                    break;
+                }
+            }
+        }
+        
+        // FALLBACK: Jika tidak ada items yang terdeteksi, coba pattern paling sederhana
+        if (empty($items)) {
+            // Pattern emergency: [KODE] apa_saja QUANTITY
+            if (preg_match_all('/\[(\d+)\]\s+(.+?)\s+([\d\.,]+)/i', $text, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $idx => $match) {
+                    $qtyString = str_replace(['.', ','], ['', '.'], $match[3]);
+                    $quantity = floatval($qtyString);
+                    
+                    if ($quantity > 0) {
+                        $items[] = [
+                            'kode_material' => trim($match[1]),
+                            'description' => trim($match[2]),
+                            'uom' => 'Kg',
+                            'quantity' => $quantity,
+                            'serial_number' => $serialNumbers[$idx] ?? '',
+                        ];
+                    }
+                }
+            }
+        }
+        
+        return $items;
+    }
+
+    private function groupItemsByCode(array $items): array
+    {
+        $grouped = [];
+        
+        foreach ($items as $item) {
+            $code = $item['kode_material'];
+            
+            if (!isset($grouped[$code])) {
+                $grouped[$code] = [
+                    'code' => $code,
+                    'items' => []
+                ];
+            }
+            
+            $grouped[$code]['items'][] = $item;
+        }
+        
+        return array_values($grouped);
     }
 
     public function store(Request $request)
@@ -554,24 +688,6 @@ class GoodsReceiptController extends Controller
         }
     }
 
-    /**
-     * Group items by kode_material for multi-item-code handling
-     */
-    private function groupItemsByCode(array $items): array
-    {
-        $grouped = [];
-        foreach ($items as $item) {
-            $code = $item['kode_material'];
-            if (!isset($grouped[$code])) {
-                $grouped[$code] = [
-                    'code' => $code,
-                    'items' => []
-                ];
-            }
-            $grouped[$code]['items'][] = $item;
-        }
-        return array_values($grouped);
-    }
 
     /**
      * Store multiple shipments (untuk handle PDF dengan multiple item codes)
