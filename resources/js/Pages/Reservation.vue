@@ -438,7 +438,7 @@
                               readonly>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model.number="item.qty" type="number" min="0"
+                            <input v-model.number="item.qty" type="number" step="any" min="0"
                               :class="{ 'border-red-500 ring-red-500': isQtyExceeded(item, 'qty') }"
                               class="w-full min-w-[80px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p v-if="item.stokAvailable !== undefined"
@@ -484,7 +484,7 @@
                               readonly>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model.number="item.jumlahPermintaan" type="number" min="0"
+                            <input v-model.number="item.jumlahPermintaan" type="number" step="any" min="0"
                               :class="{ 'border-red-500 ring-red-500': isQtyExceeded(item, 'jumlahPermintaan') }"
                               class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p v-if="item.stokAvailable !== undefined"
@@ -523,7 +523,7 @@
                               readonly>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model.number="item.jumlahKebutuhan" type="number" min="0"
+                            <input v-model.number="item.jumlahKebutuhan" type="number" step="any" min="0"
                               :class="{ 'border-red-500 ring-red-500': isQtyExceeded(item, 'jumlahKebutuhan') }"
                               class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p v-if="item.stokAvailable !== undefined"
@@ -565,7 +565,7 @@
                               class="w-full min-w-[150px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap">
-                            <input v-model.number="item.jumlahPermintaan" type="number" min="0"
+                            <input v-model.number="item.jumlahPermintaan" type="number" step="any" min="0"
                               :class="{ 'border-red-500 ring-red-500': isQtyExceeded(item, 'jumlahPermintaan') }"
                               class="w-full min-w-[120px] text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p v-if="item.stokAvailable !== undefined"
@@ -731,7 +731,7 @@
                     <template v-else-if="selectedRequest.type === 'raw-material'">
                       <td class="px-4 py-3 text-sm text-gray-700">{{ item.kodeBahan }}</td>
                       <td class="px-4 py-3 text-sm text-gray-700">{{ item.namaBahan }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKebutuhan }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-700">{{ formatQty(item.jumlahKebutuhan) }}</td>
                       <td class="px-4 py-3 text-sm text-gray-700">{{ item.jumlahKirim }}</td>
                     </template>
                     <template v-else-if="selectedRequest.type === 'add'">
@@ -1285,6 +1285,22 @@ const selectMaterial = (material, index, field) => {
   // Tutup suggestions
   materialSuggestions.value = [];
   activeSearchIndex.value = null;
+}
+
+// Format quantity to preserve small decimals
+const formatQty = (qty) => {
+  console.log('formatQty input:', qty, 'type:', typeof qty)
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty)
+  if (isNaN(num)) return '0'
+  
+  // If integer or whole number, show as is
+  if (num === Math.floor(num)) return num.toString()
+  
+  // For decimals, keep up to 6 decimal places, remove trailing zeros
+  const result = num.toFixed(6).replace(/\.?0+$/, '')
+  console.log('formatQty output:', result)
+  return result
 }
 
 // ** END NEW DYNAMIC SEARCH METHODS **

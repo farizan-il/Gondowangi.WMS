@@ -284,7 +284,7 @@
                     </td>
                     
                     <!-- Qty Dialokasikan -->
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">{{ item.qtyDiminta }}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">{{ formatQty(item.qtyDiminta) }}</td>
                     
                     <!-- Qty Picked (Input) -->
                     <!-- <td class="px-3 py-2 whitespace-nowrap">
@@ -401,10 +401,12 @@
             
             <!-- Manual Qty Input (when scanning box) -->
             <div v-if="scanStep === 3" class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Qty yang Dipick (Max: {{ currentScanItem?.qtyDiminta || 0 }} {{ currentScanItem?.uom || '' }}):</label>
+              <label class="block text-sm font-medium text-gray-700">Qty yang Dipick (Max: {{ formatQty(currentScanItem?.qtyDiminta) }} {{ currentScanItem?.uom || '' }}):</label>
               <input 
                 v-model.number="manualQty" 
                 type="number" 
+                step="any"
+                min="0"
                 :max="currentScanItem?.qtyDiminta" 
                 @input="validateQuantityInput"
                 placeholder="Masukkan quantity..." 
@@ -488,7 +490,7 @@
                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ item.kodeItem }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.namaMaterial }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.lotSerial }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.qtyDiminta }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ formatQty(item.qtyDiminta) }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.qtyPicked || 0 }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
                     <td class="px-4 py-3">
@@ -590,7 +592,7 @@
                         {{ getStatusText(material) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ material.qtyAllocated }} {{ material.uom }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ formatQty(material.qtyAllocated) }} {{ material.uom }}</td>
                     <td class="px-4 py-3 text-center">
                       <button v-if="material.status === 'expired'" 
                               @click="findReplacement(material)"
@@ -1517,6 +1519,19 @@ const formatDate = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
   return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// Format quantity to preserve small decimals
+const formatQty = (qty) => {
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty)
+  if (isNaN(num)) return '0'
+  
+  // If integer or whole number, show as is
+  if (num === Math.floor(num)) return num.toString()
+  
+  // For decimals, keep up to 6 decimal places, remove trailing zeros
+  return num.toFixed(6).replace(/\.?0+$/, '')
 }
 
 // NEW: TO Generation Workflow Functions

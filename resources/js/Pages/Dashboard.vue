@@ -324,7 +324,7 @@
                 <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.lot }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.lokasi }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.qty }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ formatQty(item.qty, item.type) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ item.uom }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                   <span :class="getExpiredClass(item.expiredDate)">{{ formatDate(item.expiredDate) }}</span>
@@ -1878,6 +1878,25 @@ const createPrintDocumentHTML = (pagesHTML: string) => {
     </body>
     </html>
   `;
+}
+
+// Format quantity based on material type
+const formatQty = (qty, type) => {
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty)
+  if (isNaN(num)) return '0'
+  
+  // Packaging: bulatkan ke atas
+  if (type === 'Packaging') {
+    return Math.ceil(num).toString()
+  }
+  
+  // Raw Material: tampilkan apa adanya dengan precision
+  // If integer or whole number, show as is
+  if (num === Math.floor(num)) return num.toString()
+  
+  // For decimals, keep up to 6 decimal places, remove trailing zeros  
+  return num.toFixed(6).replace(/\.?0+$/, '')
 }
 
 </script>

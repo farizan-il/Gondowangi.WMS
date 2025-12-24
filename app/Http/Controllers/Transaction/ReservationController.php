@@ -32,18 +32,18 @@ class ReservationController extends Controller
             // FOH & RS
             'kodeItem' => $itemArray['kode_item'] ?? null,
             'keterangan' => $itemArray['keterangan'] ?? null,
-            'qty' => $itemArray['qty'] ?? null,
+            'qty' => $itemArray['qty'] !== null ? (float) $itemArray['qty'] : null,
             'uom' => $itemArray['uom'] ?? null,
             // Packaging / ADD
             'namaMaterial' => $itemArray['nama_material'] ?? null,
             'kodePM' => $itemArray['kode_pm'] ?? null,
-            'jumlahPermintaan' => $itemArray['jumlah_permintaan'] ?? null,
+            'jumlahPermintaan' => $itemArray['jumlah_permintaan'] !== null ? (float) $itemArray['jumlah_permintaan'] : null,
             'alasanPenambahan' => $itemArray['alasan_penambahan'] ?? null,
             // Raw Material
             'kodeBahan' => $itemArray['kode_bahan'] ?? null,
             'namaBahan' => $itemArray['nama_bahan'] ?? null,
-            'jumlahKebutuhan' => $itemArray['jumlah_kebutuhan'] ?? null,
-            'jumlahKirim' => $itemArray['jumlah_kirim'] ?? null,
+            'jumlahKebutuhan' => $itemArray['jumlah_kebutuhan'] !== null ? (float) $itemArray['jumlah_kebutuhan'] : null,
+            'jumlahKirim' => $itemArray['jumlah_kirim'] !== null ? (float) $itemArray['jumlah_kirim'] : null,
         ];
     }
     

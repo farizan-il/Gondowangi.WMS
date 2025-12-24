@@ -27,9 +27,9 @@ class InventoryStock extends Model
 
     protected $casts = [
         'exp_date' => 'date',
-        'qty_on_hand' => 'decimal:2',
-        'qty_reserved' => 'decimal:2',
-        'qty_available' => 'decimal:2',
+        'qty_on_hand' => 'decimal:6',
+        'qty_reserved' => 'decimal:6',
+        'qty_available' => 'decimal:6',
         'last_movement_date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

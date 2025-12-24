@@ -27,8 +27,8 @@ class Reservation extends Model
     ];
 
     protected $casts = [
-        'qty_reserved' => 'decimal:2',
-        'picked_qty' => 'decimal:2',
+        'qty_reserved' => 'decimal:6',
+        'picked_qty' => 'decimal:6',
         'reservation_date' => 'datetime',
         'expiry_date' => 'datetime',
     ];

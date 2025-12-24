@@ -29,12 +29,12 @@ class ReservationRequestItem extends Model
     ];
 
     protected $casts = [
-        'qty' => 'decimal:2',
-        'jumlah_permintaan' => 'decimal:2',
-        'jumlah_kebutuhan' => 'decimal:2',
-        'jumlah_kirim' => 'decimal:2',
-        'qty_picked' => 'decimal:2',
-        'qty_remaining' => 'decimal:2',
+        'qty' => 'decimal:6',
+        'jumlah_permintaan' => 'decimal:6',
+        'jumlah_kebutuhan' => 'decimal:6',
+        'jumlah_kirim' => 'decimal:6',
+        'qty_picked' => 'decimal:6',
+        'qty_remaining' => 'decimal:6',
     ];
 
     public function request(): BelongsTo
