@@ -78,7 +78,7 @@ class PutawayTransferController extends Controller
             'bin'
         ])
         ->whereIn('status', ['RELEASED', 'REJECTED'])
-        ->where('qty_on_hand', '>', 0) // Changed from qty_available to qty_on_hand
+        ->where('qty_available', '>', 0) // Changed from qty_on_hand to qty_available
         ->whereHas('bin', function ($query) {
             $query->where('bin_code', 'LIKE', 'QRT-%');
         })
@@ -107,7 +107,7 @@ class PutawayTransferController extends Controller
                 'materialName' => $stock->material->nama_material,
                 'currentBin' => $stock->bin->bin_code,
                 'currentBinId' => $stock->bin->id,
-                'qty' => $stock->qty_on_hand, // Show qty_on_hand instead of qty_available
+                'qty' => $stock->qty_available, // Show qty_available (what can be allocated)
                 'qtyAvailable' => $stock->qty_available, // Keep for reference
                 'qtyReserved' => $stock->qty_reserved, // Keep for reference
                 'uom' => $stock->uom,
@@ -186,8 +186,12 @@ class PutawayTransferController extends Controller
         $request->validate([
             'materials' => 'required|array',
             'materials.*.stockId' => 'required|exists:inventory_stock,id',
-            'materials.*.destinationBin' => 'required',
-            'materials.*.qty' => 'required|numeric|min:0'
+            'materials.*.destinationBin' => 'required_if:materials.*.isSplit,false',
+            'materials.*.qty' => 'required|numeric|min:0',
+            'materials.*.isSplit' => 'nullable|boolean',
+            'materials.*.splitAllocations' => 'required_if:materials.*.isSplit,true|array',
+            'materials.*.splitAllocations.*.binCode' => 'required_with:materials.*.splitAllocations',
+            'materials.*.splitAllocations.*.qty' => 'required_with:materials.*.splitAllocations|numeric|min:0.01',
         ]);
 
         DB::beginTransaction();
@@ -207,35 +211,76 @@ class PutawayTransferController extends Controller
             foreach ($request->materials as $material) {
                 $stock = InventoryStock::find($material['stockId']);
                 $sourceBin = $stock->bin;
-                $destBin = WarehouseBin::where('bin_code', $material['destinationBin'])->firstOrFail();
-
-                $transferOrder->items()->create([
-                    'material_id' => $stock->material_id,
-                    'batch_lot' => $stock->batch_lot,
-                    'source_bin_id' => $sourceBin->id,
-                    'destination_bin_id' => $destBin->id,
-                    'qty_planned' => $material['qty'],
-                    'uom' => $stock->uom,
-                    'status' => 'pending',
-                    'box_scanned' => false,
-                    'source_bin_scanned' => false,
-                    'dest_bin_scanned' => false
-                ]);
-
-                $stock->update([
-                    'qty_reserved' => $stock->qty_reserved + $material['qty'],
-                    'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $material['qty'])
-                ]);
-
-                $this->logActivity($transferOrder, 'Create Putaway TO', [
-                    'description' => "Membuat Transfer Order Putaway untuk {$material['qty']} {$stock->uom} {$stock->material->nama_material}",
-                    'material_id' => $stock->material_id,
-                    'batch_lot' => $stock->batch_lot,
-                    'qty_after' => $material['qty'],
-                    'bin_from' => $sourceBin->id, 
-                    'bin_to' => $destBin->id,     
-                    'reference_document' => $toNumber,
-                ]);
+                
+                if ($material['isSplit'] ?? false) {
+                    // SPLIT MODE: Create multiple TO items
+                    $totalAllocated = 0;
+                    
+                    foreach ($material['splitAllocations'] as $allocation) {
+                        $destBin = WarehouseBin::where('bin_code', $allocation['binCode'])->firstOrFail();
+                        
+                        $transferOrder->items()->create([
+                            'material_id' => $stock->material_id,
+                            'batch_lot' => $stock->batch_lot,
+                            'source_bin_id' => $sourceBin->id,
+                            'destination_bin_id' => $destBin->id,
+                            'qty_planned' => $allocation['qty'],
+                            'uom' => $stock->uom,
+                            'status' => 'pending',
+                            'box_scanned' => false,
+                            'source_bin_scanned' => false,
+                            'dest_bin_scanned' => false
+                        ]);
+                        
+                        $totalAllocated += $allocation['qty'];
+                    }
+                    
+                    // Update stock reservation for total allocated
+                    $stock->update([
+                        'qty_reserved' => $stock->qty_reserved + $totalAllocated,
+                        'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $totalAllocated)
+                    ]);
+                    
+                    $this->logActivity($transferOrder, 'Create Split Putaway TO', [
+                        'description' => "Membuat Transfer Order Putaway (SPLIT) untuk {$totalAllocated} {$stock->uom} {$stock->material->nama_material} ke " . count($material['splitAllocations']) . " locations",
+                        'material_id' => $stock->material_id,
+                        'batch_lot' => $stock->batch_lot,
+                        'qty_after' => $totalAllocated,
+                        'reference_document' => $toNumber,
+                    ]);
+                    
+                } else {
+                    // SINGLE MODE: Original logic
+                    $destBin = WarehouseBin::where('bin_code', $material['destinationBin'])->firstOrFail();
+                    
+                    $transferOrder->items()->create([
+                        'material_id' => $stock->material_id,
+                        'batch_lot' => $stock->batch_lot,
+                        'source_bin_id' => $sourceBin->id,
+                        'destination_bin_id' => $destBin->id,
+                        'qty_planned' => $material['qty'],
+                        'uom' => $stock->uom,
+                        'status' => 'pending',
+                        'box_scanned' => false,
+                        'source_bin_scanned' => false,
+                        'dest_bin_scanned' => false
+                    ]);
+                    
+                    $stock->update([
+                        'qty_reserved' => $stock->qty_reserved + $material['qty'],
+                        'qty_available' => $stock->qty_on_hand - ($stock->qty_reserved + $material['qty'])
+                    ]);
+                    
+                    $this->logActivity($transferOrder, 'Create Putaway TO', [
+                        'description' => "Membuat Transfer Order Putaway untuk {$material['qty']} {$stock->uom} {$stock->material->nama_material}",
+                        'material_id' => $stock->material_id,
+                        'batch_lot' => $stock->batch_lot,
+                        'qty_after' => $material['qty'],
+                        'bin_from' => $sourceBin->id,
+                        'bin_to' => $destBin->id,
+                        'reference_document' => $toNumber,
+                    ]);
+                }
             }
 
             DB::commit();

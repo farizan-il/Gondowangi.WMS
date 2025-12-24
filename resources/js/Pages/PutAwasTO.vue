@@ -191,6 +191,7 @@
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
                       <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
@@ -209,8 +210,13 @@
                         {{ material.uom }}
                       </td>
                       <td class="px-4 py-3">
+                        <!-- IF SPLIT: Show info message -->
+                        <div v-if="material.isSplit" class="text-sm text-gray-500 italic">
+                          Bin Tujuan Sudah displit
+                        </div>
+                        
                         <!-- IF REJECTED: Show Select Dropdown for RJT Bins -->
-                        <div v-if="material.status === 'REJECTED'" class="w-64">
+                        <div v-else-if="material.status === 'REJECTED'" class="w-64">
                           <select 
                             v-model="material.destinationBin"
                             :disabled="!material.selected"
@@ -256,6 +262,29 @@
                           >
                             {{ bin.code }} [{{ bin.zone }} - {{ bin.currentItems }}/{{ bin.capacity }}]
                           </div>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <button
+                          v-if="material.selected && material.status === 'RELEASED' && !material.isSplit"
+                          @click="openSplitModal(material)"
+                          class="px-3 py-1 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 rounded transition-colors flex items-center gap-1"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                          </svg>
+                          Split
+                        </button>
+                        <div v-else-if="material.isSplit" class="flex items-center gap-2">
+                          <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                            Split ({{ material.splitAllocations?.length || 0 }})
+                          </span>
+                          <button
+                            @click="openSplitModal(material)"
+                            class="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            Edit
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -342,6 +371,195 @@
           <div class="flex justify-end mt-6">
             <button @click="showBinModal = false" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
               Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split Material Allocation Modal -->
+      <div v-if="showSplitModal && currentSplitMaterial"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-6">
+            <div>
+              <h3 class="text-xl font-semibold">Split Material Allocation</h3>
+              <p class="text-sm text-gray-600 mt-1">
+                {{ currentSplitMaterial.itemCode }} - {{ currentSplitMaterial.materialName }}
+              </p>
+              <p class="text-sm font-medium text-blue-600 mt-1">
+                Total Available: {{ currentSplitMaterial.qty }} {{ currentSplitMaterial.uom }}
+              </p>
+            </div>
+            <button @click="closeSplitModal" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Step 1: Specify Number of Locations -->
+          <div v-if="splitAllocations.length === 0" class="space-y-4">
+            <label class="block text-sm font-medium text-gray-700">
+              Berapa bin location yang akan digunakan?
+            </label>
+            <div class="flex items-center gap-4">
+              <input 
+                v-model.number="splitLocationCount" 
+                type="number" 
+                min="2" 
+                max="10"
+                class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+              <button 
+                @click="generateAllocationForm"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+              >
+                Generate Form
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Allocation Form -->
+          <div v-else class="space-y-4">
+            <div class="overflow-x-auto">
+              <table class="w-full border border-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">No</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Bin Location</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Qty ({{ currentSplitMaterial.uom }})</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(allocation, index) in splitAllocations" :key="index" class="border-t">
+                    <td class="px-4 py-3 text-sm">{{ index + 1 }}</td>
+                    <td class="px-4 py-3">
+                      <div class="relative">
+                        <input 
+                          v-model="allocation.binCode"
+                          @input="() => { allocation.showSuggestions = true }"
+                          @focus="() => { allocation.showSuggestions = true }"
+                          @blur="() => setTimeout(() => { allocation.showSuggestions = false }, 200)"
+                          type="text"
+                          placeholder="Ketik kode bin..."
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                        
+                        <!-- Info Button -->
+                        <button 
+                          v-if="allocation.binCode && getBinByCode(allocation.binCode)"
+                          @click.stop="showSplitBinInfo(allocation.binCode)"
+                          type="button"
+                          class="absolute right-2 top-2.5 text-blue-600 hover:text-blue-800"
+                          title="Lihat isi bin"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </button>
+                        
+                        <!-- Autocomplete Suggestions -->
+                        <div 
+                          v-if="allocation.showSuggestions && getFilteredBins(allocation.binCode).length > 0"
+                          class="absolute z-[99999] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                        >
+                          <div 
+                            v-for="bin in getFilteredBins(allocation.binCode)" 
+                            :key="bin.code"
+                            @mousedown.prevent="selectSplitBin(allocation, bin)"
+                            class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                          >
+                            <div class="flex justify-between items-center">
+                              <span class="font-medium text-gray-900">{{ bin.code }}</span>
+                              <span class="text-xs text-gray-500">{{ bin.zone }}</span>
+                            </div>
+                            <div class="text-xs text-gray-600 mt-0.5">
+                              {{ bin.currentItems }}/{{ bin.capacity }} items
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <input 
+                        v-model.number="allocation.qty"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        :max="currentSplitMaterial.qty"
+                        class="w-32 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td class="px-4 py-3">
+                      <button 
+                        v-if="splitAllocations.length > 2"
+                        @click="removeAllocation(index)"
+                        class="text-red-600 hover:text-red-800 text-xs font-medium"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Add Location Button -->
+            <button 
+              @click="addAllocation"
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+              </svg>
+              Add Location
+            </button>
+
+            <!-- Summary -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="flex justify-between text-sm">
+                <span class="font-medium">Total Allocated:</span>
+                <span :class="totalAllocatedQty > currentSplitMaterial.qty ? 'text-red-600 font-bold' : 'text-gray-900'">
+                  {{ totalAllocatedQty.toFixed(2) }} / {{ currentSplitMaterial.qty }} {{ currentSplitMaterial.uom }}
+                </span>
+              </div>
+              <div class="flex justify-between text-sm mt-2">
+                <span class="font-medium">Remaining:</span>
+                <span class="text-gray-900">
+                  {{ (currentSplitMaterial.qty - totalAllocatedQty).toFixed(2) }} {{ currentSplitMaterial.uom }}
+                </span>
+              </div>
+              <p v-if="totalAllocatedQty > currentSplitMaterial.qty" class="text-xs text-red-600 mt-2 font-medium">
+                ⚠️ Total allocated exceeds available quantity!
+              </p>
+              <p v-else-if="totalAllocatedQty < currentSplitMaterial.qty && totalAllocatedQty > 0" class="text-xs text-yellow-600 mt-2">
+                ℹ️ You have {{ (currentSplitMaterial.qty - totalAllocatedQty).toFixed(2) }} {{ currentSplitMaterial.uom }} unallocated
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="flex gap-3 justify-end mt-6 pt-4 border-t">
+            <button 
+              v-if="splitAllocations.length > 0"
+              @click="resetSplitForm"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Reset Form
+            </button>
+            <button @click="closeSplitModal" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+              Cancel
+            </button>
+            <button 
+              v-if="splitAllocations.length > 0"
+              @click="applySplit"
+              :disabled="!isValidSplit"
+              :class="isValidSplit ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+              class="px-4 py-2 text-white rounded-md font-medium"
+            >
+              Apply Split
             </button>
           </div>
         </div>
@@ -672,6 +890,14 @@ interface TransferOrder {
   hasRejected?: boolean
 }
 
+interface SplitAllocation {
+  binCode: string
+  binId?: number
+  qty: number
+  wadah?: number
+  showSuggestions?: boolean
+}
+
 interface QCReleasedMaterial {
   itemCode: string
   materialName: string
@@ -686,6 +912,8 @@ interface QCReleasedMaterial {
   status: string // RELEASED | REJECTED
   binSearchQuery?: string // Untuk autocomplete
   showBinSuggestions?: boolean // State dropdown
+  isSplit?: boolean // Flag if material is split
+  splitAllocations?: SplitAllocation[] // Array of allocations
 }
 
 interface BinInfo {
@@ -755,6 +983,7 @@ const showAutoPutawayModal = ref(false)
 const showBinModal = ref(false)
 const showDetailModal = ref(false)
 const showQRModal = ref(false)
+const showSplitModal = ref(false)
 
 // Selected data
 const selectedTO = ref<TransferOrder | null>(null)
@@ -771,6 +1000,11 @@ const html5QrCode = ref<Html5Qrcode | null>(null)
 const isCameraActive = ref(false)
 const useCameraMode = ref(true)
 const lastScannedValue = ref('')
+
+// Split modal states
+const currentSplitMaterial = ref<QCReleasedMaterial | null>(null)
+const splitLocationCount = ref(2)
+const splitAllocations = ref<SplitAllocation[]>([])
 
 // Computed
 const filteredTransferOrders = computed(() => {
@@ -790,7 +1024,11 @@ const filteredTransferOrders = computed(() => {
 })
 
 const selectedMaterials = computed(() => {
-  return qcReleasedMaterials.value.filter(m => m.selected && m.destinationBin)
+  return qcReleasedMaterials.value.filter(m => {
+    if (!m.selected) return false
+    // If split, check if has allocations. If not split, check if has destinationBin
+    return m.isSplit ? (m.splitAllocations && m.splitAllocations.length > 0) : m.destinationBin
+  })
 })
 
 const canCompleteTO = computed(() => {
@@ -799,6 +1037,27 @@ const canCompleteTO = computed(() => {
     item.boxScanned && item.sourceBinScanned && item.destBinScanned &&
     (item.actualQty !== undefined && item.actualQty > 0)
   )
+})
+
+// Split validation computed properties
+const totalAllocatedQty = computed(() => {
+  return splitAllocations.value.reduce((sum, a) => sum + (a.qty || 0), 0)
+})
+
+const isValidSplit = computed(() => {
+  if (!currentSplitMaterial.value || splitAllocations.value.length < 2) return false
+  
+  // Check total qty doesn't exceed available
+  if (totalAllocatedQty.value > currentSplitMaterial.value.qty) return false
+  
+  // Check all allocations have bin and qty > 0
+  if (splitAllocations.value.some(a => !a.binCode || !a.qty || a.qty <= 0)) return false
+  
+  // Check no duplicate bins
+  const bins = splitAllocations.value.map(a => a.binCode)
+  if (new Set(bins).size !== bins.length) return false
+  
+  return true
 })
 
 const wizardStepTitle = computed(() => {
@@ -958,6 +1217,94 @@ const showBinDetails = async (material: QCReleasedMaterial) => {
   }
 }
 
+// Split Modal Functions
+const openSplitModal = (material: QCReleasedMaterial) => {
+  currentSplitMaterial.value = material
+  
+  // If already split, load existing allocations
+  if (material.isSplit && material.splitAllocations) {
+    splitAllocations.value = [...material.splitAllocations]
+  } else {
+    splitAllocations.value = []
+    splitLocationCount.value = 2
+  }
+  
+  showSplitModal.value = true
+}
+
+const closeSplitModal = () => {
+  showSplitModal.value = false
+  currentSplitMaterial.value = null
+  splitAllocations.value = []
+  splitLocationCount.value = 2
+}
+
+const generateAllocationForm = () => {
+  if (splitLocationCount.value < 2 || splitLocationCount.value > 10) {
+    alert('Jumlah location harus antara 2-10')
+    return
+  }
+  
+  splitAllocations.value = Array.from({ length: splitLocationCount.value }, () => ({
+    binCode: '',
+    qty: 0,
+    showSuggestions: false
+  }))
+}
+
+const addAllocation = () => {
+  splitAllocations.value.push({ binCode: '', qty: 0, showSuggestions: false })
+}
+
+const removeAllocation = (index: number) => {
+  if (splitAllocations.value.length > 2) {
+    splitAllocations.value.splice(index, 1)
+  }
+}
+
+const resetSplitForm = () => {
+  splitAllocations.value = []
+  splitLocationCount.value = 2
+}
+
+const applySplit = () => {
+  if (!currentSplitMaterial.value || !isValidSplit.value) {
+    alert('Please fill all required fields correctly')
+    return
+  }
+  
+  // Apply split to material
+  currentSplitMaterial.value.isSplit = true
+  currentSplitMaterial.value.splitAllocations = [...splitAllocations.value]
+  currentSplitMaterial.value.destinationBin = '' // Clear single destination
+  
+  closeSplitModal()
+  alert(`Material berhasil di-split ke ${splitAllocations.value.length} locations`)
+}
+
+// Helper Functions for Split Bin Selection
+const getBinByCode = (binCode: string) => {
+  return availableBins.value.find(b => b.code.toLowerCase() === binCode.toLowerCase())
+}
+
+const selectSplitBin = (allocation: SplitAllocation, bin: BinInfo) => {
+  allocation.binCode = bin.code
+  allocation.showSuggestions = false
+}
+
+const showSplitBinInfo = async (binCode: string) => {
+  try {
+    const response = await fetch(`/transaction/putaway-transfer/bin-details?binCode=${binCode}`)
+    if (!response.ok) throw new Error('Failed to fetch bin details')
+    const binInfo = await response.json()
+    selectedBinInfo.value = binInfo
+    showBinModal.value = true
+  } catch (error: any) {
+    console.error('Error fetching bin details:', error)
+    alert('Gagal mengambil detail bin: ' + error.message)
+  }
+}
+
 const confirmAutoPutaway = async () => {
   if (!selectedMaterials.value.length) {
     alert('Pilih minimal 1 material untuk di-putaway!')
@@ -973,7 +1320,9 @@ const confirmAutoPutaway = async () => {
       materials: selectedMaterials.value.map(m => ({
         stockId: m.stockId,
         destinationBin: m.destinationBin,
-        qty: m.qty
+        qty: m.qty,
+        isSplit: m.isSplit || false,
+        splitAllocations: m.isSplit ? m.splitAllocations : undefined
       }))
     }, {
       onSuccess: (page) => {

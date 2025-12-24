@@ -187,7 +187,6 @@
              </table>
           </div>
         </div>
-
     </div>
 
     <!-- Incoming Qty Details Modal -->
