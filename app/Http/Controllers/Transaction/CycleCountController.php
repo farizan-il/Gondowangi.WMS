@@ -220,7 +220,7 @@ class CycleCountController extends Controller
             'code' => $stock->material->kode_item,
             'product_name' => $stock->material->nama_material,
             'category' => $stock->material->kategori,
-            'onhand' => (float) $stock->qty_on_hand,
+            'onhand' => max(0, (float) ($stock->qty_on_hand - $stock->qty_reserved)),
             'uom' => $stock->uom,
             'location' => $stock->bin ? $stock->bin->bin_code : '-',
             'scan_serial' => '', 
@@ -322,7 +322,7 @@ class CycleCountController extends Controller
                 if ($activeCC) {
                     // RESET yang aktif
                     $activeCC->update([
-                        'system_qty' => $stock->qty_on_hand,
+                        'system_qty' => max(0, $stock->qty_on_hand - $stock->qty_reserved),
                         'physical_qty' => null,
                         'scanned_serial' => null,
                         'scanned_bin' => null,
@@ -336,7 +336,7 @@ class CycleCountController extends Controller
                         'cycle_number' => $stock->batch_lot ?? ($stock->material->kode_item . '-' . uniqid()),
                         'material_id' => $stock->material_id,
                         'warehouse_bin_id' => $stock->bin_id,
-                        'system_qty' => $stock->qty_on_hand,
+                        'system_qty' => max(0, $stock->qty_on_hand - $stock->qty_reserved),
                         'physical_qty' => null,
                         'scanned_serial' => null,
                         'scanned_bin' => null,
@@ -515,7 +515,7 @@ class CycleCountController extends Controller
                 'cycle_number' => $stock->batch_lot ?? ($stock->material->kode_item . '-' . uniqid()),
                 'material_id' => $stock->material_id,
                 'warehouse_bin_id' => $stock->bin_id,
-                'system_qty' => $stock->qty_on_hand,
+                'system_qty' => max(0, $stock->qty_on_hand - $stock->qty_reserved),
                 'physical_qty' => null,
                 'scanned_serial' => null,
                 'scanned_bin' => null,
