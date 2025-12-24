@@ -397,15 +397,25 @@
               </button>
             </div>
             
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Atau input manual QR Code:</label>
-              <input v-model="qrInput" @keyup.enter="processQR" type="text" placeholder="Scan atau ketik QR Code..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
-            </div>
+
             
             <!-- Manual Qty Input (when scanning box) -->
             <div v-if="scanStep === 3" class="space-y-2">
               <label class="block text-sm font-medium text-gray-700">Qty yang Dipick (Max: {{ currentScanItem?.qtyDiminta || 0 }} {{ currentScanItem?.uom || '' }}):</label>
-              <input v-model.number="manualQty" type="number" :max="currentScanItem?.qtyDiminta" placeholder="Masukkan quantity..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
+              <input 
+                v-model.number="manualQty" 
+                type="number" 
+                :max="currentScanItem?.qtyDiminta" 
+                @input="validateQuantityInput"
+                placeholder="Masukkan quantity..." 
+                :class="showQtyError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'"
+                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 bg-white text-gray-900">
+              <p v-if="showQtyError" class="text-sm text-red-600 font-medium mt-1 flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                {{ qtyErrorMessage }}
+              </p>
             </div>
             
             <div class="flex space-x-3">
@@ -714,6 +724,8 @@ const scanStep = ref(1)
 const currentScanItem = ref(null)
 const currentItemIndex = ref(0)
 const manualQty = ref('')
+const qtyErrorMessage = ref('')
+const showQtyError = ref(false)
 
 // Camera related refs
 const videoElement = ref(null)
@@ -1103,6 +1115,8 @@ const resetScanner = () => {
     scanStep.value = 1
     qrInput.value = ''
     manualQty.value = ''
+    showQtyError.value = false
+    qtyErrorMessage.value = ''
 }
 
 const processQR = () => {
@@ -1148,6 +1162,36 @@ const validateQRBox = (qrContent) => {
     console.log(`✓ Item valid: ${currentScanItem.value.kodeItem} - ${currentScanItem.value.lotSerial}`)
 }
 
+const validateQuantityInput = () => {
+    const qtyPicked = parseFloat(manualQty.value)
+    const qtyDiminta = currentScanItem.value?.qtyDiminta || 0
+    
+    // Clear error if input is empty (user is still typing)
+    if (manualQty.value === '' || manualQty.value === null) {
+        showQtyError.value = false
+        qtyErrorMessage.value = ''
+        return
+    }
+    
+    // Validate if input is a valid number
+    if (isNaN(qtyPicked) || qtyPicked <= 0) {
+        showQtyError.value = true
+        qtyErrorMessage.value = 'Quantity harus lebih dari 0'
+        return
+    }
+    
+    // Validate if input exceeds maximum
+    if (qtyPicked > qtyDiminta) {
+        showQtyError.value = true
+        qtyErrorMessage.value = `Quantity melebihi maksimal! Max: ${qtyDiminta} ${currentScanItem.value?.uom || ''}`
+        return
+    }
+    
+    // Clear error if validation passes
+    showQtyError.value = false
+    qtyErrorMessage.value = ''
+}
+
 const validateSourceBin = (binCode) => {
     if (!currentScanItem.value) return
     
@@ -1166,6 +1210,8 @@ const validateSourceBin = (binCode) => {
 const confirmQuantity = () => {
     const qtyPicked = parseFloat(manualQty.value)
     if (isNaN(qtyPicked) || qtyPicked <= 0) {
+        showQtyError.value = true
+        qtyErrorMessage.value = 'Silakan input quantity yang valid!'
         console.error('Silakan input quantity yang valid!')
         return
     }
@@ -1173,9 +1219,15 @@ const confirmQuantity = () => {
     const qtyDiminta = currentScanItem.value.qtyDiminta
     
     if (qtyPicked > qtyDiminta) {
+        showQtyError.value = true
+        qtyErrorMessage.value = `Quantity melebihi maksimal! Max: ${qtyDiminta} ${currentScanItem.value.uom}`
         console.error(`Quantity melebihi yang dialokasikan!\nDialokasikan: ${qtyDiminta}\nInput: ${qtyPicked}`)
         return
     }
+    
+    // Clear error if validation passes
+    showQtyError.value = false
+    qtyErrorMessage.value = ''
     
     // Update data di modal (currentScanItem adalah deep clone)
     currentScanItem.value.qtyPicked = qtyPicked

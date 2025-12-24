@@ -323,7 +323,8 @@ class ReservationController extends Controller
                     if ($requestType === 'raw-material') {
                         $item['jumlahKebutuhan'] = $parsedItem['qty'];
                     } elseif ($requestType === 'packaging' || $requestType === 'add') {
-                        $item['jumlahPermintaan'] = $parsedItem['qty'];
+                        // Round UP untuk packaging karena UoM adalah PCS, ROL (tidak bisa ada desimal)
+                        $item['jumlahPermintaan'] = ceil($parsedItem['qty']);
                     } else {
                         $item['qty'] = $parsedItem['qty'];
                     }

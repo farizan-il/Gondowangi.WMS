@@ -993,7 +993,15 @@ const uploadFileAndParse = async () => {
         // Isi tabel item (Bill of Material) tanpa batas 10 baris 
         const materials = response.data.materials || [];
         if (materials.length > 0) {
-            formData.value.items = materials;
+            // Round UP jumlahPermintaan untuk packaging/ADD karena UoM adalah PCS, ROL (tidak bisa desimal)
+            if (selectedCategory.value === 'packaging' || selectedCategory.value === 'add') {
+                formData.value.items = materials.map(item => ({
+                    ...item,
+                    jumlahPermintaan: Math.ceil(item.jumlahPermintaan || 0)
+                }));
+            } else {
+                formData.value.items = materials;
+            }
         }
 
         // NEW: Check for category mismatch and show modal
