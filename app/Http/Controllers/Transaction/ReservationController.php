@@ -608,7 +608,7 @@ class ReservationController extends Controller
             // Raw Material fields - REQUIRED IF raw-material
             'kodeProduk' => 'nullable|required_if:request_type,raw-material|string',
             'noBets' => 'nullable|required_if:request_type,raw-material|string',
-            'besarBets' => 'nullable|required_if:request_type,raw-material|numeric|min:0.01',
+            'besarBets' => 'nullable|required_if:request_type,raw-material|numeric',
 
             // Item validation
             'items' => 'required|array|min:1',
@@ -617,9 +617,9 @@ class ReservationController extends Controller
             'items.*.kodePM' => 'nullable|required_if:request_type,packaging,add|string',
             'items.*.kodeBahan' => 'nullable|required_if:request_type,raw-material|string',
             // Item quantities must be present and > 0 based on type
-            'items.*.qty' => 'nullable|required_if:request_type,foh-rs|numeric|min:0.01',
-            'items.*.jumlahPermintaan' => 'nullable|required_if:request_type,packaging,add|numeric|min:0.01',
-            'items.*.jumlahKebutuhan' => 'nullable|required_if:request_type,raw-material|numeric|min:0.01',
+            'items.*.qty' => 'nullable|required_if:request_type,foh-rs|numeric',
+            'items.*.jumlahPermintaan' => 'nullable|required_if:request_type,packaging,add|numeric',
+            'items.*.jumlahKebutuhan' => 'nullable|required_if:request_type,raw-material|numeric',
             // Field lainnya yang sifatnya opsional/spesifik item
             'items.*.keterangan' => 'nullable|string',
             'items.*.uom' => 'nullable|string',
