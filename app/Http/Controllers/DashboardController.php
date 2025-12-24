@@ -110,7 +110,7 @@ class DashboardController extends Controller
                     'nama' => $item->material->nama_material,
                     'lot' => $item->batch_lot,
                     'lokasi' => $binCode,
-                    'qty' => $item->qty_on_hand,
+                    'qty' => max(0, $item->qty_on_hand - $item->qty_reserved),
                     'uom' => $item->uom,
                     'expiredDate' => $item->exp_date ? $item->exp_date->toDateString() : 'N/A',
                     'status' => $displayStatus, 
