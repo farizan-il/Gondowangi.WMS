@@ -1226,6 +1226,19 @@ const printSlip = (returnItem: ReturnItem) => {
   const currentDate = new Date().toLocaleDateString('id-ID')
   const returnDate = formatDate(returnItem.date)
 
+  // Generate table rows for all items
+  const itemsRows = returnItem.items.map((item, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${item.item_code || '-'}</td>
+      <td>${item.item_name || '-'}</td>
+      <td>${item.batch_lot || '-'}</td>
+      <td>${formatQty(item.qty)}</td>
+      <td>${item.uom || '-'}</td>
+      <td>${item.reason || '-'}</td>
+    </tr>
+  `).join('')
+
   const printWindow = window.open('', '_blank')
   if (printWindow) {
     const htmlContent = `<!DOCTYPE html>
@@ -1263,8 +1276,8 @@ const printSlip = (returnItem: ReturnItem) => {
       <td>Status</td><td>${returnItem.status}</td>
     </tr>
     <tr>
-      <td>${returnItem.type === 'Supplier' ? 'Supplier Address' : 'Dept Asal'}</td>
-      <td colspan="3">${returnItem.supplier}</td>
+      <td>${returnItem.type === 'Supplier' ? 'Supplier' : 'Dept Asal'}</td>
+      <td colspan="3">${returnItem.supplier || '-'}</td>
     </tr>
     ${returnItem.shipmentNo ? `<tr><td>No Shipment/Reservasi</td><td colspan="3">${returnItem.shipmentNo}</td></tr>` : ''}
   </table>
@@ -1277,11 +1290,7 @@ const printSlip = (returnItem: ReturnItem) => {
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>1</td><td>${returnItem.itemCode}</td><td>${returnItem.itemName}</td>
-        <td>${returnItem.lotBatch}</td><td>${returnItem.qty}</td>
-        <td>${returnItem.uom}</td><td>${returnItem.reason}</td>
-      </tr>
+      ${itemsRows}
     </tbody>
   </table>
 
@@ -1309,9 +1318,10 @@ const printSlip = (returnItem: ReturnItem) => {
       printWindow.print()
     }, 500)
   }
-
+  
   showMessage('success', `Slip return ${returnItem.returnNumber} siap dicetak`)
 }
+
 
 const showMessage = (type: 'success' | 'error', text: string) => {
   message.value = { type, text }
