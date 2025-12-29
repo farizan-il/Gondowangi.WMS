@@ -32,8 +32,8 @@ class QcActivityLog extends Model
 
     protected $casts = [
         'exp_date' => 'date',
-        'qty_before' => 'decimal:2',
-        'qty_after' => 'decimal:2',
+        'qty_before' => 'decimal:4',
+        'qty_after' => 'decimal:4',
         'created_at' => 'datetime',
     ];
 

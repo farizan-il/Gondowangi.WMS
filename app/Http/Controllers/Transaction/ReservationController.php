@@ -400,7 +400,8 @@ class ReservationController extends Controller
              // Saat ini dikosongkan agar tidak membatasi hasil pencarian FOH
              $categoryFilter = null; 
         } elseif ($type === 'packaging' || $type === 'add') {
-            $categoryFilter = 'Packaging Material';
+            // FIXED: Gunakan 'Packaging' sesuai dengan format yang digunakan di parseMaterials (line 295)
+            $categoryFilter = 'Packaging';
         } elseif ($type === 'raw-material') {
             $categoryFilter = 'Raw Material';
         } else {
@@ -513,7 +514,7 @@ class ReservationController extends Controller
                   ->orWhere('exp_date', '>', now());  // Material belum kadaluarsa = OK
             });
             
-            // ** START: LOGIKA PENGURUTAN FEFO/FIFO BARU (DI DATABASE) **
+            // ** START: LOGIKA PENGURUTAN FEFO/FIFO/QTY TERKECIL BARU (DI DATABASE) **
             
             // 2a. Prioritas 1: FEFO (First Expired First Out)
             //    - Urutkan berdasarkan exp_date ASC (tercepat kedaluwarsa).
@@ -534,7 +535,12 @@ class ReservationController extends Controller
                 Log::warning("Gagal mengurutkan FIFO di database (DB mungkin tidak support STR_TO_DATE): " . $e->getMessage());
             }
 
-            // 2c. Ambil data yang SUDAH TERURUT SEMPURNA dari DB
+            // 2c. Prioritas 3: Qty Terkecil (Smallest Quantity First)
+            //    - Jika exp_date DAN tanggal kedatangan SAMA, urutkan berdasarkan qty_available ASC (terkecil dulu).
+            //    - Ini memastikan stok dengan jumlah lebih kecil dialokasikan terlebih dahulu.
+            $availableStocksQuery->orderBy('qty_available', 'ASC');
+
+            // 2d. Ambil data yang SUDAH TERURUT SEMPURNA dari DB
             $availableStocks = $availableStocksQuery->get();
             
             // ** END: LOGIKA PENGURUTAN BARU **

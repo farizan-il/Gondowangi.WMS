@@ -201,11 +201,16 @@
                           class="rounded border-gray-300 focus:ring-blue-500">
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.itemCode }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.materialName }} <div v-if="material.status === 'REJECTED'" class="mt-1">
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.materialName }} 
+                        <div v-if="material.status === 'REJECTED'" class="mt-1">
                           <span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Reject</span>
-                        </div></td>
+                        </div>
+                        <div v-if="material.isFromReturn" class="mt-1">
+                          <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase">Return Produksi</span>
+                        </div>
+                      </td>
                       <td class="px-4 py-3 text-sm text-gray-900">{{ material.currentBin }}</td>
-                      <td class="px-4 py-3 text-sm text-gray-900">{{ material.qty }}</td>
+                      <td class="px-4 py-3 text-sm text-gray-900">{{ formatQty(material.qty, material.category) }}</td>
                       <td class="px-4 py-3 text-sm text-gray-900">
                         {{ material.uom }}
                       </td>
@@ -848,6 +853,52 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirmation Modal for Bin Validation -->
+    <div v-if="showConfirmModal"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[99999]"
+      style="background-color: rgba(43, 51, 63, 0.67);">
+      <div class="bg-white rounded-lg max-w-md w-full mx-4 shadow-2xl">
+        <div class="p-6">
+          <!-- Icon & Title -->
+          <div class="flex items-start gap-4 mb-4">
+            <div :class="confirmModalType === 'merge' ? 'bg-blue-100' : 'bg-orange-100'" 
+                 class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+              <!-- Merge Icon -->
+              <svg v-if="confirmModalType === 'merge'" class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <!-- Warning Icon -->
+              <svg v-else class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 :class="confirmModalType === 'merge' ? 'text-blue-900' : 'text-orange-900'" 
+                  class="text-lg font-semibold mb-1">
+                {{ confirmModalTitle }}
+              </h3>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div class="mb-6 text-sm text-gray-700 leading-relaxed space-y-2" v-html="confirmModalMessage"></div>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button @click="cancelConfirm"
+              class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+              Batal
+            </button>
+            <button @click="proceedConfirm"
+              :class="confirmModalType === 'merge' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'"
+              class="flex-1 px-4 py-2.5 text-white rounded-lg font-medium transition-colors shadow-sm">
+              Lanjutkan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
@@ -914,6 +965,8 @@ interface QCReleasedMaterial {
   showBinSuggestions?: boolean // State dropdown
   isSplit?: boolean // Flag if material is split
   splitAllocations?: SplitAllocation[] // Array of allocations
+  isFromReturn?: boolean // Flag for return production materials
+  category?: string // Material category for qty formatting
 }
 
 interface BinInfo {
@@ -925,6 +978,7 @@ interface BinInfo {
   materials: Array<{
     itemCode: string
     materialName: string
+    batchLot: string // Added for validation
     qty: number
     uom: string
   }>
@@ -984,6 +1038,7 @@ const showBinModal = ref(false)
 const showDetailModal = ref(false)
 const showQRModal = ref(false)
 const showSplitModal = ref(false)
+const showConfirmModal = ref(false) // NEW: Confirmation modal for bin validation
 
 // Selected data
 const selectedTO = ref<TransferOrder | null>(null)
@@ -1005,6 +1060,12 @@ const lastScannedValue = ref('')
 const currentSplitMaterial = ref<QCReleasedMaterial | null>(null)
 const splitLocationCount = ref(2)
 const splitAllocations = ref<SplitAllocation[]>([])
+
+// Confirmation modal states
+const confirmModalType = ref<'merge' | 'warning'>('merge')
+const confirmModalTitle = ref('')
+const confirmModalMessage = ref('')
+let confirmResolve: ((value: boolean) => void) | null = null
 
 // Computed
 const filteredTransferOrders = computed(() => {
@@ -1217,6 +1278,124 @@ const showBinDetails = async (material: QCReleasedMaterial) => {
   }
 }
 
+// Validate bin selection for return materials
+const validateBinForReturnMaterial = async (material: QCReleasedMaterial, binCode: string): Promise<boolean> => {
+  if (!material.isFromReturn) return true; // Only validate for return materials
+  
+  try {
+    const response = await fetch(`/transaction/putaway-transfer/bin-details?binCode=${binCode}`);
+    if (!response.ok) throw new Error('Failed to fetch bin details');
+    const binData = await response.json();
+    
+    if (!binData.materials || binData.materials.length === 0) {
+      // Empty bin, no validation needed
+      return true;
+    }
+    
+    // Check if same material + same batch exists
+    const sameMaterialBatch = binData.materials.find((m: any) => 
+      m.itemCode === material.itemCode && m.batchLot === material.batchLot
+    );
+    
+    if (sameMaterialBatch) {
+      // Scenario 1: Show merge info modal  
+      const formattedQty = formatQty(sameMaterialBatch.qty, material.category);
+      return await showConfirmation(
+        'merge',
+        'Material Akan Digabungkan',
+        `<div class="space-y-2">
+          <p class="font-medium">Bin <span class="text-blue-600">${binCode}</span> sudah berisi:</p>
+          <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+            <div><span class="font-medium">Material:</span> ${sameMaterialBatch.itemCode} - ${sameMaterialBatch.materialName}</div>
+            <div><span class="font-medium">Batch:</span> ${sameMaterialBatch.batchLot}</div>
+            <div><span class="font-medium">Qty:</span> ${formattedQty} ${sameMaterialBatch.uom}</div>
+          </div>
+          <p class="text-gray-600 mt-2">Material return Anda akan digabungkan dengan stok yang sudah ada.</p>
+        </div>`
+      );
+    }
+    
+    // Check if different material exists
+    const differentMaterial = binData.materials.find((m: any) => m.itemCode !== material.itemCode);
+    
+    if (differentMaterial) {
+      // Scenario 2: Show warning modal
+      return await showConfirmation(
+        'warning',
+        '⚠️ Peringatan: Bin Berisi Material Berbeda',
+        `<div class="space-y-2">
+          <div class="bg-orange-50 border border-orange-200 rounded p-3 text-sm">
+            <p class="font-medium mb-2">Bin <span class="text-orange-600">${binCode}</span> saat ini berisi:</p>
+            <div><span class="font-medium">Material:</span> ${differentMaterial.itemCode} - ${differentMaterial.materialName}</div>
+          </div>
+          <div class="bg-gray-50 border border-gray-200 rounded p-3 text-sm">
+            <p class="font-medium mb-2">Anda akan memindahkan:</p>
+            <div><span class="font-medium">Material:</span> ${material.itemCode} - ${material.materialName}</div>
+          </div>
+          <p class="text-orange-700 font-medium mt-3">Apakah Anda yakin ingin melanjutkan?</p>
+        </div>`
+      );
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error validating bin:', error);
+    return true; // On error, allow anyway
+  }
+};
+
+// Show confirmation modal and return promise
+const showConfirmation = (type: 'merge' | 'warning', title: string, message: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    confirmModalType.value = type;
+    confirmModalTitle.value = title;
+    confirmModalMessage.value = message;
+    confirmResolve = resolve;
+    showConfirmModal.value = true;
+  });
+};
+
+const proceedConfirm = () => {
+  showConfirmModal.value = false;
+  if (confirmResolve) confirmResolve(true);
+  confirmResolve = null;
+};
+
+const cancelConfirm = () => {
+  showConfirmModal.value = false;
+  if (confirmResolve) confirmResolve(false);
+  confirmResolve = null;
+};
+
+// Select bin for material (with validation for return materials)
+const selectBin = async (material: QCReleasedMaterial, bin: any) => {
+  // Validate for return materials
+  const isValid = await validateBinForReturnMaterial(material, bin.code);
+  
+  if (!isValid) {
+    // User canceled
+    return;
+  }
+  
+  // Proceed with setting destination
+  material.destinationBin = bin.code;
+  material.binSearchQuery = bin.code;
+  material.showBinSuggestions = false;
+};
+
+// Select bin for split allocation (with validation for return materials)
+const selectSplitBin = async (allocation: any, bin: any) => {
+  // Validate for return materials
+  if (currentSplitMaterial.value?.isFromReturn) {
+    const isValid = await validateBinForReturnMaterial(currentSplitMaterial.value, bin.code);
+    if (!isValid) return;
+  }
+  
+  // Proceed with setting bin
+  allocation.binCode = bin.code;
+  allocation.showSuggestions = false;
+};
+
 // Split Modal Functions
 const openSplitModal = (material: QCReleasedMaterial) => {
   currentSplitMaterial.value = material
@@ -1286,11 +1465,8 @@ const applySplit = () => {
 const getBinByCode = (binCode: string) => {
   return availableBins.value.find(b => b.code.toLowerCase() === binCode.toLowerCase())
 }
-
-const selectSplitBin = (allocation: SplitAllocation, bin: BinInfo) => {
-  allocation.binCode = bin.code
-  allocation.showSuggestions = false
-}
+  
+// Function removed - now using the version with validation above (line ~1295)
 
 const showSplitBinInfo = async (binCode: string) => {
   try {
@@ -1724,6 +1900,36 @@ const formatDateIndonesian = (date: Date | string) => {
   }).format(dateObj)
 }
 
+// Format quantity based on material category
+const formatQty = (qty: number | undefined, category?: string) => {
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty.toString())
+  if (isNaN(num)) return '0'
+  
+  // Packaging materials: round to whole number if no decimal part
+  if (category === 'Packaging' || category === 'Packaging Material') {
+    // If number is already whole (e.g., 10.0000), return as integer
+    if (num === Math.floor(num)) {
+      return Math.round(num).toString()
+    }
+    // If has decimals (e.g., 10.102), show up to 4 decimal places
+    return num.toFixed(4).replace(/\.?0+$/, '')
+  }
+  
+  // Raw materials: max 4 decimal places
+  if (category === 'Raw Material') {
+    // If it's a whole number, show as is
+    if (num === Math.floor(num)) return num.toString()
+    
+    // For decimals, keep up to 4 decimal places, remove trailing zeros
+    return num.toFixed(4).replace(/\.?0+$/, '')
+  }
+  
+  // Default: show up to 4 decimals for any other category
+  if (num === Math.floor(num)) return num.toString()
+  return num.toFixed(4).replace(/\.?0+$/, '')
+}
+
 
 const getTypeClass = (type: string) => {
   const classes: Record<string, string> = {
@@ -1768,13 +1974,8 @@ const getFilteredBins = (query: string | undefined) => {
 const handleBinSearchInput = (material: QCReleasedMaterial) => {
   material.destinationBin = ''; // Reset selection on typing
 }
-
-const selectBin = (material: QCReleasedMaterial, bin: BinInfo) => {
-  material.destinationBin = bin.code;
-  // Format: "bin code [zone - 0/4]"
-  material.binSearchQuery = `${bin.code} [${bin.zone} - ${bin.currentItems}/${bin.capacity}]`;
-  material.showBinSuggestions = false;
-}
+  
+// Function removed - now using the async version with validation above (line ~1279)
 
 const hideBinSuggestions = (material: QCReleasedMaterial) => {
   // Delay closing to allow click event to register

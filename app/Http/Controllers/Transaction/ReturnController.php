@@ -635,9 +635,33 @@ class ReturnController extends Controller
              return response()->json(['error' => 'Reservation Number required'], 400);
         }
 
-        $items = \App\Models\Reservation::with('material')
+        // 1. Get all reservation materials
+        $allReservationItems = \App\Models\Reservation::with('material')
             ->where('reservation_no', $reservationNo)
+            ->get();
+
+        // 2. Find materials already returned (only count Approved/Returned status)
+        // Get all return items for this reservation that have been approved
+        $returnedMaterialBatches = \App\Models\ReturnItem::whereHas('return', function ($query) use ($reservationNo) {
+                $query->where('reference_number', $reservationNo)
+                      ->whereIn('status', ['Approved', 'Returned']); // Only count approved/completed returns
+            })
+            ->select('material_id', 'batch_lot')
             ->get()
+            ->map(function ($item) {
+                // Create composite key: material_id|batch_lot
+                // This handles cases where same material appears with different batches
+                return $item->material_id . '|' . $item->batch_lot;
+            })
+            ->toArray();
+
+        // 3. Filter out already returned items and map to response format
+        $items = $allReservationItems->filter(function ($item) use ($returnedMaterialBatches) {
+                $compositeKey = $item->material_id . '|' . $item->batch_lot;
+                // Only include if NOT already returned
+                return !in_array($compositeKey, $returnedMaterialBatches);
+            })
+            ->values() // Reset array keys
             ->map(function ($item) {
                 return [
                     'item_code' => $item->material->kode_item,
@@ -646,6 +670,7 @@ class ReturnController extends Controller
                     'original_qty' => $item->qty_reserved,
                     'qty' => 0, // Default qty return 0
                     'uom' => $item->uom ?? $item->material->satuan,
+                    'category' => $item->material->kategori, // Added for qty formatting
                 ];
             });
 
@@ -683,6 +708,7 @@ class ReturnController extends Controller
                     'uom' => $stock->uom,
                     'supplier_id' => $stock->material->supplier_id,
                     'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
+                    'category' => $stock->material->kategori, // Added for qty formatting
                 ];
             });
 
@@ -718,6 +744,7 @@ class ReturnController extends Controller
                     'uom' => $stock->uom,
                     'supplier_id' => $stock->material->supplier_id,
                     'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
+                    'category' => $stock->material->kategori, // Added for qty formatting
                 ];
             });
 

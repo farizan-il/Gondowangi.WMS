@@ -34,8 +34,8 @@ class QcReqcHistory extends Model
         'new_exp_date' => 'date',
         'initiated_at' => 'datetime',
         'completed_at' => 'datetime',
-        'qty_sample_previous' => 'decimal:2',
-        'qty_sample_new' => 'decimal:2',
+        'qty_sample_previous' => 'decimal:4',
+        'qty_sample_new' => 'decimal:4',
     ];
 
     public function qcChecklist()

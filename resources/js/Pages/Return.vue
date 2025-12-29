@@ -345,7 +345,7 @@
                          <!-- New Column: Qty Diberikan (Original) -->
                         <td v-if="newReturn.type === 'Production'" class="px-4 py-3">
                             <input 
-                            :value="item.originalQty || '-'"
+                            :value="formatQty(item.originalQty, item.category)"
                             type="text" 
                             readonly
                             class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
@@ -604,6 +604,7 @@ interface NewReturnItem {
   reason: string
   originalQty?: number
   id?: number // stock id helper
+  category?: string // Material category for qty formatting
 }
 
 const props = defineProps({
@@ -728,8 +729,9 @@ const fetchReservationDetails = async () => {
             lotBatch: item.batch_lot,
             qty: 0, // Default return qty
             uom: item.uom,
-            reason: 'Excess Production', // Default reason
-            originalQty: item.original_qty // New field to display original reserved qty
+            reason: 'Kelebihan Produksi', // Default reason
+            originalQty: item.original_qty, // New field to display original reserved qty
+            category: item.category, // Added for qty formatting
         }));
         
     } catch (e) {
@@ -759,7 +761,8 @@ const fetchRejectedShipmentDetails = async () => {
             qty: item.on_hand_qty, // Default to total on hand in reject bin
             uom: item.uom,
             reason: 'QC Reject', 
-            originalQty: item.on_hand_qty 
+            originalQty: item.on_hand_qty,
+            category: item.category, // Added for qty formatting
         }));
         
     } catch (e) {
@@ -791,7 +794,8 @@ const fetchSupplierShipmentDetails = async () => {
             qty: item.on_hand_qty, // Default to total on hand in reject bin
             uom: item.uom,
             reason: 'QC Reject', 
-            originalQty: item.on_hand_qty 
+            originalQty: item.on_hand_qty,
+            category: item.category, // Added for qty formatting
         }));
         
     } catch (e) {
@@ -811,6 +815,30 @@ const formatDate = (dateString: string) => {
     month: '2-digit',
     year: 'numeric'
   })
+}
+
+// Format quantity based on material category
+const formatQty = (qty: number | undefined, category?: string) => {
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty.toString())
+  if (isNaN(num)) return '0'
+  
+  // Packaging materials: whole numbers only
+  if (category === 'Packaging' || category === 'Packaging Material') {
+    return Math.round(num).toString()
+  }
+  
+  // Raw materials: max 4 decimal places
+  if (category === 'Raw Material') {
+    // If it's a whole number, show as is
+    if (num === Math.floor(num)) return num.toString()
+    
+    // For decimals, keep up to 4 decimal places, remove trailing zeros
+    return num.toFixed(4).replace(/\.?0+$/, '')
+  }
+  
+  // Default: preserve as is for other categories
+  return num.toString()
 }
 
 const getStatusClass = (status: string) => {

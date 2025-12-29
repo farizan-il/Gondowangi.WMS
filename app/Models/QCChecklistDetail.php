@@ -24,8 +24,8 @@ class QCChecklistDetail extends Model
     ];
 
     protected $casts = [
-        'qty_sample' => 'decimal:2',
-        'total_incoming' => 'decimal:2',
+        'qty_sample' => 'decimal:4',
+        'total_incoming' => 'decimal:4',
         'defect_count' => 'integer',
         'qc_date' => 'datetime',
     ];

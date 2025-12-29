@@ -102,6 +102,15 @@ class PutawayTransferController extends Controller
         ]);
 
         $result = $materials->map(function ($stock) {
+            // Check if this stock is from a production return
+            $isFromReturn = \App\Models\ReturnItem::where('material_id', $stock->material_id)
+                ->where('batch_lot', $stock->batch_lot)
+                ->whereHas('return', function($q) {
+                    $q->where('return_type', 'Production')
+                      ->whereIn('status', ['Approved', 'Returned']);
+                })
+                ->exists();
+
             return [
                 'itemCode' => $stock->material->kode_item,
                 'materialName' => $stock->material->nama_material,
@@ -116,7 +125,9 @@ class PutawayTransferController extends Controller
                 'stockId' => $stock->id,
                 'status' => $stock->status,
                 'selected' => false,
-                'destinationBin' => ''
+                'destinationBin' => '',
+                'isFromReturn' => $isFromReturn, // NEW: Flag for return materials
+                'category' => $stock->material->kategori, // NEW: For qty formatting
             ];
         });
 
@@ -165,6 +176,7 @@ class PutawayTransferController extends Controller
                 return [
                     'itemCode' => $stock->material->kode_item,
                     'materialName' => $stock->material->nama_material,
+                    'batchLot' => $stock->batch_lot, // Added for validation
                     'qty' => $stock->qty_on_hand,
                     'uom' => $stock->uom
                 ];
@@ -392,7 +404,7 @@ class PutawayTransferController extends Controller
                 }
                 
                 // 3. Hapus stok asal jika kuantitasnya menjadi 0
-                if ($sourceStock->qty_on_hand <= 0) {
+                if ($remainingQtyOnHandInSource <= 0) {
                     $sourceStock->delete();
                 }
 

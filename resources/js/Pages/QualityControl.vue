@@ -105,7 +105,7 @@
 
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <span class="font-bold text-blue-700">
-                    {{ formatInteger(getDisplayQtyReceived(item)) }} {{ item.uom }}
+                    {{ formatQty(getDisplayQtyReceived(item)) }} {{ item.uom }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -805,6 +805,19 @@ const formatInteger = (value: number | string | null | undefined): number | stri
   // Jika angkanya bulat (tidak ada desimal), tampilkan tanpa desimal
   // Jika ada desimal, tampilkan dengan maksimal 2 digit desimal
   return numValue % 1 === 0 ? numValue.toFixed(0) : numValue.toFixed(2);
+}
+
+// Format quantity with max 4 decimal places
+const formatQty = (qty: number | undefined): string => {
+  if (qty === null || qty === undefined) return '0'
+  const num = parseFloat(qty.toString())
+  if (isNaN(num)) return '0'
+  
+  // If it's a whole number, show as is
+  if (num === Math.floor(num)) return num.toString()
+  
+  // For decimals, keep up to 4 decimal places, remove trailing zeros
+  return num.toFixed(4).replace(/\.?0+$/, '')
 }
 
 const getDisplayQtyReceived = (item: any): number => {
