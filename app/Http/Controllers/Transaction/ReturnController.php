@@ -7,9 +7,11 @@ use App\Models\ReturnModel;
 use App\Models\ReturnSlip;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use App\Models\Material;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log; // Added Log import
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use App\Traits\ActivityLogger;
 
@@ -32,143 +34,140 @@ class ReturnController extends Controller
             $pdf = $parser->parseFile($pdfFile->getPathname());
             $text = $pdf->getText();
 
-            // CRITICAL: Normalisasi teks - Ubah line break & multiple spaces jadi single space
+            // Normalisasi teks
             $normalizedText = preg_replace('/\s+/', ' ', $text);
             $normalizedText = trim($normalizedText);
 
             $extractedData = [
+                'status' => 'success', // Status default
                 'return_number' => '',
                 'date' => '',
-                'formatted_date' => date('Y-m-d'), // Default hari ini
+                'formatted_date' => date('Y-m-d'),
                 'items' => [],
+                'unknown_items' => [], // Penampung item yang tidak ada di master
                 'origin' => '',
             ];
 
-            // ============================================================
-            // STEP 1: Extract Internal Shipment Number (Return Number)
-            // ============================================================
-            // Contoh: "Internal Shipment : RET/16619"
+            // STEP 1: Extract Internal Shipment Number
             if (preg_match('/Internal Shipment\s*:\s*([A-Za-z0-9\/\-]+)/i', $normalizedText, $matches)) {
                 $extractedData['return_number'] = trim($matches[1]);
+
+                // --- UPDATE 1: Cek Duplicate Entry ---
+                $exists = ReturnModel::where('return_number', $extractedData['return_number'])->exists();
+                if ($exists) {
+                    return response()->json([
+                        'status' => 'duplicate',
+                        'message' => 'No Return / Shipment Number ini sudah terdaftar di sistem!',
+                        'return_number' => $extractedData['return_number']
+                    ]);
+                }
             }
 
-            // ============================================================
-            // STEP 2: Extract Schedule Date
-            // ============================================================
-            // Contoh: "Schedule Date 12/12/2025 07:56:26" atau "Schedule Date 12/12/2025"
+            // STEP 2: Extract Schedule Date (Kode lama tetap sama...)
             if (preg_match('/Schedule Date\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i', $normalizedText, $dateMatch)) {
                 $rawDate = trim($dateMatch[1]);
-                
-                // Convert ke Y-m-d untuk HTML date input
                 try {
                     $dateObj = \DateTime::createFromFormat('d/m/Y', $rawDate);
                     if ($dateObj) {
                         $extractedData['formatted_date'] = $dateObj->format('Y-m-d');
                     }
                 } catch (\Exception $e) {
-                    // Keep default if parsing fails
                     Log::warning("Date parsing failed: " . $e->getMessage());
                 }
             }
 
-            // ============================================================
-            // STEP 3: Extract Order Origin (Optional - untuk reference)
-            // ============================================================
-            // Contoh: "Order(Origin) 512015 :PRE/15113 Schedule Date"
-            if (preg_match('/Order\s*\(Origin\)\s+(.+?)\s+Schedule Date/i', $normalizedText, $originMatch)) {
-                $extractedData['origin'] = trim($originMatch[1]);
-            }
+            // STEP 3: Extract Items & Validate Material (LOGIKA DIPERBAHARUI)
+            $mainPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+(Waiting\s+[A-Za-z\s]+?)\s+(Production|Stock)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
+            
+            // Array sementara untuk parsing
+            $parsedItems = [];
 
-            // ============================================================
-            // STEP 4: Extract Items - MAIN LOGIC
-            // ============================================================
-            // Strategi: Cari bagian setelah header "Description Serial Number Status..."
-            // kemudian extract semua baris items
-            
-            // REGEX PATTERN yang robust untuk menangani format PDF Anda:
-            // [KODE] Deskripsi (bisa panjang) Serial? Status Location Qty UoM
-            
-            // Pattern Utama (Cocok untuk PDF Anda):
-            $mainPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+(?:(\d+)\s+)?(Waiting\s+[A-Za-z\s]+?)\s+(Production|Stock)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
-            
             if (preg_match_all($mainPattern, $normalizedText, $matches, PREG_SET_ORDER)) {
                 foreach ($matches as $match) {
-                    // Bersihkan deskripsi dari whitespace berlebih
-                    $description = preg_replace('/\s+/', ' ', trim($match[2]));
-                    
-                    // Konversi quantity: "29,0000" -> 29.0
-                    $qtyString = $match[6];
-                    $qtyClean = str_replace('.', '', $qtyString);  // Hapus pemisah ribuan
-                    $qtyClean = str_replace(',', '.', $qtyClean);  // Koma jadi titik desimal
-                    
-                    $extractedData['items'][] = [
-                        'item_code' => trim($match[1]),             // 23371
-                        'description' => $description,               // Dus Satuan NATUR...
-                        'serial_number' => isset($match[3]) ? trim($match[3]) : '', // 512015 (optional)
-                        'status' => trim($match[4]),                // Waiting Availability
-                        'location' => trim($match[5]),              // Production
-                        'qty' => (float) $qtyClean,                 // 29.0
-                        'uom' => trim($match[7]),                   // Pcs
-                    ];
+                    $this->processParsedItem($match, $parsedItems, 'main');
                 }
             }
 
-            // ============================================================
-            // FALLBACK: Pattern Sederhana jika regex utama gagal
-            // ============================================================
-            if (empty($extractedData['items'])) {
-                // Pattern minimal: [KODE] ... Angka UoM
+            // FALLBACK Pattern
+            if (empty($parsedItems)) {
                 $fallbackPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
-                
                 if (preg_match_all($fallbackPattern, $normalizedText, $fallbackMatches, PREG_SET_ORDER)) {
                     foreach ($fallbackMatches as $match) {
-                        $qtyClean = str_replace(['.', ','], ['', '.'], $match[3]);
-                        
-                        $extractedData['items'][] = [
-                            'item_code' => trim($match[1]),
-                            'description' => trim($match[2]),
-                            'serial_number' => '',
-                            'status' => '',
-                            'location' => 'Production',
-                            'qty' => (float) $qtyClean,
-                            'uom' => trim($match[4]),
-                        ];
+                        $this->processParsedItem($match, $parsedItems, 'fallback');
                     }
                 }
             }
 
-            // Log hasil untuk debugging
-            Log::info("PDF Parsed Successfully", [
-                'return_number' => $extractedData['return_number'],
-                'date' => $extractedData['formatted_date'],
-                'items_count' => count($extractedData['items']),
-            ]);
+            // --- UPDATE 2: Validasi ke Master Data Material ---
+            foreach ($parsedItems as $item) {
+                // Cek apakah kode item ada di tabel materials
+                $materialExists = Material::where('kode_item', $item['item_code'])->first();
+
+                if ($materialExists) {
+                    // Jika ada, masukkan ke items valid
+                    // Kita juga update nama material sesuai database master agar konsisten
+                    $item['description'] = $materialExists->nama_material; 
+                    $item['uom'] = $materialExists->satuan; // Pakai satuan dari master
+                    $extractedData['items'][] = $item;
+                } else {
+                    // Jika tidak ada, masukkan ke unknown_items
+                    $extractedData['unknown_items'][] = [
+                        'item_code' => $item['item_code'],
+                        'description' => $item['description']
+                    ];
+                }
+            }
 
             return response()->json($extractedData);
 
         } catch (\Exception $e) {
-            Log::error("Return PDF Parse Error: " . $e->getMessage(), [
-                'file' => $pdfFile->getClientOriginalName(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
+            Log::error("Return PDF Parse Error: " . $e->getMessage());
             return response()->json([
+                'status' => 'error',
                 'error' => 'Gagal memproses PDF Return.', 
                 'details' => $e->getMessage()
             ], 500);
         }
     }
+
+    // Helper function agar kode lebih rapi (opsional, masukkan di dalam class controller)
+    private function processParsedItem($match, &$parsedItems, $type) {
+        $itemCode = trim($match[1]);
+        $descriptionBlock = trim($match[2]);
+        
+        // Cleaning Qty
+        $qtyString = ($type == 'main') ? $match[5] : $match[3];
+        $qtyClean = str_replace('.', '', $qtyString); // Hapus ribuan
+        $qtyClean = str_replace(',', '.', $qtyClean); // Ubah desimal
+        
+        // Extract Serial Number
+        $serialNumber = 'N/A';
+        if (preg_match('/\b(\d{5,7})\b/', $descriptionBlock, $serialMatch)) {
+            $serialNumber = $serialMatch[1];
+            $descriptionBlock = preg_replace('/\b\d{5,7}\b/', '', $descriptionBlock);
+        }
+        
+        $description = preg_replace('/\s+/', ' ', trim($descriptionBlock));
+
+        $parsedItems[] = [
+            'item_code' => $itemCode,
+            'description' => $description,
+            'serial_number' => $serialNumber,
+            'qty' => (float) $qtyClean,
+            'uom' => ($type == 'main') ? trim($match[6]) : trim($match[4]),
+            'status' => ($type == 'main') ? trim($match[3]) : '',
+            'location' => ($type == 'main') ? trim($match[4]) : 'Production',
+        ];
+    }
     
     public function index()
     {
         $suppliers = \App\Models\Supplier::select('nama_supplier')->orderBy('nama_supplier')->get();
-        // Fetch shipments (Incoming Goods) for reference
         $shipments = \App\Models\IncomingGood::select('incoming_number', 'no_surat_jalan')
             ->orderBy('created_at', 'desc')
-            ->limit(50) // Limit to recent 50 for performance
+            ->limit(50)
             ->get();
 
-        // Fetch shipments that have REJECTED materials in bins NOT starting with QRT
         $rejectedShipments = \App\Models\IncomingGood::whereHas('inventoryStocks', function ($query) {
             $query->where('status', 'REJECTED')
                 ->whereHas('bin', function ($q) {
@@ -180,7 +179,6 @@ class ReturnController extends Controller
         ->orderBy('created_at', 'desc')
         ->get();
 
-        // Fetch Returns List
         $returns = \App\Models\ReturnModel::with(['items.material', 'supplier', 'reservationRequest', 'createdBy'])
             ->orderBy('created_at', 'desc')
             ->limit(100)
@@ -193,7 +191,6 @@ class ReturnController extends Controller
                     'type' => $ret->return_type ?? 'Supplier',
                     'supplier' => $ret->return_type === 'Production' ? ($ret->department ?? 'Production') : ($ret->supplier->nama_supplier ?? '-'),
                     'shipmentNo' => $ret->reference_number,
-                    // Map first item for summary or handle multiple in details
                     'itemCode' => $ret->items->first()->material->kode_item ?? '-',
                     'itemName' => $ret->items->first()->material->nama_material ?? '-',
                     'lotBatch' => $ret->items->first()->batch_lot ?? '-',
@@ -208,7 +205,7 @@ class ReturnController extends Controller
             'suppliers' => $suppliers,
             'shipments' => $shipments,
             'rejectedShipments' => $rejectedShipments,
-            'userDept' => Auth::user()->departement, // Pass User Dept
+            'userDept' => Auth::user()->departement,
             'initialReturns' => $returns,
         ]);
     }
@@ -216,11 +213,9 @@ class ReturnController extends Controller
     public function getMaterial($code)
     {
         $material = \App\Models\Material::where('kode_item', $code)->first();
-
         if (!$material) {
             return response()->json(['message' => 'Material not found'], 404);
         }
-
         return response()->json([
             'nama_material' => $material->nama_material,
             'satuan' => $material->satuan,
@@ -228,30 +223,32 @@ class ReturnController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+    public function create() {}
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // Handle Production Return (New Logic)
-        // Handle Production Return (New Logic)
-        // Handle Rejected Material Return (To Supplier)
+        // 0. Manual Trim Inputs (Membersihkan spasi di awal/akhir)
+        $input = $request->all();
+        if (isset($input['items']) && is_array($input['items'])) {
+            foreach ($input['items'] as &$item) {
+                if (isset($item['itemCode'])) {
+                    $item['itemCode'] = trim($item['itemCode']);
+                }
+            }
+        }
+        $request->merge($input);
+
+        // 1. Handle Rejected Material Return (To Supplier)
         if ($request->input('type') === 'Rejected Material') {
             $validated = $request->validate([
                 'type' => 'required|in:Rejected Material',
                 'date' => 'required|date',
-                'shipmentNo' => 'required|string', // Incoming Number
+                'shipmentNo' => 'required|string',
                 'items' => 'required|array',
-                'items.*.id' => 'required|exists:inventory_stock,id',
-                'items.*.itemCode' => 'required',
+                'items.*.id' => 'nullable|exists:inventory_stock,id', 
+                // Kita HAPUS Rule::exists disini agar pesan error manual di bawah bisa muncul
+                'items.*.itemCode' => 'required', 
+                'items.*.lotBatch' => 'required|string',
                 'items.*.qty' => 'required|numeric|min:0.01',
                 'items.*.uom' => 'nullable|string',
                 'items.*.reason' => 'required|string',
@@ -259,9 +256,10 @@ class ReturnController extends Controller
 
             DB::beginTransaction();
             try {
+                // UPDATE: return_number diambil dari shipmentNo
                 $returnModel = \App\Models\ReturnModel::create([
-                    'return_number' => $this->generateReturnNumber(),
-                    'return_type' => 'Supplier', // Use 'Supplier' as the base type for report
+                    'return_number' => $validated['shipmentNo'], 
+                    'return_type' => 'Supplier',
                     'return_date' => $validated['date'],
                     'reference_number' => $validated['shipmentNo'],
                     'status' => 'Returned',
@@ -269,15 +267,44 @@ class ReturnController extends Controller
                     'returned_by' => Auth::id(),
                 ]);
 
-                foreach ($request->items as $itemData) {
-                    $stock = \App\Models\InventoryStock::find($itemData['id']);
-                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->firstOrFail();
+                foreach ($request->items as $index => $itemData) {
+                    // Cari Material Manual untuk mendapatkan ID Relasi
+                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->first();
+                    
+                    if (!$material) {
+                         // Pesan Error Spesifik
+                         throw new \Exception("Item dengan Kode '{$itemData['itemCode']}' (Baris ke-" . ($index + 1) . ") tidak ditemukan di Master Data Material.");
+                    }
+                    
+                    $stock = null;
+                    if (!empty($itemData['id'])) {
+                        $stock = \App\Models\InventoryStock::find($itemData['id']);
+                    } else {
+                        // Logic cari stock manual jika tidak ada ID
+                        $stock = \App\Models\InventoryStock::where('material_id', $material->id)
+                            ->where('batch_lot', $itemData['lotBatch'])
+                            ->where('status', 'REJECTED')
+                            ->whereHas('bin', function($q) {
+                                $q->where('bin_code', 'NOT LIKE', 'QRT-%');
+                            })
+                            ->where('qty_on_hand', '>=', 0) 
+                            ->orderBy('qty_on_hand', 'desc')
+                            ->first();
+                    }
+
+                    if (!$stock) {
+                        throw new \Exception("Stock REJECTED tidak ditemukan untuk Item '{$itemData['itemCode']}' dengan Batch '{$itemData['lotBatch']}'.");
+                    }
+                    
+                    if ($stock->qty_on_hand < $itemData['qty']) {
+                         throw new \Exception("Qty Stock Reject tidak cukup untuk Item {$itemData['itemCode']}. Tersedia: {$stock->qty_on_hand}");
+                    }
+
                     $uom = $itemData['uom'] ?? $material->satuan;
                     
-                    // 1. Create Return Item
                     \App\Models\ReturnItem::create([
                         'return_id' => $returnModel->id,
-                        'material_id' => $material->id,
+                        'material_id' => $material->id, // INI RELASINYA
                         'batch_lot' => $itemData['lotBatch'],
                         'qty_return' => $itemData['qty'],
                         'uom' => $uom,
@@ -286,7 +313,6 @@ class ReturnController extends Controller
                         'item_condition' => 'Rejected',
                     ]);
 
-                    // 2. Stock Movement
                     $movementNumber = $this->generateMovementNumber();
                     StockMovement::create([
                         'movement_number' => $movementNumber,
@@ -306,7 +332,6 @@ class ReturnController extends Controller
                         'notes' => "Return Rejected Material to Supplier. Ref: " . $validated['shipmentNo'],
                     ]);
 
-                    // 3. Update/Delete Stock
                     if ($stock->qty_on_hand <= $itemData['qty']) {
                         $stock->delete();
                     } else {
@@ -314,7 +339,6 @@ class ReturnController extends Controller
                         $stock->decrement('qty_available', $itemData['qty']);
                     }
 
-                    // 4. Activity Log
                     $this->logActivity($returnModel, 'Return Rejected Material', [
                         'description' => "Return {$itemData['qty']} {$uom} of {$material->nama_material} (REJECTED) to Supplier.",
                         'material_id' => $material->id,
@@ -333,14 +357,15 @@ class ReturnController extends Controller
             }
         }
 
-        // Handle Production Return (New Logic)
-        if ($request->input('type') === 'Production') {
-             $validated = $request->validate([
+        // 2. Handle Production Return
+        elseif ($request->input('type') === 'Production') {
+            // Validasi tanpa 'exists' untuk itemCode agar bisa ditangkap manual
+            $validated = $request->validate([
                 'type' => 'required|in:Production',
                 'date' => 'required|date',
-                'shipmentNo' => 'required|string', // Reservation No
+                'shipmentNo' => 'required|string',
                 'items' => 'required|array',
-                'items.*.itemCode' => 'required|exists:materials,kode_item',
+                'items.*.itemCode' => 'required', // HAPUS 'exists:materials,kode_item'
                 'items.*.qty' => 'required|numeric|min:0.01',
                 'items.*.uom' => 'nullable|string',
                 'items.*.reason' => 'required|string',
@@ -348,28 +373,31 @@ class ReturnController extends Controller
 
             DB::beginTransaction();
             try {
-                $reservation = \App\Models\ReservationRequest::where('no_reservasi', $validated['shipmentNo'])->first();
-
-                // 2. Create Return Record Header
+                // UPDATE: return_number diambil dari shipmentNo
                 $returnModel = \App\Models\ReturnModel::create([
-                    'return_number' => $this->generateReturnNumber(),
+                    'return_number' => $validated['shipmentNo'],
                     'return_type' => 'Production',
                     'return_date' => $validated['date'],
                     'department' => Auth::user()->departement,
-                    'reservation_request_id' => $reservation->id ?? null,
                     'reference_number' => $validated['shipmentNo'],
                     'status' => 'Pending Approval',
                     'created_by' => Auth::id(),
                 ]);
 
-                foreach ($request->items as $itemData) {
-                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->firstOrFail();
+                foreach ($request->items as $index => $itemData) {
+                    // Cek Manual Material (Relasi ke Master Data)
+                    $material = \App\Models\Material::where('kode_item', $itemData['itemCode'])->first();
+                    
+                    if (!$material) {
+                         // Pesan error spesifik jika kode item tidak ada di database
+                         throw new \Exception("Material dengan Kode '{$itemData['itemCode']}' (Baris ke-" . ($index + 1) . ") tidak ditemukan di Database. Silakan cek Master Material.");
+                    }
+
                     $uom = $itemData['uom'] ?? $material->satuan;
 
-                    // 3. Create Return Item
                     \App\Models\ReturnItem::create([
                         'return_id' => $returnModel->id,
-                        'material_id' => $material->id,
+                        'material_id' => $material->id, // INI RELASINYA
                         'batch_lot' => $itemData['lotBatch'],
                         'qty_return' => $itemData['qty'],
                         'uom' => $uom,
@@ -378,7 +406,6 @@ class ReturnController extends Controller
                         'item_condition' => 'Good',
                     ]);
                     
-                    // 6. Activity Log (Request Only)
                     $this->logActivity($returnModel, 'Return Request Created', [
                         'description' => "Request Return {$itemData['qty']} {$uom} of {$material->nama_material} (Pending Approval).",
                         'material_id' => $material->id,
@@ -393,68 +420,68 @@ class ReturnController extends Controller
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error("Return Store Error: " . $e->getMessage());
-                return redirect()->back()->with('error', 'Gagal menyimpan return: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
             }
         }
 
-        // Existing Supplier Return Logic
-        $validated = $request->validate([
-            'return_slip_id' => 'required|exists:return_slips,id',
-            'return_date' => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
+        // 3. Fallback / Legacy Supplier Return
+        else {
+             if ($request->has('return_slip_id')) {
+                $validated = $request->validate([
+                    'return_slip_id' => 'required|exists:return_slips,id',
+                    'return_date' => 'required|date',
+                    'notes' => 'nullable|string',
+                ]);
 
-        DB::beginTransaction();
-        try {
-            $returnSlip = \App\Models\ReturnSlip::findOrFail($validated['return_slip_id']);
+                DB::beginTransaction();
+                try {
+                    $returnSlip = \App\Models\ReturnSlip::findOrFail($validated['return_slip_id']);
 
-            // 1. Create Return Record
-            $returnModel = \App\Models\ReturnModel::create([
-                'return_slip_id' => $returnSlip->id,
-                'return_date' => $validated['return_date'],
-                'status' => 'Returned',
-                'notes' => $validated['notes'],
-                'returned_by' => Auth::id(),
-            ]);
+                    $returnModel = \App\Models\ReturnModel::create([
+                        'return_slip_id' => $returnSlip->id,
+                        'return_date' => $validated['return_date'],
+                        'status' => 'Returned',
+                        'notes' => $validated['notes'],
+                        'returned_by' => Auth::id(),
+                    ]);
 
-            // 2. Create Stock Movement Record
-            $movementNumber = $this->generateMovementNumber();
-            $movement = StockMovement::create([
-                'movement_number' => $movementNumber,
-                'movement_type' => 'RETURN',
-                'material_id' => $returnSlip->material_id,
-                'batch_lot' => $returnSlip->batch_lot,
-                'from_warehouse_id' => null, // Or the KARANTINA warehouse
-                'from_bin_id' => null, // Or the KARANTINA bin
-                'to_warehouse_id' => null, // Represents supplier
-                'to_bin_id' => null, // Represents supplier
-                'qty' => $returnSlip->qty_return,
-                'uom' => $returnSlip->uom,
-                'reference_type' => 'return_slip',
-                'reference_id' => $returnSlip->id,
-                'movement_date' => now(),
-                'executed_by' => Auth::id(),
-                'notes' => "Return to supplier for slip {$returnSlip->return_number}",
-            ]);
+                    $movementNumber = $this->generateMovementNumber();
+                    StockMovement::create([
+                        'movement_number' => $movementNumber,
+                        'movement_type' => 'RETURN',
+                        'material_id' => $returnSlip->material_id,
+                        'batch_lot' => $returnSlip->batch_lot,
+                        'from_warehouse_id' => null, 
+                        'from_bin_id' => null,
+                        'to_warehouse_id' => null,
+                        'to_bin_id' => null,
+                        'qty' => $returnSlip->qty_return,
+                        'uom' => $returnSlip->uom,
+                        'reference_type' => 'return_slip',
+                        'reference_id' => $returnSlip->id,
+                        'movement_date' => now(),
+                        'executed_by' => Auth::id(),
+                        'notes' => "Return to supplier for slip {$returnSlip->return_number}",
+                    ]);
 
-            // 3. Log the activity
-            $this->logActivity($returnModel, 'Create Return', [
-                'description' => "Returned {$returnSlip->qty_return} {$returnSlip->uom} of {$returnSlip->material->nama_material} to supplier.",
-                'material_id' => $returnSlip->material_id,
-                'batch_lot' => $returnSlip->batch_lot,
-                'qty_after' => $returnSlip->qty_return,
-                'reference_document' => $returnSlip->return_number,
-            ]);
+                    $this->logActivity($returnModel, 'Create Return', [
+                        'description' => "Returned {$returnSlip->qty_return} {$returnSlip->uom} of {$returnSlip->material->nama_material} to supplier.",
+                        'material_id' => $returnSlip->material_id,
+                        'batch_lot' => $returnSlip->batch_lot,
+                        'qty_after' => $returnSlip->qty_return,
+                        'reference_document' => $returnSlip->return_number,
+                    ]);
 
-            // 4. Update return slip status
-            $returnSlip->update(['status' => 'Returned']);
-
-            DB::commit();
-
-            return redirect()->back()->with('success', 'Return successful.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Return failed: ' . $e->getMessage());
+                    $returnSlip->update(['status' => 'Returned']);
+                    DB::commit();
+                    return redirect()->back()->with('success', 'Return successful.');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'Return failed: ' . $e->getMessage());
+                }
+             } else {
+                 return redirect()->back()->with('error', 'Tipe Return tidak valid.');
+             }
         }
     }
 
@@ -462,7 +489,7 @@ class ReturnController extends Controller
     {
         $validated = $request->validate([
             'return_id' => 'required|exists:returns,id',
-            'target_bin_id' => 'required', // Bin Code e.g., 'QRT-HALAL'
+            'target_bin_id' => 'required', 
         ]);
 
         DB::beginTransaction();
@@ -473,14 +500,12 @@ class ReturnController extends Controller
                 throw new \Exception("Return status is not Pending Approval.");
             }
 
-            // Find Target Bin
             $targetBin = \App\Models\WarehouseBin::where('bin_code', $validated['target_bin_id'])->first();
             if (!$targetBin) {
                 throw new \Exception("Bin '{$validated['target_bin_id']}' tidak ditemukan.");
             }
 
             foreach ($returnModel->items as $item) {
-                // 4. Create/Update Stock in QRT (Handling Check)
                 $stock = \App\Models\InventoryStock::where('material_id', $item->material_id)
                     ->where('bin_id', $targetBin->id)
                     ->where('batch_lot', $item->batch_lot)
@@ -491,13 +516,11 @@ class ReturnController extends Controller
                     $stock->increment('qty_on_hand', $item->qty_return);
                     $stock->increment('qty_available', $item->qty_return);
                 } else {
-                    // Fetch exp_date from existing stock of the same batch to maintain consistency
                     $refStock = \App\Models\InventoryStock::where('material_id', $item->material_id)
                         ->where('batch_lot', $item->batch_lot)
                         ->whereNotNull('exp_date')
                         ->first();
                         
-                    // Fallback: If no stock found use now + 1 year
                     $expDate = $refStock ? $refStock->exp_date : now()->addYears(1);
 
                     \App\Models\InventoryStock::create([
@@ -515,7 +538,6 @@ class ReturnController extends Controller
                     ]);
                 }
 
-                // 5. Log Movement
                 $movementNumber = $this->generateMovementNumber();
                 StockMovement::create([
                     'movement_number' => $movementNumber,
@@ -541,7 +563,6 @@ class ReturnController extends Controller
                 'approved_by' => Auth::id(),
             ]);
             
-            // Log Approval
             $this->logActivity($returnModel, 'Return Approved', [
                 'description' => "Return {$returnModel->return_number} Approved. Items moved to {$targetBin->bin_code}.",
                 'approved_by' => Auth::user()->name
@@ -564,53 +585,16 @@ class ReturnController extends Controller
         $sequence = $lastMovement ? (intval(substr($lastMovement->movement_number, -4)) + 1) : 1;
         return "MOV/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+    
     public function getDeptReservations()
     {
         $user = Auth::user();
         if (!$user || !$user->departement) {
-            Log::warning("ReturnController: User has no department. User ID: " . ($user->id ?? 'unknown'));
             return response()->json([]);
         }
-
-        Log::info("ReturnController: Fetching reservations for Dept: " . $user->departement);
-
-        // Use ReservationRequest (Header) for filtering by status 'Completed'
         $reservations = \App\Models\ReservationRequest::query()
-            ->whereIn('status', ['Completed', 'Short-Pick']) // Include Short-Pick just in case
+            ->whereIn('status', ['Completed', 'Short-Pick'])
             ->where(function ($query) use ($user) {
-                // Check direct column OR via relationship
                 $query->where('departemen', $user->departement)
                       ->orWhereHas('requestedBy', function ($q) use ($user) {
                           $q->where('departement', $user->departement);
@@ -621,74 +605,55 @@ class ReturnController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->pluck('no_reservasi');
-
-        Log::info("ReturnController: Found " . $reservations->count() . " reservations.");
-
         return response()->json($reservations);
     }
 
     public function getReservationDetails(Request $request)
     {
         $reservationNo = $request->input('no');
-        
-        if (!$reservationNo) {
-             return response()->json(['error' => 'Reservation Number required'], 400);
-        }
+        if (!$reservationNo) return response()->json(['error' => 'Reservation Number required'], 400);
 
-        // 1. Get all reservation materials
         $allReservationItems = \App\Models\Reservation::with('material')
             ->where('reservation_no', $reservationNo)
             ->get();
 
-        // 2. Find materials already returned (only count Approved/Returned status)
-        // Get all return items for this reservation that have been approved
         $returnedMaterialBatches = \App\Models\ReturnItem::whereHas('return', function ($query) use ($reservationNo) {
                 $query->where('reference_number', $reservationNo)
-                      ->whereIn('status', ['Approved', 'Returned']); // Only count approved/completed returns
+                      ->whereIn('status', ['Approved', 'Returned']);
             })
             ->select('material_id', 'batch_lot')
             ->get()
             ->map(function ($item) {
-                // Create composite key: material_id|batch_lot
-                // This handles cases where same material appears with different batches
                 return $item->material_id . '|' . $item->batch_lot;
             })
             ->toArray();
 
-        // 3. Filter out already returned items and map to response format
         $items = $allReservationItems->filter(function ($item) use ($returnedMaterialBatches) {
                 $compositeKey = $item->material_id . '|' . $item->batch_lot;
-                // Only include if NOT already returned
                 return !in_array($compositeKey, $returnedMaterialBatches);
             })
-            ->values() // Reset array keys
+            ->values()
             ->map(function ($item) {
                 return [
                     'item_code' => $item->material->kode_item,
                     'item_name' => $item->material->nama_material,
                     'batch_lot' => $item->batch_lot,
                     'original_qty' => $item->qty_reserved,
-                    'qty' => 0, // Default qty return 0
+                    'qty' => 0,
                     'uom' => $item->uom ?? $item->material->satuan,
-                    'category' => $item->material->kategori, // Added for qty formatting
+                    'category' => $item->material->kategori,
                 ];
             });
-
         return response()->json($items);
     }
 
     public function getRejectedShipmentDetails(Request $request)
     {
         $shipmentNo = $request->input('no');
-        
-        if (!$shipmentNo) {
-             return response()->json(['error' => 'Shipment Number required'], 400);
-        }
+        if (!$shipmentNo) return response()->json(['error' => 'Shipment Number required'], 400);
 
         $incomingGood = \App\Models\IncomingGood::where('incoming_number', $shipmentNo)->first();
-        if (!$incomingGood) {
-            return response()->json(['error' => 'Shipment Number not found'], 404);
-        }
+        if (!$incomingGood) return response()->json(['error' => 'Shipment Number not found'], 404);
 
         $items = \App\Models\InventoryStock::with('material')
             ->where('gr_id', $incomingGood->id)
@@ -704,31 +669,24 @@ class ReturnController extends Controller
                     'item_name' => $stock->material->nama_material,
                     'batch_lot' => $stock->batch_lot,
                     'on_hand_qty' => $stock->qty_on_hand,
-                    'qty' => $stock->qty_on_hand, // Default to all as user just inputs qty return
+                    'qty' => $stock->qty_on_hand,
                     'uom' => $stock->uom,
                     'supplier_id' => $stock->material->supplier_id,
                     'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
-                    'category' => $stock->material->kategori, // Added for qty formatting
+                    'category' => $stock->material->kategori,
                 ];
             });
-
         return response()->json($items);
     }
 
     public function getSupplierShipmentDetails(Request $request)
     {
         $shipmentNo = $request->input('no');
-        
-        if (!$shipmentNo) {
-             return response()->json(['error' => 'Shipment Number required'], 400);
-        }
+        if (!$shipmentNo) return response()->json(['error' => 'Shipment Number required'], 400);
 
         $incomingGood = \App\Models\IncomingGood::where('incoming_number', $shipmentNo)->first();
-        if (!$incomingGood) {
-            return response()->json(['error' => 'Shipment Number not found'], 404);
-        }
+        if (!$incomingGood) return response()->json(['error' => 'Shipment Number not found'], 404);
 
-        // Fetch materials with REJECTED status for this shipment
         $items = \App\Models\InventoryStock::with(['material', 'material.supplier'])
             ->where('gr_id', $incomingGood->id)
             ->where('status', 'REJECTED')
@@ -740,31 +698,18 @@ class ReturnController extends Controller
                     'item_name' => $stock->material->nama_material,
                     'batch_lot' => $stock->batch_lot,
                     'on_hand_qty' => $stock->qty_on_hand,
-                    'qty' => $stock->qty_on_hand, // Default to all on hand qty
+                    'qty' => $stock->qty_on_hand,
                     'uom' => $stock->uom,
                     'supplier_id' => $stock->material->supplier_id,
                     'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
-                    'category' => $stock->material->kategori, // Added for qty formatting
+                    'category' => $stock->material->kategori,
                 ];
             });
-
         return response()->json($items);
     }
 
-    private function generateReturnNumber()
-    {
-        $date = date('Ymd');
-        $lastReturn = \App\Models\ReturnModel::whereDate('created_at', today())
-            ->latest('id')
-            ->first();
-            
-        // Assuming format RET/YYYYMMDD/XXXX (17 chars)
-        // If last return exists and follows format
-        $sequence = 1;
-        if ($lastReturn && preg_match('/RET\/\d+\/(\d+)/', $lastReturn->return_number, $matches)) {
-            $sequence = intval($matches[1]) + 1;
-        }
-        
-        return "RET/{$date}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-    }
+    public function show(string $id) {}
+    public function edit(string $id) {}
+    public function update(Request $request, string $id) {}
+    public function destroy(string $id) {}
 }

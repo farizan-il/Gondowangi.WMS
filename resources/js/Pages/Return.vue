@@ -23,11 +23,6 @@
           </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
-          <!-- Statistics cards content -->
-        </div>
-
         <!-- Filter dan Search -->
         <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200">
           <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -123,11 +118,11 @@
                       Detail
                     </button>
                     <button 
-                         v-if="returnItem.status === 'Pending Approval'"
-                         @click="openApproveModal(returnItem)"
-                         class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
+                          v-if="returnItem.status === 'Pending Approval'"
+                          @click="openApproveModal(returnItem)"
+                          class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
                     >
-                         Approve
+                          Approve
                     </button>
                     <button 
                       @click="printSlip(returnItem)"
@@ -163,15 +158,6 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Return</label>
                 <div class="flex gap-6">
-                   <!-- <label class="flex items-center">
-                    <input 
-                      v-model="newReturn.type" 
-                      type="radio" 
-                      value="Supplier"
-                      class="text-blue-600 focus:ring-blue-500"
-                    >
-                    <span class="ml-2 text-gray-900">Return ke Supplier</span>
-                  </label>  -->
                   <label class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
@@ -181,7 +167,6 @@
                     >
                     <span class="ml-2 text-gray-900">Return dari Produksi</span>
                   </label>
-                  <!-- New Option -->
                   <label class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
@@ -261,28 +246,36 @@
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                     No Shipment {{ newReturn.type == 'Production' ? '/ Reservasi' : '' }}
+                    No Shipment {{ newReturn.type == 'Production' ? '/ No Return' : '' }}
                   </label>
+                  
+                  <!-- For Production: Input field (readonly after PDF upload) -->
+                  <input 
+                    v-if="newReturn.type === 'Production'"
+                    v-model="newReturn.shipmentNo"
+                    type="text"
+                    placeholder="Upload PDF untuk mengisi otomatis"
+                    readonly
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed focus:ring-2 focus:ring-blue-500"
+                  >
+                  
+                  <!-- For Supplier & Rejected: Keep Select dropdown -->
                   <select 
+                    v-else
                     v-model="newReturn.shipmentNo" 
                     @change="handleShipmentNoChange"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Pilih</option>
                     <template v-if="newReturn.type === 'Supplier'">
-                         <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                        <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
                             {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
-                         </option>
+                        </option>
                     </template>
                     <template v-else-if="newReturn.type === 'Rejected Material'">
-                         <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
+                        <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
                             {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
-                         </option>
-                    </template>
-                    <template v-else>
-                         <option v-for="res in deptReservations" :key="res" :value="res">
-                            {{ res }}
-                         </option>
+                        </option>
                     </template>
                   </select>
                 </div>
@@ -307,18 +300,18 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Item</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Material</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot/Batch</th>
-                        <th v-if="newReturn.type === 'Production'" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Diberikan</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Return</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                       </tr>
                     </thead>
+
                     <tbody class="divide-y divide-gray-200 bg-white">
                       <tr v-for="(item, index) in newReturn.items" :key="index">
                         <td class="px-4 py-3">
                           <input 
-                            v-model="item.itemCode"
+                            v-model.trim="item.itemCode"
                             @change="fetchMaterial(index)"
                             type="text" 
                             placeholder="ITM001"
@@ -336,19 +329,10 @@
                         </td>
                         <td class="px-4 py-3">
                           <input 
-                            v-model="item.lotBatch"
+                            v-model.trim="item.lotBatch"
                             type="text" 
                             placeholder="LOT001"
                             class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
-                        </td>
-                         <!-- New Column: Qty Diberikan (Original) -->
-                        <td v-if="newReturn.type === 'Production'" class="px-4 py-3">
-                            <input 
-                            :value="formatQty(item.originalQty, item.category)"
-                            type="text" 
-                            readonly
-                            class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
                           >
                         </td>
                         <td class="px-4 py-3">
@@ -603,8 +587,8 @@ interface NewReturnItem {
   uom: string
   reason: string
   originalQty?: number
-  id?: number // stock id helper
-  category?: string // Material category for qty formatting
+  id?: number | null // stock id helper
+  category?: string
 }
 
 const props = defineProps({
@@ -628,7 +612,7 @@ const showAddModal = ref(false)
 const showDetailModal = ref(false)
 
 const selectedReturn = ref<ReturnItem | null>(null)
-const deptReservations = ref<string[]>([]) // Store reservation numbers
+const deptReservations = ref<string[]>([]) 
 
 // PDF Upload State
 const erpPdfFile = ref<File | null>(null)
@@ -636,7 +620,7 @@ const isProcessingErp = ref(false)
 
 // Form data
 const newReturn = ref({
-  type: 'Supplier',
+  type: 'Rejected Material', 
   date: new Date().toISOString().split('T')[0],
   supplier: '',
   shipmentNo: '',
@@ -651,9 +635,6 @@ watch(() => newReturn.value.type, (newType) => {
         newReturn.value.supplier = '';
         newReturn.value.shipmentNo = '';
         newReturn.value.items = [];
-        if (newType === 'Rejected Material') {
-            // No action needed initially, dropdown for shipmentNo will use rejectedShipments
-        }
     }
 });
 
@@ -692,7 +673,6 @@ const productionReturns = computed(() => returns.value.filter(r => r.type === 'P
 const pendingReturns = computed(() => returns.value.filter(r => r.status !== 'Completed').length)
 
 const canSaveReturn = computed(() => {
-  // For Production, supplier field acts as Department (optional check) or validated by backend
   const hasBasicInfo = newReturn.value.type && newReturn.value.date
   
   if (newReturn.value.type === 'Supplier' && !newReturn.value.supplier) return false
@@ -724,15 +704,14 @@ const fetchReservationDetails = async () => {
         const items = response.data;
         
         newReturn.value.items = items.map((item: any) => ({
-            itemCode: item.item_code,
-            itemName: item.item_name,
-            lotBatch: item.batch_lot,
-            qty: 0, // Default return qty
-            uom: item.uom,
-            reason: 'Kelebihan Produksi', // Default reason
-            originalQty: item.original_qty, // New field to display original reserved qty
-            category: item.category, // Added for qty formatting
-        }));
+          itemCode: item.item_code,
+          itemName: item.item_name,
+          lotBatch: item.batch_lot,
+          qty: 0,
+          uom: item.uom,
+          reason: 'Kelebihan Produksi',
+          category: item.category,
+      }));
         
     } catch (e) {
         console.error('Error fetching reservation details', e);
@@ -758,11 +737,11 @@ const fetchRejectedShipmentDetails = async () => {
             itemCode: item.item_code,
             itemName: item.item_name,
             lotBatch: item.batch_lot,
-            qty: item.on_hand_qty, // Default to total on hand in reject bin
+            qty: item.on_hand_qty, 
             uom: item.uom,
             reason: 'QC Reject', 
             originalQty: item.on_hand_qty,
-            category: item.category, // Added for qty formatting
+            category: item.category,
         }));
         
     } catch (e) {
@@ -780,22 +759,20 @@ const fetchSupplierShipmentDetails = async () => {
         });
         const items = response.data;
         
-        // Auto-fill supplier from the first material found
         if (items.length > 0) {
             newReturn.value.supplier = items[0].supplier_name;
         }
 
-        // Auto-fill items with rejected materials
         newReturn.value.items = items.map((item: any) => ({
             id: item.id,
             itemCode: item.item_code,
             itemName: item.item_name,
             lotBatch: item.batch_lot,
-            qty: item.on_hand_qty, // Default to total on hand in reject bin
+            qty: item.on_hand_qty, 
             uom: item.uom,
             reason: 'QC Reject', 
             originalQty: item.on_hand_qty,
-            category: item.category, // Added for qty formatting
+            category: item.category, 
         }));
         
     } catch (e) {
@@ -815,30 +792,6 @@ const formatDate = (dateString: string) => {
     month: '2-digit',
     year: 'numeric'
   })
-}
-
-// Format quantity based on material category
-const formatQty = (qty: number | undefined, category?: string) => {
-  if (qty === null || qty === undefined) return '0'
-  const num = parseFloat(qty.toString())
-  if (isNaN(num)) return '0'
-  
-  // Packaging materials: whole numbers only
-  if (category === 'Packaging' || category === 'Packaging Material') {
-    return Math.round(num).toString()
-  }
-  
-  // Raw materials: max 4 decimal places
-  if (category === 'Raw Material') {
-    // If it's a whole number, show as is
-    if (num === Math.floor(num)) return num.toString()
-    
-    // For decimals, keep up to 4 decimal places, remove trailing zeros
-    return num.toFixed(4).replace(/\.?0+$/, '')
-  }
-  
-  // Default: preserve as is for other categories
-  return num.toString()
 }
 
 const getStatusClass = (status: string) => {
@@ -874,6 +827,8 @@ const getReasonClass = (reason: string) => {
 }
 
 const generateReturnNumber = () => {
+  // Logic ini sekarang tidak digunakan karena mengambil dari shipmentNo
+  // Namun dibiarkan untuk fallback jika diperlukan
   const now = new Date()
   const year = now.getFullYear().toString().slice(-2)
   const month = (now.getMonth() + 1).toString().padStart(2, '0')
@@ -889,7 +844,8 @@ const addItem = () => {
     lotBatch: '',
     qty: 0,
     uom: 'PCS',
-    reason: ''
+    reason: '',
+    id: null 
   })
 }
 
@@ -899,59 +855,87 @@ const handleFileUpload = (event: Event) => {
 }
 
 const processErpPdf = async () => {
-  if (!erpPdfFile.value) return;
-  isProcessingErp.value = true;
-  
-  try {
-    const formData = new FormData();
-    formData.append('erp_pdf', erpPdfFile.value);
+    if (!erpPdfFile.value) return;
+    isProcessingErp.value = true;
     
-    // Gunakan axios untuk upload file
-    const response = await axios.post('/transaction/return/parse-pdf', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
-    });
-    
-    const data = response.data;
-    
-    // 1. Set Date
-    if (data.formatted_date) {
-        newReturn.value.date = data.formatted_date;
-    }
-    
-    // 2. Set Items
-    newReturn.value.items = []; // Reset existing
-    
-    data.items.forEach((item: any) => {
-        // Cek jika Qty valid
-        if (item.qty > 0) {
-            newReturn.value.items.push({
-                itemCode: item.item_code,
-                itemName: item.description, // Sementara pakai deskripsi dari PDF
-                lotBatch: '', // PDF return produksi kadang tidak mencantumkan batch spesifik per baris
-                qty: item.qty,
-                uom: 'PCS', // Default, nanti diupdate fetchMaterial
-                reason: 'Excess Production' // Default reason
-            });
+    try {
+        const formData = new FormData();
+        formData.append('erp_pdf', erpPdfFile.value);
+        
+        const response = await axios.post('/transaction/return/parse-pdf', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        
+        const data = response.data;
+        
+        // --- LOGIKA BARU: Cek Duplicate ---
+        if (data.status === 'duplicate') {
+            // Reset file input agar user sadar
+            erpPdfFile.value = null; 
+            const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+
+            // Tampilkan Alert Duplicate
+            alert(`⛔ GAGAL MEMPROSES!\n\nNo. Return: ${data.return_number} sudah ada di database (Duplicate Entry).\nSistem menolak file ini.`);
+            
+            isProcessingErp.value = false;
+            return; // Hentikan proses
         }
-    });
 
-    // 3. Sync Item Details (Name & UoM) with Master Data
-    newReturn.value.items.forEach((_, index) => {
-        fetchMaterial(index);
-    });
+        // Proses data normal
+        if (data.formatted_date) {
+            newReturn.value.date = data.formatted_date;
+        }
+        
+        if (data.return_number) {
+            newReturn.value.shipmentNo = data.return_number;
+        }
+        
+        newReturn.value.items = [];
+        
+        // --- LOGIKA BARU: Cek Material Tidak Dikenal ---
+        if (data.unknown_items && data.unknown_items.length > 0) {
+            let unknownList = data.unknown_items.map((i: any) => `- ${i.item_code} (${i.description})`).join('\n');
+            
+            // Popup Konfirmasi
+            alert(`⚠️ PERINGATAN MASTER DATA\n\nDitemukan ${data.unknown_items.length} material yang belum terdaftar di Master Data:\n\n${unknownList}\n\nSistem akan MENGHAPUS item ini dari daftar import.\nSilakan hubungi Administrator untuk mendaftarkan kode material tersebut.`);
+        }
 
-    alert(`Berhasil memuat ${newReturn.value.items.length} item dari PDF.`);
-    
-  } catch (error: any) {
-    console.error('Error processing PDF:', error);
-    alert('Gagal memproses file PDF: ' + (error.response?.data?.error || error.message));
-  } finally {
-    isProcessingErp.value = false;
-  }
+        // Masukkan hanya item yang VALID (yang dikembalikan dari backend sudah difilter)
+        if (data.items.length === 0) {
+            alert('Tidak ada item valid yang dapat diproses dari PDF ini.');
+        } else {
+            data.items.forEach((item: any) => {
+                if (item.qty > 0) {
+                    newReturn.value.items.push({
+                        itemCode: item.item_code,
+                        itemName: item.description,
+                        lotBatch: item.serial_number || 'N/A', 
+                        qty: item.qty,
+                        uom: item.uom || 'PCS',
+                        reason: 'Kelebihan Produksi',
+                        id: null
+                    });
+                }
+            });
+
+            // Trigger fetch material lagi untuk memastikan data reaktif (opsional karena data backend sudah valid)
+            newReturn.value.items.forEach((_, index) => {
+               // fetchMaterial(index); // Bisa dikomentari jika backend sudah kirim nama material yang benar
+            });
+
+            alert(`✅ Berhasil memuat ${newReturn.value.items.length} item valid.\nNo Return: ${data.return_number || 'N/A'}`);
+        }
+        
+    } catch (error: any) {
+        console.error('Error processing PDF:', error);
+        alert('Gagal memproses file PDF: ' + (error.response?.data?.error || error.message));
+    } finally {
+        isProcessingErp.value = false;
+    }
 }
-
 
 // Material Lookup
 const fetchMaterial = async (index: number) => {
@@ -964,9 +948,6 @@ const fetchMaterial = async (index: number) => {
         const data = await response.json()
         newReturn.value.items[index].itemName = data.nama_material
         newReturn.value.items[index].uom = data.satuan || 'PCS'
-    } else {
-        // Optional: clear if not found or show simple toast
-        // newReturn.value.items[index].itemName = '' 
     }
   } catch (e) {
       console.error('Error fetching material', e)
@@ -984,7 +965,7 @@ const closeAddModal = () => {
 
 const resetForm = () => {
   newReturn.value = {
-    type: 'Supplier',
+    type: 'Rejected Material',
     date: new Date().toISOString().split('T')[0],
     supplier: '',
     shipmentNo: '',
@@ -1009,14 +990,26 @@ const saveReturn = () => {
     onError: (errors: any) => {
       console.error('Save Return Error:', errors)
       let msg = 'Gagal menyimpan return.'
-      // Simple error handling
+      
       if (errors.shipmentNo) msg = errors.shipmentNo
       if (errors.date) msg = errors.date
+      
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length > 0) {
+        const firstErrorKey = errorKeys[0];
+        if (firstErrorKey.startsWith('items.')) {
+            msg = errors[firstErrorKey];
+        } else if (!errors.shipmentNo && !errors.date) {
+            msg = errors[firstErrorKey];
+        }
+      }
+      
       showMessage('error', msg)
     }
   })
 }
 
+// ... (Sisa logic approval, viewDetail, printSlip tetap sama) ...
     // Logic Approval
     const showApproveModal = ref(false)
     const approveForm = ref({
@@ -1062,7 +1055,6 @@ const saveReturn = () => {
                 const result = await response.json()
 
                 if (result.success) {
-                    // Update Local Data
                     const index = returns.value.findIndex(r => r.id === approveForm.value.return_id)
                     if (index !== -1) {
                         returns.value[index].status = 'Approved'
@@ -1195,7 +1187,6 @@ const showMessage = (type: 'success' | 'error', text: string) => {
 
 // Initialize
 onMounted(() => {
-  // Load dark mode preference
   const savedDarkMode = localStorage.getItem('darkMode')
   if (savedDarkMode) {
     isDarkMode.value = JSON.parse(savedDarkMode)
@@ -1207,9 +1198,6 @@ onMounted(() => {
     returns.value = props.initialReturns as ReturnItem[]
   }
 
-
-
-  // Initialize with one item for demo
   addItem()
 })
 
