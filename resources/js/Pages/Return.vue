@@ -336,15 +336,15 @@
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white">
-                      <tr v-for="(item, index) in selectedReturn.items" :key="index">
+                      <tr v-for="(item, index) in newReturn.items" :key="index">
                         
                         <td class="px-4 py-3 text-sm text-gray-900">{{ index + 1 }}</td>
                         
-                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.item_code }}</td>
+                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.itemCode }}</td>
                         
-                        <td class="px-4 py-3 text-sm text-gray-900">{{ item.item_name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ item.itemName }}</td>
                         
-                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.batch_lot }}</td>
+                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.lotBatch }}</td>
                         
                         <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
                         
@@ -358,8 +358,8 @@
                         
                       </tr>
                       
-                      <tr v-if="!selectedReturn.items || selectedReturn.items.length === 0">
-                          <td colspan="7" class="px-4 py-3 text-center text-gray-500">Tidak ada item detail.</td>
+                      <tr v-if="!newReturn.items || newReturn.items.length === 0">
+                          <td colspan="7" class="px-4 py-3 text-center text-gray-500">Tidak ada item. Klik "Tambah Item" untuk menambah.</td>
                       </tr>
                     </tbody>
                   </table>
