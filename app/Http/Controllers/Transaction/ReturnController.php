@@ -8,6 +8,7 @@ use App\Models\ReturnSlip;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use App\Models\Material;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -34,83 +35,139 @@ class ReturnController extends Controller
             $pdf = $parser->parseFile($pdfFile->getPathname());
             $text = $pdf->getText();
 
-            // Normalisasi teks
+            // 1. Normalisasi teks (Enter jadi spasi, spasi ganda jadi satu)
             $normalizedText = preg_replace('/\s+/', ' ', $text);
             $normalizedText = trim($normalizedText);
 
             $extractedData = [
-                'status' => 'success', // Status default
+                'status' => 'success',
                 'return_number' => '',
                 'date' => '',
                 'formatted_date' => date('Y-m-d'),
                 'items' => [],
-                'unknown_items' => [], // Penampung item yang tidak ada di master
-                'origin' => '',
+                'unknown_items' => [],
             ];
 
             // STEP 1: Extract Internal Shipment Number
             if (preg_match('/Internal Shipment\s*:\s*([A-Za-z0-9\/\-]+)/i', $normalizedText, $matches)) {
                 $extractedData['return_number'] = trim($matches[1]);
-
-                // --- UPDATE 1: Cek Duplicate Entry ---
+                
+                // Cek Duplicate
                 $exists = ReturnModel::where('return_number', $extractedData['return_number'])->exists();
                 if ($exists) {
                     return response()->json([
                         'status' => 'duplicate',
-                        'message' => 'No Return / Shipment Number ini sudah terdaftar di sistem!',
+                        'message' => 'No Return / Shipment Number ini sudah terdaftar!',
                         'return_number' => $extractedData['return_number']
                     ]);
                 }
             }
 
-            // STEP 2: Extract Schedule Date (Kode lama tetap sama...)
+            // STEP 2: Extract Schedule Date
             if (preg_match('/Schedule Date\s+([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i', $normalizedText, $dateMatch)) {
-                $rawDate = trim($dateMatch[1]);
                 try {
-                    $dateObj = \DateTime::createFromFormat('d/m/Y', $rawDate);
+                    $dateObj = \DateTime::createFromFormat('d/m/Y', trim($dateMatch[1]));
                     if ($dateObj) {
                         $extractedData['formatted_date'] = $dateObj->format('Y-m-d');
                     }
-                } catch (\Exception $e) {
-                    Log::warning("Date parsing failed: " . $e->getMessage());
-                }
+                } catch (\Exception $e) {}
             }
 
-            // STEP 3: Extract Items & Validate Material (LOGIKA DIPERBAHARUI)
-            $mainPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+(Waiting\s+[A-Za-z\s]+?)\s+(Production|Stock)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
+            // STEP 3: Extract Items (LOGIKA UTAMA)
+            // Regex menangkap Status 'Done'/'Waiting' dan Location 'Production'/'Productio n'
+            $mainPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+(Waiting\s+[A-Za-z\s]+?|Done)\s+(Production|Productio\s+n|Stock)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
             
-            // Array sementara untuk parsing
             $parsedItems = [];
 
             if (preg_match_all($mainPattern, $normalizedText, $matches, PREG_SET_ORDER)) {
                 foreach ($matches as $match) {
-                    $this->processParsedItem($match, $parsedItems, 'main');
+                    $itemCode = trim($match[1]);
+                    $fullContent = trim($match[2]); // Deskripsi + Serial (misal: "...R23 2346613112 5ULG")
+                    
+                    $serialNumber = 'N/A';
+                    $description = $fullContent;
+
+                    // --- LOGIKA MENYATUKAN SERIAL NUMBER (CONCATENATION) ---
+
+                    // KASUS 1: Serial Terpisah Spasi (Contoh: "2346613112 5ULG")
+                    // Regex: Mencari Angka(5 digit+) [SPASI] Karakter(Huruf/Angka) di akhir kalimat
+                    if (preg_match('/(\d{5,})\s+([A-Z0-9]+)$/', $fullContent, $splitMatch)) {
+                        
+                        // INI BAGIAN PENGGABUNGANNYA:
+                        // $splitMatch[1] = "2346613112"
+                        // $splitMatch[2] = "5ULG"
+                        // Digabung dengan titik (.) menjadi "23466131125ULG"
+                        $serialNumber = $splitMatch[1] . $splitMatch[2]; 
+
+                        // Hapus bagian serial number ASLI (yang ada spasinya) dari deskripsi
+                        // $splitMatch[0] berisi "2346613112 5ULG"
+                        $description = str_replace($splitMatch[0], '', $fullContent);
+
+                    } 
+                    // KASUS 2: Serial Normal/Menyatu (Contoh: "512031")
+                    elseif (preg_match('/(\d{5,}[A-Z0-9]*)$/', $fullContent, $normalMatch)) {
+                        $serialNumber = trim($normalMatch[1]);
+                        
+                        // Hapus serial dari deskripsi
+                        $description = str_replace($normalMatch[0], '', $fullContent);
+                    }
+
+                    // Bersihkan sisa spasi/dash di ujung deskripsi
+                    $description = trim(preg_replace('/[\s\-]+$/', '', $description));
+
+                    // Cleaning Qty
+                    $qtyClean = str_replace(['.', ','], ['', '.'], $match[5]);
+
+                    $parsedItems[] = [
+                        'item_code' => $itemCode,
+                        'description' => $description,
+                        'serial_number' => $serialNumber, // Hasilnya PASTI tergabung sekarang
+                        'qty' => (float) $qtyClean,
+                        'uom' => trim($match[6]),
+                    ];
                 }
             }
 
-            // FALLBACK Pattern
+            // Fallback Pattern (Jaga-jaga jika pattern utama gagal total)
             if (empty($parsedItems)) {
                 $fallbackPattern = '/\[([A-Za-z0-9]+)\]\s+(.+?)\s+([\d.,]+)\s+(Pcs|Kg|L|Unit)/i';
                 if (preg_match_all($fallbackPattern, $normalizedText, $fallbackMatches, PREG_SET_ORDER)) {
-                    foreach ($fallbackMatches as $match) {
-                        $this->processParsedItem($match, $parsedItems, 'fallback');
-                    }
+                     foreach ($fallbackMatches as $match) {
+                        $itemCode = trim($match[1]);
+                        $rawDesc = trim($match[2]);
+                        $serialFallback = 'N/A';
+                        
+                        // Coba logika split di fallback juga
+                        if (preg_match('/(\d{5,})\s+([A-Z0-9]+)$/', $rawDesc, $sm)) {
+                             $serialFallback = $sm[1] . $sm[2]; // GABUNG
+                             $rawDesc = str_replace($sm[0], '', $rawDesc); // HAPUS YANG ADA SPASINYA
+                        } elseif (preg_match('/\b(\d{5,}[A-Z0-9]*)\b/', $rawDesc, $nm)) {
+                             $serialFallback = $nm[1];
+                             $rawDesc = str_replace($nm[1], '', $rawDesc);
+                        }
+
+                        $qtyClean = str_replace(['.', ','], ['', '.'], $match[3]);
+                        
+                        $parsedItems[] = [
+                            'item_code' => $itemCode,
+                            'description' => trim(preg_replace('/[\s\-]+$/', '', $rawDesc)),
+                            'serial_number' => $serialFallback,
+                            'qty' => (float) $qtyClean,
+                            'uom' => trim($match[4]),
+                        ];
+                     }
                 }
             }
 
-            // --- UPDATE 2: Validasi ke Master Data Material ---
+            // Validasi Master Data & Update Nama Material
             foreach ($parsedItems as $item) {
-                // Cek apakah kode item ada di tabel materials
                 $materialExists = Material::where('kode_item', $item['item_code'])->first();
 
                 if ($materialExists) {
-                    // Jika ada, masukkan ke items valid
-                    // Kita juga update nama material sesuai database master agar konsisten
                     $item['description'] = $materialExists->nama_material; 
-                    $item['uom'] = $materialExists->satuan; // Pakai satuan dari master
+                    $item['uom'] = $materialExists->satuan;
                     $extractedData['items'][] = $item;
                 } else {
-                    // Jika tidak ada, masukkan ke unknown_items
                     $extractedData['unknown_items'][] = [
                         'item_code' => $item['item_code'],
                         'description' => $item['description']
