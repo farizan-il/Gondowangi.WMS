@@ -241,6 +241,19 @@ class ReturnController extends Controller
             ->limit(100)
             ->get()
             ->map(function ($ret) {
+                // Kita siapkan array items lengkap untuk Modal Detail
+                $mappedItems = $ret->items->map(function($item) {
+                    return [
+                        'id' => $item->id, // Return item ID for editing
+                        'item_code' => $item->material->kode_item ?? '-',
+                        'item_name' => $item->material->nama_material ?? '-',
+                        'batch_lot' => $item->batch_lot ?? '-',
+                        'qty' => $item->qty_return,
+                        'uom' => $item->uom ?? '-',
+                        'reason' => $item->return_reason ?? '-',
+                    ];
+                });
+
                 return [
                     'id' => $ret->id,
                     'returnNumber' => $ret->return_number,
@@ -248,12 +261,10 @@ class ReturnController extends Controller
                     'type' => $ret->return_type ?? 'Supplier',
                     'supplier' => $ret->return_type === 'Production' ? ($ret->department ?? 'Production') : ($ret->supplier->nama_supplier ?? '-'),
                     'shipmentNo' => $ret->reference_number,
-                    'itemCode' => $ret->items->first()->material->kode_item ?? '-',
-                    'itemName' => $ret->items->first()->material->nama_material ?? '-',
-                    'lotBatch' => $ret->items->first()->batch_lot ?? '-',
-                    'qty' => $ret->items->sum('qty_return'),
-                    'uom' => $ret->items->first()->uom ?? '-',
-                    'reason' => $ret->items->first()->return_reason ?? '-',
+                    
+                    // PERUBAHAN DISINI: Kirim array items lengkap
+                    'items' => $mappedItems, 
+                    'total_qty' => $ret->items->sum('qty_return'),
                     'status' => $ret->status,
                 ];
             });
@@ -767,6 +778,87 @@ class ReturnController extends Controller
 
     public function show(string $id) {}
     public function edit(string $id) {}
-    public function update(Request $request, string $id) {}
+    
+    public function update(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'nullable|exists:return_items,id', // Make ID nullable
+            'items.*.item_code' => 'nullable|string', // Allow item_code for fallback matching
+            'items.*.batch_lot' => 'nullable|string', // Allow batch_lot for fallback matching
+            'items.*.qty' => 'required|numeric|min:0.01',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $returnModel = \App\Models\ReturnModel::with('items.material')->findOrFail($id);
+
+            // Check if return can be edited (only Pending Approval or Draft)
+            if (!in_array($returnModel->status, ['Pending Approval', 'Draft', 'Submitted'])) {
+                throw new \Exception("Return dengan status '{$returnModel->status}' tidak dapat diedit.");
+            }
+
+            // Update each item's quantity
+            foreach ($validated['items'] as $itemData) {
+                $returnItem = null;
+                
+                // Try to find by ID first
+                if (!empty($itemData['id'])) {
+                    $returnItem = \App\Models\ReturnItem::find($itemData['id']);
+                }
+                
+                // Fallback: find by item_code and batch_lot within this return
+                if (!$returnItem && !empty($itemData['item_code']) && !empty($itemData['batch_lot'])) {
+                    $returnItem = $returnModel->items->first(function($item) use ($itemData) {
+                        $materialCode = $item->material->kode_item ?? null;
+                        return $materialCode === $itemData['item_code'] 
+                            && $item->batch_lot === $itemData['batch_lot'];
+                    });
+                }
+                
+                if (!$returnItem) {
+                    throw new \Exception("Item tidak ditemukan untuk update.");
+                }
+                
+                // Verify this item belongs to this return
+                if ($returnItem->return_id != $returnModel->id) {
+                    throw new \Exception("Item tidak valid untuk return ini.");
+                }
+
+                $oldQty = $returnItem->qty_return;
+                $newQty = $itemData['qty'];
+
+                // Update quantity
+                $returnItem->update([
+                    'qty_return' => $newQty
+                ]);
+
+                // Log the change
+                $this->logActivity($returnModel, 'Return Quantity Edited', [
+                    'description' => "Qty updated from {$oldQty} to {$newQty} for material ID {$returnItem->material_id}",
+                    'material_id' => $returnItem->material_id,
+                    'batch_lot' => $returnItem->batch_lot,
+                    'old_qty' => $oldQty,
+                    'new_qty' => $newQty,
+                    'edited_by' => Auth::user()->name
+                ]);
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Return berhasil diupdate.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Return Update Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
     public function destroy(string $id) {}
 }

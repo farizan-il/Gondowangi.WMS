@@ -322,6 +322,8 @@ Route::get('/transaction/return/material/{code}', [\App\Http\Controllers\Transac
         Route::get('/return/supplier-shipment-details', [ReturnController::class, 'getSupplierShipmentDetails']);
         Route::post('/return/parse-pdf', [ReturnController::class, 'parsePdf']);
         Route::post('/return/approve', [ReturnController::class, 'approve'])->name('return.approve');
+        Route::put('/return/{id}', [ReturnController::class, 'update'])->name('return.update');
+
 
         Route::get('/return/reservation-details', [ReturnController::class, 'getReservationDetails'])
             // ->middleware('permission:return.view')

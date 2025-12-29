@@ -88,28 +88,57 @@
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ returnItem.supplier }}</div>
                   </td>
+
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-mono text-gray-900">{{ returnItem.itemCode }}</div>
+                    <div v-if="returnItem.items.length > 1" class="text-sm font-bold text-blue-600 italic">
+                      Multiple Items ({{ returnItem.items.length }})
+                    </div>
+                    <div v-else class="text-sm font-mono text-gray-900">
+                      {{ returnItem.items[0]?.item_code || '-' }}
+                    </div>
                   </td>
+
                   <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900">{{ returnItem.itemName }}</div>
+                    <div v-if="returnItem.items.length > 1" class="text-sm text-gray-400 italic">
+                      - Lihat Detail -
+                    </div>
+                    <div v-else class="text-sm text-gray-900">
+                      {{ returnItem.items[0]?.item_name || '-' }}
+                    </div>
                   </td>
+
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-mono text-gray-900">{{ returnItem.lotBatch }}</div>
+                    <div v-if="returnItem.items.length > 1" class="text-sm text-gray-400">
+                      -
+                    </div>
+                    <div v-else class="text-sm font-mono text-gray-900">
+                      {{ returnItem.items[0]?.batch_lot || '-' }}
+                    </div>
                   </td>
+
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">{{ returnItem.qty }} {{ returnItem.uom }}</div>
+                    <div class="text-sm text-gray-900">
+                        {{ formatQty(returnItem.total_qty) }} 
+                        <span v-if="returnItem.items.length === 1">{{ returnItem.items[0]?.uom }}</span>
+                    </div>
                   </td>
+
+
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="getReasonClass(returnItem.reason)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                      {{ returnItem.reason }}
+                    <span :class="getReasonClass(returnItem.items[0]?.reason)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                        {{ returnItem.items[0]?.reason || '-' }}
+                        <span v-if="returnItem.items.length > 1" class="ml-1 text-[10px] opacity-75">
+                            (+{{ returnItem.items.length - 1 }})
+                        </span>
                     </span>
                   </td>
+
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span :class="getStatusClass(returnItem.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                       {{ returnItem.status }}
                     </span>
                   </td>
+
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button 
                       @click="viewDetail(returnItem)"
@@ -306,78 +335,31 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                       </tr>
                     </thead>
-
                     <tbody class="divide-y divide-gray-200 bg-white">
-                      <tr v-for="(item, index) in newReturn.items" :key="index">
+                      <tr v-for="(item, index) in selectedReturn.items" :key="index">
+                        
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ index + 1 }}</td>
+                        
+                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.item_code }}</td>
+                        
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ item.item_name }}</td>
+                        
+                        <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.batch_lot }}</td>
+                        
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
+                        
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
+                        
                         <td class="px-4 py-3">
-                          <input 
-                            v-model.trim="item.itemCode"
-                            @change="fetchMaterial(index)"
-                            type="text" 
-                            placeholder="ITM001"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
+                          <span :class="getReasonClass(item.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
+                            {{ item.reason }}
+                          </span>
                         </td>
-                        <td class="px-4 py-3">
-                          <input 
-                            v-model="item.itemName"
-                            type="text" 
-                            placeholder="Nama material"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-gray-100 text-gray-900 focus:ring-1 focus:ring-blue-500"
-                            readonly
-                          >
-                        </td>
-                        <td class="px-4 py-3">
-                          <input 
-                            v-model.trim="item.lotBatch"
-                            type="text" 
-                            placeholder="LOT001"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
-                        </td>
-                        <td class="px-4 py-3">
-                          <input 
-                            v-model="item.qty"
-                            type="number" 
-                            placeholder="0"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
-                        </td>
-                        <td class="px-4 py-3">
-                          <input 
-                            v-model="item.uom" 
-                            type="text"
-                            placeholder="Satuan"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
-                        </td>
-                        <td class="px-4 py-3">
-                          <select 
-                            v-model="item.reason" 
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-gray-900 focus:ring-1 focus:ring-blue-500"
-                          >
-                            <option value="">Pilih Alasan</option>
-                            <option value="QC Reject">QC Reject</option>
-                            <option value="Kadaluarsa">Kadaluarsa</option>
-                            <option value="Rusak">Rusak</option>
-                            <option value="Kelebihan Produksi">Kelebihan Produksi</option>
-                            <option value="Salah Kirim">Salah Kirim</option>
-                            <option value="Lainnya">Lainnya</option>
-                          </select>
-                        </td>
-                        <td class="px-4 py-3">
-                          <button 
-                            @click="removeItem(index)"
-                            class="text-red-600 hover:text-red-900 text-sm"
-                          >
-                            🗑️
-                          </button>
-                        </td>
+                        
                       </tr>
-                      <tr v-if="newReturn.items.length === 0">
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
-                          Belum ada item. Klik "Tambah Item" untuk menambahkan.
-                        </td>
+                      
+                      <tr v-if="!selectedReturn.items || selectedReturn.items.length === 0">
+                          <td colspan="7" class="px-4 py-3 text-center text-gray-500">Tidak ada item detail.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -409,9 +391,14 @@
 
         <!-- Modal Detail Return -->
         <div v-if="showDetailModal && selectedReturn" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-          <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto border border-gray-200">
+          <div class="bg-white rounded-lg p-6 w-full max-w-6xl max-h-screen overflow-y-auto border border-gray-200">
             <div class="flex justify-between items-center mb-6">
-              <h3 class="text-xl font-semibold text-gray-900">Detail Return</h3>
+              <div class="flex items-center gap-4">
+                <h3 class="text-xl font-semibold text-gray-900">Detail Return</h3>
+                <span v-if="isEditMode" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                  Mode Edit Aktif
+                </span>
+              </div>
               <button 
                 @click="closeDetailModal"
                 class="text-gray-400 hover:text-gray-600"
@@ -473,37 +460,87 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
-                  <tr>
-                    <td class="px-4 py-3 text-sm text-gray-900">1</td>
-                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ selectedReturn.itemCode }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.itemName }}</td>
-                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ selectedReturn.lotBatch }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.qty }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ selectedReturn.uom }}</td>
+                  <tr v-for="(item, index) in (isEditMode ? editableItems : selectedReturn.items)" :key="index">
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ index + 1 }}</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.item_code }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.item_name }}</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.batch_lot }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">
+                      <input 
+                        v-if="isEditMode"
+                        v-model.number="editableItems[index].qty"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        class="w-24 px-2 py-1 border rounded focus:ring-2 focus:ring-blue-500"
+                        :class="editableItems[index].qty !== selectedReturn.items[index].qty ? 'border-blue-500 bg-blue-50' : 'border-gray-300'"
+                      >
+                      <span v-else>{{ formatQty(item.qty) }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
                     <td class="px-4 py-3">
-                      <span :class="getReasonClass(selectedReturn.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
-                        {{ selectedReturn.reason }}
+                      <span :class="getReasonClass(item.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
+                        {{ item.reason }}
                       </span>
                     </td>
+                  </tr>
+                  <tr v-if="!selectedReturn.items || selectedReturn.items.length === 0">
+                    <td colspan="7" class="px-4 py-3 text-center text-gray-500">Tidak ada item detail.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button 
-                @click="closeDetailModal"
-                class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Tutup
-              </button>
-              <button 
-                @click="printSlip(selectedReturn)"
-                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Cetak Slip Return
-              </button>
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+              <div>
+                <button 
+                  v-if="!isEditMode && canEdit(selectedReturn)"
+                  @click="enableEditMode"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Qty
+                </button>
+              </div>
+              
+              <div class="flex gap-3">
+                <template v-if="isEditMode">
+                  <button 
+                    @click="cancelEdit"
+                    class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    @click="saveChanges"
+                    :disabled="isSaving"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg v-if="isSaving" class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                  </button>
+                </template>
+                <template v-else>
+                  <button 
+                    @click="closeDetailModal"
+                    class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Tutup
+                  </button>
+                  <button 
+                    @click="printSlip(selectedReturn)"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Cetak Slip Return
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -562,6 +599,16 @@ import axios from 'axios'
 import { ref, computed, onMounted, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 
+interface ReturnDetailItem {
+  id?: number
+  item_code: string
+  item_name: string
+  batch_lot: string
+  qty: number
+  uom: string
+  reason: string
+}
+
 // Types
 interface ReturnItem {
   id: string
@@ -576,7 +623,9 @@ interface ReturnItem {
   qty: number
   uom: string
   reason: string
-  status: 'Draft' | 'Submitted' | 'Completed'
+  status: 'Draft' | 'Submitted' | 'Completed' | 'Pending Approval' | 'Approved'
+  items: ReturnDetailItem[] 
+  total_qty: number
 }
 
 interface NewReturnItem {
@@ -617,6 +666,12 @@ const deptReservations = ref<string[]>([])
 // PDF Upload State
 const erpPdfFile = ref<File | null>(null)
 const isProcessingErp = ref(false)
+
+// Edit Mode State
+const isEditMode = ref(false)
+const editableItems = ref<ReturnDetailItem[]>([])
+const isSaving = ref(false)
+
 
 // Form data
 const newReturn = ref({
@@ -825,6 +880,17 @@ const getReasonClass = (reason: string) => {
       return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`
   }
 }
+
+// Format Qty: Show whole numbers without decimals (2.00 → 2, 12.00 → 12), keep decimals when needed (1.19 → 1.19)
+const formatQty = (qty: number): string => {
+  if (qty === null || qty === undefined) return '0'
+  // Check if number is whole (no decimal part)
+  if (qty % 1 === 0) {
+    return qty.toString() // "2", "12"
+  }
+  return qty.toString() // "1.19", "0.5"
+}
+
 
 const generateReturnNumber = () => {
   // Logic ini sekarang tidak digunakan karena mengambil dari shipmentNo
@@ -1085,7 +1151,76 @@ const viewDetail = (returnItem: ReturnItem) => {
 const closeDetailModal = () => {
   showDetailModal.value = false
   selectedReturn.value = null
+  isEditMode.value = false
+  editableItems.value = []
 }
+
+// Edit Mode Methods
+const canEdit = (returnItem: ReturnItem) => {
+  return ['Pending Approval', 'Draft', 'Submitted'].includes(returnItem.status)
+}
+
+const enableEditMode = () => {
+  if (selectedReturn.value && selectedReturn.value.items) {
+    // Deep copy items array for editing
+    editableItems.value = JSON.parse(JSON.stringify(selectedReturn.value.items))
+    isEditMode.value = true
+  }
+}
+
+const cancelEdit = () => {
+  isEditMode.value = false
+  editableItems.value = []
+}
+
+const saveChanges = async () => {
+  if (!selectedReturn.value) return
+
+  // Validate quantities
+  const invalidQty = editableItems.value.some(item => !item.qty || item.qty <= 0)
+  if (invalidQty) {
+    alert('Semua quantity harus lebih besar dari 0')
+    return
+  }
+
+  isSaving.value = true
+
+  try {
+    const response = await axios.put(`/transaction/return/${selectedReturn.value.id}`, {
+      items: editableItems.value.map(item => ({
+        id: item.id,
+        item_code: item.item_code, // Fallback for matching
+        batch_lot: item.batch_lot,  // Fallback for matching
+        qty: item.qty
+      }))
+    })
+
+    if (response.data.success) {
+      // Update the local data
+      if (selectedReturn.value && selectedReturn.value.items) {
+        selectedReturn.value.items = JSON.parse(JSON.stringify(editableItems.value))
+      }
+
+      // Update the returns list
+      const returnIndex = returns.value.findIndex(r => r.id === selectedReturn.value?.id)
+      if (returnIndex !== -1) {
+        returns.value[returnIndex].items = JSON.parse(JSON.stringify(editableItems.value))
+        returns.value[returnIndex].total_qty = editableItems.value.reduce((sum, item) => sum + item.qty, 0)
+      }
+
+      isEditMode.value = false
+      showMessage('success', response.data.message || 'Perubahan berhasil disimpan')
+    } else {
+      alert(response.data.message || 'Gagal menyimpan perubahan')
+    }
+  } catch (error: any) {
+    console.error('Save Changes Error:', error)
+    alert(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan')
+  } finally {
+    isSaving.value = false
+  }
+}
+
 
 const printSlip = (returnItem: ReturnItem) => {
   const currentDate = new Date().toLocaleDateString('id-ID')
