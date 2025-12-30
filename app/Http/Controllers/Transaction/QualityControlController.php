@@ -464,7 +464,7 @@ class QualityControlController extends Controller
                 
                 'qty_sample' => 'required|numeric|min:0', // INPUT QTY SAMPEL
 
-                'defect_count' => 'nullable|integer|min:0',
+                'defect_count' => 'nullable',
                 'catatan_qc' => 'nullable|string',
                 'hasil_qc' => 'required|in:PASS,REJECTED',
                 'new_exp_date' => 'nullable|date|after:today', // For Re-QC PASS - new expired date
