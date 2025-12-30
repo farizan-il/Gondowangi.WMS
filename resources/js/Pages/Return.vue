@@ -252,10 +252,28 @@
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ newReturn.type === 'Supplier' ? 'Supplier' : 'Dept Asal' }}
+                    {{ newReturn.type === 'Production' ? 'Departemen Asal' : 'Supplier' }}
                   </label>
+                  <!-- For Rejected Material: Readonly (auto-filled from shipment) -->
+                  <input 
+                    v-if="newReturn.type === 'Rejected Material'"
+                    v-model="newReturn.supplier"
+                    readonly
+                    type="text"
+                    placeholder="Pilih No Shipment terlebih dahulu"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                  >
+                  <!-- For Production: Readonly dept -->
+                  <input 
+                    v-else-if="newReturn.type === 'Production'"
+                    :value="userDept"
+                    readonly
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                  >
+                  <!-- For Supplier: Select dropdown -->
                   <select 
-                    v-if="newReturn.type === 'Supplier' || newReturn.type === 'Rejected Material'"
+                    v-else
                     v-model="newReturn.supplier" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
                   >
@@ -264,13 +282,6 @@
                       {{ sup.nama_supplier }}
                     </option>
                   </select>
-                  <input 
-                    v-else
-                    :value="userDept"
-                    readonly
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
-                  >
                 </div>
 
                 <div>

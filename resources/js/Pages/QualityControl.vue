@@ -406,7 +406,7 @@
                         <span class="text-sm text-gray-900">PASS</span>
                       </label>
                       <label class="flex items-center">
-                        <input v-model="qcForm.hasilQC" type="radio" value="REJECT"
+                        <input v-model="qcForm.hasilQC" type="radio" value="REJECTED"
                           class="mr-2 text-red-600 focus:ring-red-500">
                         <span class="text-sm text-gray-900">REJECT</span>
                       </label>
@@ -420,8 +420,8 @@
                       <ul class="mt-2 list-disc list-inside">
                         <li v-if="qcForm.hasilQC === 'PASS'">Good Receipt Slip</li>
                         <li v-if="qcForm.hasilQC === 'PASS'">Label Karantina QR (Status: RELEASED)</li>
-                        <li v-if="qcForm.hasilQC === 'REJECT'">Return Slip</li>
-                        <li v-if="qcForm.hasilQC === 'REJECT'">Label QR (Status: REJECT)</li>
+                        <li v-if="qcForm.hasilQC === 'REJECTED'">Return Slip</li>
+                        <li v-if="qcForm.hasilQC === 'REJECTED'">Label QR (Status: REJECT)</li>
                       </ul>
                     </div>
                   </div>

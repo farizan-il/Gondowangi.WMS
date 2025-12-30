@@ -723,7 +723,7 @@ class ReturnController extends Controller
         $incomingGood = \App\Models\IncomingGood::where('incoming_number', $shipmentNo)->first();
         if (!$incomingGood) return response()->json(['error' => 'Shipment Number not found'], 404);
 
-        $items = \App\Models\InventoryStock::with('material')
+        $items = \App\Models\InventoryStock::with(['material', 'incomingGood.items'])
             ->where('gr_id', $incomingGood->id)
             ->where('status', 'REJECTED')
             ->whereHas('bin', function ($q) {
@@ -731,6 +731,20 @@ class ReturnController extends Controller
             })
             ->get()
             ->map(function ($stock) {
+                // Get supplier from incoming_goods_items.pabrik_pembuat
+                $supplierName = 'N/A';
+                if ($stock->incomingGood && $stock->incomingGood->items) {
+                    // Find matching incoming item by material_id and batch_lot
+                    $matchingItem = $stock->incomingGood->items->first(function ($item) use ($stock) {
+                        return $item->material_id == $stock->material_id && 
+                               $item->batch_lot == $stock->batch_lot;
+                    });
+                    
+                    if ($matchingItem && $matchingItem->pabrik_pembuat) {
+                        $supplierName = $matchingItem->pabrik_pembuat;
+                    }
+                }
+                
                 return [
                     'id' => $stock->id,
                     'item_code' => $stock->material->kode_item,
@@ -739,8 +753,7 @@ class ReturnController extends Controller
                     'on_hand_qty' => $stock->qty_on_hand,
                     'qty' => $stock->qty_on_hand,
                     'uom' => $stock->uom,
-                    'supplier_id' => $stock->material->supplier_id,
-                    'supplier_name' => $stock->material->supplier->nama_supplier ?? 'N/A',
+                    'supplier_name' => $supplierName,
                     'category' => $stock->material->kategori,
                 ];
             });

@@ -85,7 +85,7 @@ class DashboardController extends Controller
                 }
                 
                 // 4. Cek jika item REJECTED (tapi sudah di bin reject atau lainnya)
-                elseif ($item->status === 'REJECTED' && !str_starts_with($binCode, 'QRT-')) {
+                elseif ($item->status === 'REJECTED') {
                     $displayStatus = 'REJECTED (Siap Return)';
                 }
                 

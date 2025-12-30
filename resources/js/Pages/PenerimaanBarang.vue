@@ -727,8 +727,30 @@
               </div>
               
               <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">No PO *</label>
-                  <input v-model="newShipment.noPo" type="text" placeholder="Masukkan No PO" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    No PO *
+                    <span v-if="autoFilledFields.includes('no_po')" class="ml-2 text-xs text-yellow-600">(Auto)</span>
+                  </label>
+                  <div class="relative">
+                    <input 
+                      v-model="newShipment.noPo" 
+                      type="text" 
+                      placeholder="Masukkan No PO" 
+                      :class="[
+                        'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900',
+                        autoFilledFields.includes('no_po') ? 'bg-yellow-50' : 'bg-white'
+                 ]" 
+                    />
+                    <button 
+                      v-if="autoFilledFields.includes('no_po')" 
+                      @click="clearField('no_po')" 
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear field"
+                    >
+                      ✕
+                    </button>
+                  </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">No Surat Jalan *</label>
@@ -737,11 +759,28 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Supplier *
+                  <span v-if="autoFilledFields.includes('supplier')" class="ml-2 text-xs text-yellow-600">(Auto)</span>
                 </label>
                 <div class="relative">
-                  <input v-model="supplierSearchQuery" @input="filterSuppliers" type="text"
+                  <input 
+                    v-model="supplierSearchQuery" 
+                    @input="filterSuppliers" 
+                    type="text"
                     placeholder="Ketik untuk mencari Supplier..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900" />
+                    :class="[
+                      'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900',
+                      autoFilledFields.includes('supplier') ? 'bg-yellow-50' : 'bg-white'
+                    ]" 
+                  />
+                  <button 
+                    v-if="autoFilledFields.includes('supplier')" 
+                    @click="clearField('supplier')" 
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-20"
+                    title="Clear field"
+                  >
+                    ✕
+                  </button>
                   <div v-if="filteredSuppliers.length > 0 && supplierSearchQuery"
                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                     <div v-for="supplier in filteredSuppliers" :key="supplier.id" @click="selectSupplier(supplier)"
@@ -1377,6 +1416,10 @@ const currentStepIndex = ref(0)
 const itemCodeGroups = ref([])  // Array of { code: string, items: [] }
 const showConfirmMultipleModal = ref(false)
 
+// State untuk Auto-Fill Indicators (Option 1: Quick Fix)
+const autoFilledFields = ref([]) // Track which fields were auto-populated from PDF
+
+
 // Computed for current step
 const currentItemCodeGroup = computed(() => {
   if (wizardMode.value && itemCodeGroups.value.length > 0) {
@@ -1515,6 +1558,31 @@ const closeModal = () => {
 const closeQRModal = () => {
   showQRCodeModal.value = false
   selectedShipment.value = null
+}
+
+// Helper: Clear individual field (for manual correction)
+const clearField = (fieldName) => {
+  switch(fieldName) {
+    case 'supplier':
+      supplierSearchQuery.value = ''
+      newShipment.value.supplierName = ''
+      newShipment.value.supplier = null
+      break
+    case 'no_po':
+      newShipment.value.noPo = ''
+      break
+    case 'no_surat_jalan':
+      newShipment.value.noSuratJalan = ''
+      break
+    case 'truck':
+      newShipment.value.noKendaraan = ''
+      break
+    case 'driver':
+      newShipment.value.namaDriver = ''
+      break
+  }
+  // Remove from auto-filled tracking
+  autoFilledFields.value = autoFilledFields.value.filter(f => f !== fieldName)
 }
 
 const handleFileUpload = (event) => {
@@ -1766,6 +1834,10 @@ const processErpPdf = async () => {
       }
     }
     // --------------------------------
+    
+    // TRACK AUTO-FILLED FIELDS (for visual indicators)
+    autoFilledFields.value = parsedData.auto_filled_fields || []
+
 
 
   } catch (error) {

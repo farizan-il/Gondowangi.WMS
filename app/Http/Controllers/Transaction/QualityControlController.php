@@ -466,7 +466,7 @@ class QualityControlController extends Controller
 
                 'defect_count' => 'nullable|integer|min:0',
                 'catatan_qc' => 'nullable|string',
-                'hasil_qc' => 'required|in:PASS,REJECT',
+                'hasil_qc' => 'required|in:PASS,REJECTED',
                 'new_exp_date' => 'nullable|date|after:today', // For Re-QC PASS - new expired date
                 'photos' => 'nullable|array',
                 'photos.*' => 'image|max:5120',
@@ -710,10 +710,19 @@ class QualityControlController extends Controller
                 ]);
 
                 // Update status stok QRT menjadi REJECTED (TETAP ADA DI BIN QRT)
-                $inventoryStockQRT->update([
-                    'status' => 'REJECTED', 
-                    'last_movement_date' => now(),
-                ]);
+                Log::info("QC REJECT: Updating inventory stock ID {$inventoryStockQRT->id} to REJECTED status");
+                
+                $inventoryStockQRT->status = 'REJECTED';
+                $inventoryStockQRT->last_movement_date = now();
+                $inventoryStockQRT->save();
+                
+                // Verify the update was successful
+                $inventoryStockQRT->refresh();
+                if ($inventoryStockQRT->status !== 'REJECTED') {
+                    throw new \Exception("Failed to update inventory status to REJECTED. Current status: {$inventoryStockQRT->status}");
+                }
+                
+                Log::info("QC REJECT: Successfully updated inventory stock ID {$inventoryStockQRT->id} to REJECTED");
                 
                 // Buat Stock Movement Status Change to REJECTED
                 $rejectMovementNumber = $this->generateMovementNumber($movementSequence);
