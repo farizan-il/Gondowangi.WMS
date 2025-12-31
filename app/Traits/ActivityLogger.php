@@ -66,6 +66,20 @@ trait ActivityLogger
 
         $request = app(Request::class);
 
+        // Convert bin_from and bin_to from ID to bin_code if they are numeric
+        $binFrom = $data['bin_from'] ?? null;
+        $binTo = $data['bin_to'] ?? null;
+        
+        if ($binFrom && is_numeric($binFrom)) {
+            $bin = \App\Models\WarehouseBin::find($binFrom);
+            $binFrom = $bin ? $bin->bin_code : $binFrom;
+        }
+        
+        if ($binTo && is_numeric($binTo)) {
+            $bin = \App\Models\WarehouseBin::find($binTo);
+            $binTo = $bin ? $bin->bin_code : $binTo;
+        }
+
         $logData = [
             'user_id' => Auth::id(),
             'action' => $action,
@@ -75,8 +89,8 @@ trait ActivityLogger
             'exp_date' => $data['exp_date'] ?? null,
             'qty_before' => $data['qty_before'] ?? 0,
             'qty_after' => $data['qty_after'] ?? 0,
-            'bin_from' => $data['bin_from'] ?? null,
-            'bin_to' => $data['bin_to'] ?? null,
+            'bin_from' => $binFrom,  // Use converted bin_code
+            'bin_to' => $binTo,      // Use converted bin_code
             'reference_document' => $data['reference_document'] ?? null,
             'old_value' => $data['old_value'] ?? null,
             'new_value' => $data['new_value'] ?? null,

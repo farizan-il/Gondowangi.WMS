@@ -70,12 +70,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
             <select v-model="filters.role" @change="updateUsersByRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900">
               <option value="">Semua Role</option>
-              <option value="Admin">Admin</option>
-              <option value="QC Staff">QC Staff</option>
-              <option value="Warehouse">Warehouse</option>
-              <option value="Production">Production</option>
-              <option value="Supervisor">Supervisor</option>
-              <option value="Receiving Staff">Receiving Staff</option>
+              <option v-for="role in availableRoles" :key="role" :value="role">{{ role }}</option>
             </select>
           </div>
           <div>
@@ -413,10 +408,13 @@ const filters = ref({
 })
 
 const activities = ref(props.activities);
-const availableUsers = ref([...new Set(props.activities.map(a => a.user))]);
-const availableBins = ref([...new Set(props.activities.flatMap(a => [a.bin_from, a.bin_to].filter(b => b)))]);
+const availableUsers = ref([...new Set(props.activities.map(a => a.user))].sort());
+const availableBins = ref([...new Set(props.activities.flatMap(a => [a.bin_from, a.bin_to].filter(b => b && b !== '-')))].sort());
 
 // Computed properties
+const availableRoles = computed(() => {
+  return [...new Set(props.activities.map(a => a.role))].filter(r => r).sort()
+})
 const filteredActivities = computed(() => {
   let filtered = activities.value
 
@@ -538,20 +536,16 @@ const applyQuickTimeFilter = () => {
 }
 
 const updateUsersByRole = () => {
-  // Filter users based on selected role
-  const usersByRole = {
-    'Admin': ['ADM001'],
-    'QC Staff': ['QC001', 'QC002'],
-    'Warehouse': ['WH001', 'WH002', 'WH003'],
-    'Production': ['PD001', 'PD002'],
-    'Supervisor': ['SUP001'],
-    'Receiving Staff': ['WH002']
-  }
-  
+  // Dynamically filter users based on selected role from actual data
   if (filters.value.role) {
-    availableUsers.value = usersByRole[filters.value.role] || []
+    availableUsers.value = [...new Set(
+      props.activities
+        .filter(a => a.role === filters.value.role)
+        .map(a => a.user)
+    )].sort()
   } else {
-    availableUsers.value = ['ADM001', 'QC001', 'QC002', 'WH001', 'WH002', 'WH003', 'PD001', 'PD002', 'SUP001']
+    // Show all users if no role selected
+    availableUsers.value = [...new Set(props.activities.map(a => a.user))].sort()
   }
   
   // Reset user filter if current user not in new list

@@ -239,6 +239,20 @@ class ActivityLogController extends Controller
     private function mapIncomingLogs($logs)
     {
         return $logs->map(function ($log) {
+            // Convert bin_from and bin_to from ID to bin_code if numeric
+            $binFrom = $log->bin_from;
+            $binTo = $log->bin_to;
+            
+            if (is_numeric($binFrom)) {
+                $bin = \App\Models\WarehouseBin::find($binFrom);
+                $binFrom = $bin ? $bin->bin_code : $binFrom;
+            }
+            
+            if (is_numeric($binTo)) {
+                $bin = \App\Models\WarehouseBin::find($binTo);
+                $binTo = $bin ? $bin->bin_code : $binTo;
+            }
+            
             return [
                 'id' => $log->id,
                 'timestamp' => $log->created_at->toDateTimeString(),
@@ -251,8 +265,8 @@ class ActivityLogController extends Controller
                 'lot_no' => $log->batch_lot,
                 'qty_before' => $log->qty_before,
                 'qty_after' => $log->qty_after,
-                'bin_from' => $log->bin_from,
-                'bin_to' => $log->bin_to,
+                'bin_from' => $binFrom,
+                'bin_to' => $binTo,
                 'reference_no' => $log->reference_document,
                 'device' => $log->device_info,
                 'ip_address' => $log->ip_address,
@@ -265,6 +279,20 @@ class ActivityLogController extends Controller
     private function mapQcLogs($logs)
     {
         return $logs->map(function ($log) {
+            // Convert bin_from and bin_to from ID to bin_code if numeric
+            $binFrom = $log->bin_from;
+            $binTo = $log->bin_to;
+            
+            if (is_numeric($binFrom)) {
+                $bin = \App\Models\WarehouseBin::find($binFrom);
+                $binFrom = $bin ? $bin->bin_code : $binFrom;
+            }
+            
+            if (is_numeric($binTo)) {
+                $bin = \App\Models\WarehouseBin::find($binTo);
+                $binTo = $bin ? $bin->bin_code : $binTo;
+            }
+            
             return [
                 'id' => $log->id,
                 'timestamp' => $log->created_at->toDateTimeString(),
@@ -277,8 +305,8 @@ class ActivityLogController extends Controller
                 'lot_no' => $log->batch_lot,
                 'qty_before' => $log->qty_before,
                 'qty_after' => $log->qty_after,
-                'bin_from' => $log->bin_from,
-                'bin_to' => $log->bin_to,
+                'bin_from' => $binFrom,
+                'bin_to' => $binTo,
                 'reference_no' => $log->reference_document,
                 'device' => $log->device_info,
                 'ip_address' => $log->ip_address,
@@ -291,6 +319,20 @@ class ActivityLogController extends Controller
     private function mapReservationLogs($logs)
     {
         return $logs->map(function ($log) {
+            // Convert bin_from and bin_to from ID to bin_code if numeric
+            $binFrom = $log->bin_from;
+            $binTo = $log->bin_to;
+            
+            if (is_numeric($binFrom)) {
+                $bin = \App\Models\WarehouseBin::find($binFrom);
+                $binFrom = $bin ? $bin->bin_code : $binFrom;
+            }
+            
+            if (is_numeric($binTo)) {
+                $bin = \App\Models\WarehouseBin::find($binTo);
+                $binTo = $bin ? $bin->bin_code : $binTo;
+            }
+            
             return [
                 'id' => $log->id,
                 'timestamp' => $log->created_at->toDateTimeString(),
@@ -303,8 +345,8 @@ class ActivityLogController extends Controller
                 'lot_no' => $log->batch_lot,
                 'qty_before' => $log->qty_before,
                 'qty_after' => $log->qty_after,
-                'bin_from' => $log->bin_from,
-                'bin_to' => $log->bin_to,
+                'bin_from' => $binFrom,
+                'bin_to' => $binTo,
                 'reference_no' => $log->reference_document,
                 'device' => $log->device_info,
                 'ip_address' => $log->ip_address,
@@ -317,6 +359,20 @@ class ActivityLogController extends Controller
     private function mapReturnLogs($logs)
     {
         return $logs->map(function ($log) {
+            // Convert bin_from and bin_to from ID to bin_code if numeric
+            $binFrom = $log->bin_from;
+            $binTo = $log->bin_to;
+            
+            if (is_numeric($binFrom)) {
+                $bin = \App\Models\WarehouseBin::find($binFrom);
+                $binFrom = $bin ? $bin->bin_code : $binFrom;
+            }
+            
+            if (is_numeric($binTo)) {
+                $bin = \App\Models\WarehouseBin::find($binTo);
+                $binTo = $bin ? $bin->bin_code : $binTo;
+            }
+            
             return [
                 'id' => $log->id,
                 'timestamp' => $log->created_at->toDateTimeString(),
@@ -329,8 +385,8 @@ class ActivityLogController extends Controller
                 'lot_no' => $log->batch_lot,
                 'qty_before' => $log->qty_before,
                 'qty_after' => $log->qty_after,
-                'bin_from' => $log->bin_from,
-                'bin_to' => $log->bin_to,
+                'bin_from' => $binFrom,
+                'bin_to' => $binTo,
                 'reference_no' => $log->reference_document,
                 'device' => $log->device_info,
                 'ip_address' => $log->ip_address,
@@ -343,6 +399,20 @@ class ActivityLogController extends Controller
     private function mapWarehouseLogs($logs)
     {
         return $logs->map(function ($log) {
+            // Convert bin_from and bin_to from ID to bin_code if numeric
+            $binFrom = $log->bin_from;
+            $binTo = $log->bin_to;
+            
+            if (is_numeric($binFrom)) {
+                $bin = \App\Models\WarehouseBin::find($binFrom);
+                $binFrom = $bin ? $bin->bin_code : $binFrom;
+            }
+            
+            if (is_numeric($binTo)) {
+                $bin = \App\Models\WarehouseBin::find($binTo);
+                $binTo = $bin ? $bin->bin_code : $binTo;
+            }
+            
             return [
                 'id' => $log->id,
                 'timestamp' => $log->created_at->toDateTimeString(),
@@ -355,8 +425,8 @@ class ActivityLogController extends Controller
                 'lot_no' => $log->batch_lot,
                 'qty_before' => $log->qty_before,
                 'qty_after' => $log->qty_after,
-                'bin_from' => $log->bin_from,
-                'bin_to' => $log->bin_to,
+                'bin_from' => $binFrom,
+                'bin_to' => $binTo,
                 'reference_no' => $log->reference_document,
                 'device' => $log->device_info,
                 'ip_address' => $log->ip_address,
