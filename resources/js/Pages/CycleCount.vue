@@ -36,7 +36,7 @@
                 <button @click="resetFilter" class="px-3 py-1.5 text-sm text-gray-500 hover:text-red-500 underline">Reset</button>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <div class="flex flex-col sflex-row gap-2 w-full md:w-auto">
                 <button 
                     v-if="selectedItems.length > 0"
                     @click="openBulkModal"
@@ -171,7 +171,7 @@
               
               <th colspan="3" class="border border-blue-400 p-2 bg-blue-300">Input Warehouseman</th>
               <th colspan="2" class="border border-blue-400 p-2 bg-blue-300">Hasil</th>
-              <th v-if="canApprove" colspan="2" class="border border-blue-400 p-2 bg-yellow-200">Area Supervisor</th>
+              <th colspan="2" class="border border-blue-400 p-2 bg-yellow-200">Area Supervisor</th>
             </tr>
             <tr>
               <th class="border border-blue-400 p-2 bg-blue-100 w-32">Scan Serial</th>
@@ -179,8 +179,8 @@
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Qty</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">Acc</th>
               <th class="border border-blue-400 p-2 bg-blue-100 w-20">In Acc</th>
-              <th v-if="canApprove" class="border border-blue-400 p-2 bg-yellow-100 w-40">Note SPV</th>
-              <th v-if="canApprove" class="border border-blue-400 p-2 bg-yellow-100 w-20">Action</th>
+              <th class="border border-blue-400 p-2 bg-yellow-100 w-40">Note SPV</th>
+              <th class="border border-blue-400 p-2 bg-yellow-100 w-20">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -248,12 +248,12 @@
               <td class="border border-gray-300 p-2 text-xs font-bold" :class="getAccuracyColor(item)">{{ calculateAccuracy(item) }}%</td>
               <td class="border border-gray-300 p-2 text-xs font-bold" :class="getVarianceColor(item)">{{ calculateVariance(item) }}%</td>
 
-              <td v-if="canApprove" class="border border-gray-300 p-1 bg-yellow-50">
+              <td class="border border-gray-300 p-1 bg-yellow-50">
                   <input type="text" v-model="item.spv_note" 
                     class="w-full text-xs border border-yellow-300 rounded px-1 py-1 bg-white focus:ring-yellow-500 focus:border-yellow-500" 
                     placeholder="Catatan SPV...">
               </td>
-              <td v-if="canApprove" class="border border-gray-300 p-1 bg-yellow-50 text-center align-middle">
+              <td class="border border-gray-300 p-1 bg-yellow-50 text-center align-middle">
                   
                   <div v-if="item.status === 'DRAFT' || !item.status" class="flex flex-col items-center justify-center">
                       <span class="text-gray-400 text-[10px] italic">Waiting Submit</span>
@@ -847,6 +847,8 @@ const submitOpname = () => {
 }
 
 const approveItem = (item) => {
+    console.log('approveItem called with:', item);
+    
     if (item.status !== 'REVIEW_NEEDED') {
         alert("Item belum disubmit oleh Warehouseman!");
         return;
@@ -854,17 +856,31 @@ const approveItem = (item) => {
 
     if(!item.spv_note && !confirm('Approve tanpa catatan?')) return;
     
+    console.log('Sending approve request:', {
+        id: item.id, 
+        material_id: item.material_id, 
+        spv_note: item.spv_note
+    });
+    
     router.post('/transaction/cycle-count/approve', {
         id: item.id, 
         material_id: item.material_id, 
         spv_note: item.spv_note
     }, {
-        onSuccess: () => {
+        onSuccess: (page) => {
+            console.log('Approve success response:', page);
             item.status = 'APPROVED'; 
-            alert('Item berhasil diapprove!');
+            alert('Item berhasil diapprove dan inventory telah disesuaikan!');
+            
+            // Reload data untuk memastikan inventory update terlihat
+            router.reload();
         },
         onError: (errors) => {
-            alert('Gagal: Item mungkin belum disubmit.');
+            console.error('Approve error:', errors);
+            alert('Gagal approve: ' + (typeof errors === 'string' ? errors : JSON.stringify(errors)));
+        },
+        onFinish: () => {
+            console.log('Approve request finished');
         }
     });
 }

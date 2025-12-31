@@ -122,7 +122,7 @@
                     </button>
 
                     <!-- Detail Button for Completed QC -->
-                    <button v-if="item.statusQC === 'PASS' || item.statusQC === 'REJECT'" @click="showQCDetailModal(item)"
+                    <button v-if="item.statusQC === 'PASS' || item.statusQC === 'REJECTED'" @click="showQCDetailModal(item)"
                       class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1 rounded text-xs flex items-center gap-1">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -135,7 +135,7 @@
                       Cetak Label QR (RELEASED)
                     </button>
 
-                    <button v-if="item.statusQC === 'REJECT'" @click="printRejectQRLabel(item)"
+                    <button v-if="item.statusQC === 'REJECTED'" @click="printRejectQRLabel(item)"
                       class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs">
                       Cetak Label QR (REJECT)
                     </button>
@@ -869,7 +869,7 @@ const getQCStatusClass = (status) => {
   const classes = {
     'To QC': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
     'PASS': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    'REJECT': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+    'REJECTED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
   }
   return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
 }

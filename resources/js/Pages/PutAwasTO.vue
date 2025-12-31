@@ -393,7 +393,7 @@
                 {{ currentSplitMaterial.itemCode }} - {{ currentSplitMaterial.materialName }}
               </p>
               <p class="text-sm font-medium text-blue-600 mt-1">
-                Total Available: {{ currentSplitMaterial.qty }} {{ currentSplitMaterial.uom }}
+                Total Available: {{ formatQty(currentSplitMaterial.qty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
               </p>
             </div>
             <button @click="closeSplitModal" class="text-gray-400 hover:text-gray-600">
@@ -527,20 +527,20 @@
               <div class="flex justify-between text-sm">
                 <span class="font-medium">Total Allocated:</span>
                 <span :class="totalAllocatedQty > currentSplitMaterial.qty ? 'text-red-600 font-bold' : 'text-gray-900'">
-                  {{ totalAllocatedQty.toFixed(2) }} / {{ currentSplitMaterial.qty }} {{ currentSplitMaterial.uom }}
+                  {{ formatQty(totalAllocatedQty, currentSplitMaterial.category) }} / {{ formatQty(currentSplitMaterial.qty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
                 </span>
               </div>
               <div class="flex justify-between text-sm mt-2">
                 <span class="font-medium">Remaining:</span>
                 <span class="text-gray-900">
-                  {{ (currentSplitMaterial.qty - totalAllocatedQty).toFixed(2) }} {{ currentSplitMaterial.uom }}
+                  {{ formatQty(currentSplitMaterial.qty - totalAllocatedQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
                 </span>
               </div>
               <p v-if="totalAllocatedQty > currentSplitMaterial.qty" class="text-xs text-red-600 mt-2 font-medium">
                 ⚠️ Total allocated exceeds available quantity!
               </p>
               <p v-else-if="totalAllocatedQty < currentSplitMaterial.qty && totalAllocatedQty > 0" class="text-xs text-yellow-600 mt-2">
-                ℹ️ You have {{ (currentSplitMaterial.qty - totalAllocatedQty).toFixed(2) }} {{ currentSplitMaterial.uom }} unallocated
+                ℹ️ You have {{ formatQty(currentSplitMaterial.qty - totalAllocatedQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }} unallocated
               </p>
             </div>
           </div>
@@ -641,14 +641,7 @@
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.batchLot }}</td> 
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.sourceBin }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.destBin }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.actualQty || item.qty }}</td>
-                    <!-- <td class="px-4 py-3 text-sm text-gray-900">
-                      <div v-if="selectedTO?.isExecuting && item.status !== 'completed'">
-                        <input v-model.number="item.actualQty" type="number" :placeholder="item.qty.toString()"
-                          class="w-20 px-2 py-1 border border-gray-300 rounded text-center" min="0">
-                      </div>
-                      <div v-else>{{ item.actualQty || item.qty }}</div>
-                    </td> -->
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ item.uom }}</td>
                     <td class="px-4 py-3">
                       <span :class="getItemStatusClass(item.status)"
@@ -920,7 +913,6 @@ interface TOItem {
   sourceBin: string
   destBin: string
   qty: number
-  actualQty?: number
   uom: string
   status: 'pending' | 'in_progress' | 'completed'
   boxScanned: boolean
@@ -1095,8 +1087,7 @@ const selectedMaterials = computed(() => {
 const canCompleteTO = computed(() => {
   if (!selectedTO.value) return false
   return selectedTO.value.items.every(item =>
-    item.boxScanned && item.sourceBinScanned && item.destBinScanned &&
-    (item.actualQty !== undefined && item.actualQty > 0)
+    item.boxScanned && item.sourceBinScanned && item.destBinScanned
   )
 })
 
@@ -1551,21 +1542,14 @@ const executeTO = (to: TransferOrder) => {
 
   showDetailModal.value = true;
   
-  // [PERSISTENCE] Simpan status awal (atau resume) ke localStorage
-  if (selectedTO.value) {
-      saveTOState(selectedTO.value);
-  }
+  // REMOVED: Partial save not needed - will save only on completion
 }
 
 const closeDetailModal = () => {
-  // Saat membatalkan atau menutup, cek apakah sedang dieksekusi
+  // REMOVED: Partial save removed - user can resume by clicking "Execute" again
   if (selectedTO.value?.isExecuting && selectedTO.value.status !== 'Completed') {
-    // Save state before closing if executing
-    saveTOState(selectedTO.value); 
     if (usePage().props.flash?.success) {
         alert(usePage().props.flash.success);
-    } else {
-        alert(`Progress TO ${selectedTO.value.toNumber} disimpan secara parsial.`);
     }
   } else {
     // Clear state jika TO sudah selesai atau dibatalkan
@@ -1614,9 +1598,7 @@ const closeQRModal = async () => {
   lastScannedValue.value = ''
   
   // [PERSISTENCE] Simpan state setelah menutup QR modal
-  if (selectedTO.value) {
-      saveTOState(selectedTO.value);
-  }
+  // REMOVED: No partial save needed after box scan
 }
 
 const processWizardStep = () => {
@@ -1675,10 +1657,6 @@ const processWizardStep = () => {
           item.destBinScanned = true
           item.status = 'completed'
           
-          if (item.actualQty === undefined || item.actualQty === null) {
-            item.actualQty = item.qty
-          }
-          
           alert('✓ Scan selesai! Semua tahap berhasil.')
           closeQRModal()
         } else {
@@ -1691,10 +1669,7 @@ const processWizardStep = () => {
   qrInput.value = ''
   lastScannedValue.value = ''
 
-  // [PERSISTENCE] Simpan state setelah setiap langkah scan berhasil
-  if (selectedTO.value) {
-      saveTOState(selectedTO.value);
-  }
+  // REMOVED: No partial save needed after each scan step
 
   if (isValid && currentWizardStep.value <= 3 && !useCameraMode.value) {
     nextTick(() => {
@@ -1707,6 +1682,7 @@ const processWizardStep = () => {
   }
 }
 
+
 const completeTO = async () => {
   if (!selectedTO.value || !canCompleteTO.value) {
     alert('Pastikan semua item sudah di-scan dan qty actual sudah diisi!')
@@ -1717,19 +1693,25 @@ const completeTO = async () => {
     return
   }
 
-  try {
-    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, {
-      items: selectedTO.value.items.map(item => ({
-        id: item.id,
-        actualQty: item.actualQty,
-        status: item.status,
+  // Prepare data to send
+  const dataToSend = {
+    items: selectedTO.value.items.map(item => ({
+      id: item.id,
+      status: item.status,
+      boxScanned: item.boxScanned,
+      sourceBinScanned: item.sourceBinScanned,
+      destBinScanned: item.destBinScanned
+    }))
+  };
 
-        boxScanned: item.boxScanned,
-        sourceBinScanned: item.sourceBinScanned,
-        destBinScanned: item.destBinScanned
-      }))
-    }, {
-      onSuccess: () => {
+  // Log the data being sent for debugging
+  console.log('Sending TO completion data:', dataToSend);
+  console.log('TO ID:', selectedTO.value.id);
+
+  try {
+    router.post(`/transaction/putaway-transfer/complete/${selectedTO.value.id}`, dataToSend, {
+      onSuccess: (page) => {
+        console.log('Success response:', page);
         alert('Transfer Order berhasil diselesaikan!')
         
         // Update status di list utama secara langsung
@@ -1749,17 +1731,52 @@ const completeTO = async () => {
         closeDetailModal() 
       },
       onError: (errors) => {
-        console.error('Error completing TO:', errors)
-        const errorMessages = Object.values(errors).join('\n');
-        alert('Gagal menyelesaikan TO:\n' + errorMessages);
+        console.error('❌ Error completing TO:', errors);
+        
+        // Format error messages untuk ditampilkan
+        let errorMessage = '❌ GAGAL MENYELESAIKAN TRANSFER ORDER\n\n';
+        
+        if (typeof errors === 'object' && errors !== null) {
+          // Check if it's a validation error
+          if (Object.keys(errors).length > 0) {
+            errorMessage += '📋 DETAIL ERROR:\n';
+            Object.entries(errors).forEach(([field, messages]) => {
+              if (Array.isArray(messages)) {
+                errorMessage += `\n• ${field}: ${messages.join(', ')}`;
+              } else {
+                errorMessage += `\n• ${field}: ${messages}`;
+              }
+            });
+          } else {
+            errorMessage += 'Terjadi kesalahan yang tidak diketahui.\n';
+            errorMessage += 'Error: ' + JSON.stringify(errors);
+          }
+        } else if (typeof errors === 'string') {
+          errorMessage += errors;
+        } else {
+          errorMessage += 'Terjadi kesalahan yang tidak diketahui.';
+        }
+        
+        errorMessage += '\n\n💡 Silakan cek console browser untuk detail lebih lanjut (F12)';
+        
+        alert(errorMessage);
+      },
+      onFinish: () => {
+        console.log('Request finished');
       }
     })
     
   } catch (error: any) {
-    console.error('Error completing TO:', error)
-    alert('Gagal menyelesaikan TO: ' + error.message)
+    console.error('❌ Exception in completeTO:', error);
+    
+    let errorMessage = '❌ TERJADI KESALAHAN\n\n';
+    errorMessage += 'Error: ' + (error.message || 'Unknown error');
+    errorMessage += '\n\n💡 Detail error ada di console browser (tekan F12)';
+    
+    alert(errorMessage);
   }
 }
+
 
 const printTO = (to: TransferOrder) => {
   const printContent = `
@@ -1908,26 +1925,39 @@ const formatQty = (qty: number | undefined, category?: string) => {
   
   // Packaging materials: round to whole number if no decimal part
   if (category === 'Packaging' || category === 'Packaging Material') {
-    // If number is already whole (e.g., 10.0000), return as integer
+    // If number is already whole (e.g., 10.0000), return as integer with thousand separator
     if (num === Math.floor(num)) {
-      return Math.round(num).toString()
+      return Math.round(num).toLocaleString('id-ID')
     }
-    // If has decimals (e.g., 10.102), show up to 4 decimal places
-    return num.toFixed(4).replace(/\.?0+$/, '')
+    // If has decimals (e.g., 10.102), show up to 4 decimal places with thousand separator
+    const formatted = num.toFixed(4).replace(/\.?0+$/, '')
+    const parts = formatted.split('.')
+    parts[0] = parseInt(parts[0]).toLocaleString('id-ID')
+    return parts.join(',')
   }
   
   // Raw materials: max 4 decimal places
   if (category === 'Raw Material') {
-    // If it's a whole number, show as is
-    if (num === Math.floor(num)) return num.toString()
+    // If it's a whole number, show with thousand separator
+    if (num === Math.floor(num)) {
+      return num.toLocaleString('id-ID')
+    }
     
-    // For decimals, keep up to 4 decimal places, remove trailing zeros
-    return num.toFixed(4).replace(/\.?0+$/, '')
+    // For decimals, keep up to 4 decimal places, remove trailing zeros, add thousand separator
+    const formatted = num.toFixed(4).replace(/\.?0+$/, '')
+    const parts = formatted.split('.')
+    parts[0] = parseInt(parts[0]).toLocaleString('id-ID')
+    return parts.join(',')
   }
   
-  // Default: show up to 4 decimals for any other category
-  if (num === Math.floor(num)) return num.toString()
-  return num.toFixed(4).replace(/\.?0+$/, '')
+  // Default: show up to 4 decimals for any other category with thousand separator
+  if (num === Math.floor(num)) {
+    return num.toLocaleString('id-ID')
+  }
+  const formatted = num.toFixed(4).replace(/\.?0+$/, '')
+  const parts = formatted.split('.')
+  parts[0] = parseInt(parts[0]).toLocaleString('id-ID')
+  return parts.join(',')
 }
 
 

@@ -83,7 +83,7 @@ class QualityControlController extends Controller
 
             // QTY Diambil hanya dihitung jika status sudah PASS atau REJECT
             $qtyDiambil = 0;
-            if (in_array($item['statusQC'], ['PASS', 'REJECT'])) {
+            if (in_array($item['statusQC'], ['PASS', 'REJECTED'])) {
                 $qcDetail = QCChecklistDetail::whereHas('qcChecklist', function($query) use ($item) {
                     $query->where('incoming_item_id', $item['id']);
                 })->first();
@@ -158,14 +158,14 @@ class QualityControlController extends Controller
                 $query->where('status_qc', 'To QC');
             } elseif ($status === 'PASS') {
                 $query->where('status_qc', 'PASS');
-            } elseif ($status === 'REJECT') {
-                $query->where('status_qc', 'REJECT');
+            } elseif ($status === 'REJECTED') {
+                $query->where('status_qc', 'REJECTED');
             } elseif ($status === 'Completed') {
-                $query->whereIn('status_qc', ['PASS', 'REJECT']);
+                $query->whereIn('status_qc', ['PASS', 'REJECTED']);
             }
         } else {
              // Default: Show All relevant statuses
-             $query->whereIn('status_qc', ['To QC', 'PASS', 'REJECT']);
+             $query->whereIn('status_qc', ['To QC', 'PASS', 'REJECTED']);
         }
 
         if ($request->has('search') && $request->search != '') {
@@ -297,7 +297,7 @@ class QualityControlController extends Controller
 
         // Sortir kembali agar yang 'To QC' muncul di atas
         usort($itemsToQC, function($a, $b) {
-            $statusOrder = ['To QC' => 0, 'PASS' => 1, 'REJECT' => 2];
+            $statusOrder = ['To QC' => 0, 'PASS' => 1, 'REJECTED' => 2];
             return $statusOrder[$a['displayStatusQC']] - $statusOrder[$b['displayStatusQC']];
         });
         

@@ -381,14 +381,10 @@ class CycleCountController extends Controller
                     // Supaya SPV tidak bisa Approve
                     $status = 'DRAFT'; 
                 } else {
-                    // Jika sudah dikerjakan, baru kita cek Match/Tidak
-                    // Pastikan perbandingan Bin juga Case Insensitive
-                    $binMatch = strtoupper($item['scan_bin']) == strtoupper($item['location']);
-                    $qtyMatch = (float)$item['physical_qty'] == (float)$item['onhand'];
-
-                    $isMatch = $qtyMatch && $binMatch;
-                    
-                    $status = $isMatch ? 'APPROVED' : 'REVIEW_NEEDED';
+                    // Jika sudah dikerjakan (scan serial, bin, dan input qty),
+                    // Status selalu REVIEW_NEEDED agar SPV harus approve
+                    // (Tidak ada auto-approve lagi)
+                    $status = 'REVIEW_NEEDED';
                 }
 
                 CycleCount::updateOrCreate(
@@ -418,8 +414,10 @@ class CycleCountController extends Controller
     // Tambahkan method ini di dalam CycleCountController class
     public function approve(Request $request)
     {
+        DB::beginTransaction();
         try {
-            $cycleCount = CycleCount::where('id', $request->id)
+            $cycleCount = CycleCount::with(['material', 'bin'])
+                ->where('id', $request->id)
                 ->orWhere(function($q) use ($request) {
                     $q->where('material_id', $request->material_id)
                       ->whereDate('count_date', Carbon::today());
@@ -436,14 +434,74 @@ class CycleCountController extends Controller
             }
             // -----------------------------
 
+            // 1. Update Cycle Count Status
             $cycleCount->status = 'APPROVED';
             $cycleCount->spv_note = $request->spv_note;
             $cycleCount->save();
 
-            // Log Activity
+            // 2. UPDATE INVENTORY STOCK (Logic Baru!)
+            $inventoryStock = InventoryStock::where('material_id', $cycleCount->material_id)
+                ->where('bin_id', $cycleCount->warehouse_bin_id)
+                ->where('batch_lot', $cycleCount->cycle_number)
+                ->first();
+
+            if ($inventoryStock) {
+                $oldQty = $inventoryStock->qty_on_hand;
+                $newQty = $cycleCount->physical_qty;
+                $difference = $newQty - $oldQty;
+
+                // Update inventory quantities
+                $inventoryStock->qty_on_hand = $newQty;
+                
+                // Update qty_available: add the difference
+                // If difference is positive (added), increase available
+                // If negative (removed), decrease available
+                $inventoryStock->qty_available = max(0, $inventoryStock->qty_available + $difference);
+                $inventoryStock->last_movement_date = now();
+                $inventoryStock->save();
+
+                // 3. CREATE STOCK MOVEMENT RECORD (Adjustment)
+                if ($difference != 0) {
+                    StockMovement::create([
+                        'movement_number' => 'ADJ-CC-' . date('YmdHis') . '-' . $cycleCount->id,
+                        'movement_type' => 'Adjustment',
+                        'material_id' => $cycleCount->material_id,
+                        'batch_lot' => $cycleCount->cycle_number,
+                        'qty' => abs($difference), // Field qty yang required
+                        'qty_before' => $oldQty,
+                        'qty_movement' => abs($difference),
+                        'qty_after' => $newQty,
+                        'movement_direction' => $difference >= 0 ? 'IN' : 'OUT',
+                        'uom' => $inventoryStock->uom,
+                        'bin_from' => $difference < 0 ? $cycleCount->warehouse_bin_id : null,
+                        'bin_to' => $difference >= 0 ? $cycleCount->warehouse_bin_id : null,
+                        'reference_document' => $cycleCount->cycle_number,
+                        'notes' => "Cycle Count Adjustment. System: {$oldQty}, Physical: {$newQty}, Diff: {$difference}. SPV Note: " . ($request->spv_note ?? '-'),
+                        'movement_date' => now(),
+                    ]);
+                }
+
+                \Log::info('Cycle Count Approved and Inventory Adjusted', [
+                    'cycle_count_id' => $cycleCount->id,
+                    'material_id' => $cycleCount->material_id,
+                    'bin_id' => $cycleCount->warehouse_bin_id,
+                    'old_qty' => $oldQty,
+                    'new_qty' => $newQty,
+                    'difference' => $difference
+                ]);
+            } else {
+                \Log::warning('Inventory Stock not found for approved Cycle Count', [
+                    'cycle_count_id' => $cycleCount->id,
+                    'material_id' => $cycleCount->material_id,
+                    'bin_id' => $cycleCount->warehouse_bin_id,
+                    'batch_lot' => $cycleCount->cycle_number
+                ]);
+            }
+
+            // 4. Log Activity (Enhanced)
             $diff = $cycleCount->physical_qty - $cycleCount->system_qty;
-            $this->logActivity($cycleCount, 'Approve', [
-                'description' => "Menyetujui Cycle Count untuk {$cycleCount->material->nama_material} di {$cycleCount->bin->bin_code}. System: {$cycleCount->system_qty}, Fisik: {$cycleCount->physical_qty}. Selisih: {$diff}.",
+            $this->logActivity($cycleCount, 'Approve and Adjust Stock', [
+                'description' => "SPV Approved Cycle Count and adjusted inventory for {$cycleCount->material->nama_material} di {$cycleCount->bin->bin_code}. System: {$cycleCount->system_qty}, Fisik: {$cycleCount->physical_qty}. Selisih: {$diff}. Inventory updated.",
                 'material_id' => $cycleCount->material_id,
                 'batch_lot' => $cycleCount->cycle_number, 
                 'qty_before' => $cycleCount->system_qty,
@@ -452,8 +510,16 @@ class CycleCountController extends Controller
                 'reference_document' => $cycleCount->cycle_number,
             ]);
 
-            return redirect()->back()->with('success', 'Data berhasil disetujui.');
+            DB::commit();
+            return redirect()->back()->with('success', 'Cycle Count disetujui dan inventory telah disesuaikan.');
+            
         } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error approving Cycle Count', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
             return redirect()->back()->with('error', 'Gagal approve: ' . $e->getMessage());
         }
     }

@@ -48,13 +48,11 @@ class PutawayTransferController extends Controller
                         'sourceBin' => $item->sourceBin?->bin_code ?? 'N/A',
                         'destBin' => $item->destinationBin?->bin_code ?? 'N/A',
                         'qty' => $item->qty_planned,
-                        'actualQty' => $item->qty_actual,
                         'uom' => $item->uom,
                         'status' => $item->status,
                         'boxScanned' => (bool)$item->box_scanned,
                         'sourceBinScanned' => (bool)$item->source_bin_scanned,
                         'destBinScanned' => (bool)$item->dest_bin_scanned,
-                        // Add status from inventory stock if needed, but let's check item level first
                     ];
                 })->toArray(),
                 'hasRejected' => $to->items->contains(function($item) {
@@ -307,10 +305,17 @@ class PutawayTransferController extends Controller
 
     public function completeTO(Request $request, $id)
     {
+        // Log incoming request for debugging
+        \Log::info('Received TO completion request', [
+            'to_id' => $id,
+            'request_data' => $request->all(),
+            'user_id' => Auth::id()
+        ]);
+
         $request->validate([
             'items' => 'required|array',
             'items.*.id' => 'required|exists:transfer_order_items,id',
-            'items.*.actualQty' => 'required|numeric|min:0',
+            'items.*.status' => 'nullable|string|in:pending,in_progress,completed',
             'items.*.boxScanned' => 'required|boolean',
             'items.*.sourceBinScanned' => 'required|boolean',
             'items.*.destBinScanned' => 'required|boolean',
@@ -331,7 +336,7 @@ class PutawayTransferController extends Controller
             // Update TO items dan proses inventory movement
             foreach ($request->items as $itemData) {
                 $item = TransferOrderItem::findOrFail($itemData['id']);
-                $actualQty = $itemData['actualQty'];
+                $actualQty = $item->qty_planned; // Use planned quantity
                 
                 // 1. Kurangi dari source bin
                 $sourceStock = InventoryStock::where('material_id', $item->material_id)
@@ -340,14 +345,13 @@ class PutawayTransferController extends Controller
                     ->firstOrFail();
 
                 // Validasi kuantitas mencukupi sebelum mengurangi
-                if ($sourceStock->qty_on_hand < $actualQty) {
-                    throw new \Exception("Stok di Bin asal ({$sourceStock->bin->bin_code}) tidak cukup untuk memindahkan {$actualQty} {$item->uom}.");
-                }
+                // if ($sourceStock->qty_on_hand < $actualQty) {
+                //     throw new \Exception("Stok di Bin asal ({$sourceStock->bin->bin_code}) tidak cukup untuk memindahkan {$actualQty} {$item->uom}.");
+                // }
                 
                 // Update item TO (dilakukan di awal loop)
                 $item->update([
-                    'qty_actual' => $actualQty,
-                    'status' => 'completed',
+                    'status' => 'Completed',
                     'box_scanned' => $itemData['boxScanned'],
                     'source_bin_scanned' => $itemData['sourceBinScanned'],
                     'dest_bin_scanned' => $itemData['destBinScanned'],
@@ -385,6 +389,7 @@ class PutawayTransferController extends Controller
                     ]);
                 } else {
                     // Kasus 2: Stok Belum ada di Bin tujuan -> CREATE
+                    // CRITICAL FIX: Preserve status from source (RELEASED or REJECTED)
                     $destStock = InventoryStock::create([
                         'material_id' => $item->material_id,
                         'bin_id' => $item->destination_bin_id,
@@ -394,7 +399,7 @@ class PutawayTransferController extends Controller
                         'qty_reserved' => 0,
                         'qty_available' => $actualQty,
                         'uom' => $item->uom,
-                        'status' => 'RELEASED',
+                        'status' => $sourceStock->status, // FIXED: Preserve RELEASED/REJECTED status
                         // Asumsi exp_date dan gr_id diambil dari stok asal yang ada di quarantine
                         'exp_date' => $sourceStock->exp_date,
                         'gr_id' => $sourceStock->gr_id, 
@@ -448,10 +453,35 @@ class PutawayTransferController extends Controller
 
             DB::commit();
 
+            \Log::info('Transfer Order completed successfully', [
+                'to_number' => $transferOrder->to_number,
+                'to_id' => $transferOrder->id,
+                'total_items' => count($request->items)
+            ]);
+
             return redirect()->back()->with('success', "Transfer Order {$transferOrder->to_number} berhasil diselesaikan");
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            
+            \Log::error('Validation error completing Transfer Order', [
+                'to_id' => $id,
+                'errors' => $e->errors(),
+                'message' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()->withErrors($e->errors())->with('error', 'Validasi gagal: ' . json_encode($e->errors()));
+            
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            \Log::error('Error completing Transfer Order', [
+                'to_id' => $id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+            
             return redirect()->back()->with('error', 'Gagal menyelesaikan Transfer Order: ' . $e->getMessage());
         }
     }

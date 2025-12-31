@@ -314,7 +314,7 @@
                     </template>
                     <template v-else-if="newReturn.type === 'Rejected Material'">
                         <option v-for="ship in rejectedShipments" :key="ship.incoming_number" :value="ship.incoming_number">
-                            {{ ship.incoming_number }} {{ ship.no_surat_jalan ? `(${ship.no_surat_jalan})` : '' }}
+                            {{ ship.incoming_number }}
                         </option>
                     </template>
                   </select>
@@ -349,8 +349,6 @@
                     <tbody class="divide-y divide-gray-200 bg-white">
                       <tr v-for="(item, index) in newReturn.items" :key="index">
                         
-                        <td class="px-4 py-3 text-sm text-gray-900">{{ index + 1 }}</td>
-                        
                         <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ item.itemCode }}</td>
                         
                         <td class="px-4 py-3 text-sm text-gray-900">{{ item.itemName }}</td>
@@ -365,6 +363,18 @@
                           <span :class="getReasonClass(item.reason)" class="px-2 py-1 text-xs font-medium rounded-full">
                             {{ item.reason }}
                           </span>
+                        </td>
+                        
+                        <td class="px-4 py-3">
+                          <button 
+                            @click="removeItem(index)"
+                            class="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
+                            title="Hapus item"
+                          >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </td>
                         
                       </tr>
@@ -1032,7 +1042,9 @@ const fetchMaterial = async (index: number) => {
 }
 
 const removeItem = (index: number) => {
-  newReturn.value.items.splice(index, 1)
+  if (confirm('Apakah Anda yakin ingin menghapus item ini?')) {
+    newReturn.value.items.splice(index, 1)
+  }
 }
 
 const closeAddModal = () => {
