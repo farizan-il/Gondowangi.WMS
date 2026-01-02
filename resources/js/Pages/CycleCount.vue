@@ -11,7 +11,6 @@
           <div class="flex flex-col md:flex-row justify-between gap-4">
             
             <div class="flex flex-wrap gap-2 w-full md:w-3/4">
-            
 
                 <select v-model="filterForm.status" @change="applyFilter" class="w-full sm:w-40 text-sm border rounded bg-gray-50 py-1.5">
                     <option value="">Semua Status</option>
@@ -36,7 +35,7 @@
                 <button @click="resetFilter" class="px-3 py-1.5 text-sm text-gray-500 hover:text-red-500 underline">Reset</button>
             </div>
 
-            <div class="flex flex-col sflex-row gap-2 w-full md:w-auto">
+            <div class="flex gap-2 w-full md:w-auto">
                 <button 
                     v-if="selectedItems.length > 0"
                     @click="openBulkModal"

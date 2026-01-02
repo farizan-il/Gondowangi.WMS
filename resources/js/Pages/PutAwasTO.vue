@@ -498,13 +498,27 @@
                       />
                     </td>
                     <td class="px-4 py-3">
-                      <button 
-                        v-if="splitAllocations.length > 2"
-                        @click="removeAllocation(index)"
-                        class="text-red-600 hover:text-red-800 text-xs font-medium"
-                      >
-                        Remove
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <!-- Tombol Alihkan Sisa - muncul di row terakhir jika ada remaining -->
+                        <button 
+                          v-if="index === splitAllocations.length - 1 && remainingQty > 0"
+                          @click="allocateRemaining(index)"
+                          class="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium rounded flex items-center gap-1"
+                          title="Otomatis isi dengan sisa qty"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                          </svg>
+                          Alihkan Sisa
+                        </button>
+                        <button 
+                          v-if="splitAllocations.length > 2"
+                          @click="removeAllocation(index)"
+                          class="text-red-600 hover:text-red-800 text-xs font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -526,21 +540,25 @@
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div class="flex justify-between text-sm">
                 <span class="font-medium">Total Allocated:</span>
-                <span :class="totalAllocatedQty > currentSplitMaterial.qty ? 'text-red-600 font-bold' : 'text-gray-900'">
+                <span :class="remainingQty < 0 ? 'text-red-600 font-bold' : isRemainingZero ? 'text-green-600 font-bold' : 'text-gray-900'">
                   {{ formatQty(totalAllocatedQty, currentSplitMaterial.category) }} / {{ formatQty(currentSplitMaterial.qty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
                 </span>
               </div>
               <div class="flex justify-between text-sm mt-2">
                 <span class="font-medium">Remaining:</span>
-                <span class="text-gray-900">
-                  {{ formatQty(currentSplitMaterial.qty - totalAllocatedQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
+                <span :class="isRemainingZero ? 'text-green-600 font-bold' : remainingQty < 0 ? 'text-red-600 font-bold' : 'text-yellow-600 font-medium'">
+                  {{ formatQty(remainingQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }}
+                  <span v-if="isRemainingZero" class="ml-1">✓</span>
                 </span>
               </div>
-              <p v-if="totalAllocatedQty > currentSplitMaterial.qty" class="text-xs text-red-600 mt-2 font-medium">
-                ⚠️ Total allocated exceeds available quantity!
+              <p v-if="remainingQty < -0.0001" class="text-xs text-red-600 mt-2 font-medium">
+                ⚠️ Total allocated exceeds available quantity! Remaining tidak boleh minus.
               </p>
-              <p v-else-if="totalAllocatedQty < currentSplitMaterial.qty && totalAllocatedQty > 0" class="text-xs text-yellow-600 mt-2">
-                ℹ️ You have {{ formatQty(currentSplitMaterial.qty - totalAllocatedQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }} unallocated
+              <p v-else-if="!isRemainingZero && totalAllocatedQty > 0" class="text-xs text-yellow-600 mt-2 font-medium">
+                ⚠️ Remaining harus 0 untuk bisa Apply Split. Masih ada {{ formatQty(remainingQty, currentSplitMaterial.category) }} {{ currentSplitMaterial.uom }} yang belum dialokasikan.
+              </p>
+              <p v-else-if="isRemainingZero" class="text-xs text-green-600 mt-2 font-medium">
+                ✓ Semua qty sudah dialokasikan. Siap untuk Apply Split!
               </p>
             </div>
           </div>
@@ -1096,11 +1114,25 @@ const totalAllocatedQty = computed(() => {
   return splitAllocations.value.reduce((sum, a) => sum + (a.qty || 0), 0)
 })
 
+// Computed remaining qty for "Alihkan Sisa" button
+const remainingQty = computed(() => {
+  if (!currentSplitMaterial.value) return 0
+  return currentSplitMaterial.value.qty - totalAllocatedQty.value
+})
+
+// Check if remaining is effectively zero (with epsilon tolerance for floating-point)
+const isRemainingZero = computed(() => {
+  return Math.abs(remainingQty.value) < 0.0001
+})
+
 const isValidSplit = computed(() => {
   if (!currentSplitMaterial.value || splitAllocations.value.length < 2) return false
   
-  // Check total qty doesn't exceed available
-  if (totalAllocatedQty.value > currentSplitMaterial.value.qty) return false
+  // Check total qty must be exactly equal to available (remaining must be 0)
+  // Using epsilon tolerance to handle floating-point precision issues
+  const epsilon = 0.0001
+  const difference = Math.abs(totalAllocatedQty.value - currentSplitMaterial.value.qty)
+  if (difference > epsilon) return false
   
   // Check all allocations have bin and qty > 0
   if (splitAllocations.value.some(a => !a.binCode || !a.qty || a.qty <= 0)) return false
@@ -1430,6 +1462,14 @@ const removeAllocation = (index: number) => {
   if (splitAllocations.value.length > 2) {
     splitAllocations.value.splice(index, 1)
   }
+}
+
+// Function to auto-fill remaining qty to the specified allocation
+const allocateRemaining = (index: number) => {
+  if (!currentSplitMaterial.value || remainingQty.value <= 0) return
+  
+  // Add remaining qty to the current allocation's qty
+  splitAllocations.value[index].qty = (splitAllocations.value[index].qty || 0) + remainingQty.value
 }
 
 const resetSplitForm = () => {

@@ -1173,7 +1173,8 @@
       </div>
 
       <!-- Modal Quick Add Material -->
-      <div v-if="showAddMaterialModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-[10001] flex items-center justify-center p-4">
+      <div v-if="showAddMaterialModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+          style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
@@ -1238,7 +1239,8 @@
       </div>
 
       <!-- Modal Confirmation for Multiple Shipments -->
-      <div v-if="showConfirmMultipleModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 backdrop-blur-sm z-[10000] flex items-center justify-center">
+      <div v-if="showConfirmMultipleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
+          style="background-color: rgba(43, 51, 63, 0.67);">
         <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 border-t-4 border-blue-600">
           <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <svg class="w-6 h-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

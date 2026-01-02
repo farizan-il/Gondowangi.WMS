@@ -258,10 +258,15 @@ class CycleCountController extends Controller
                 ];
             });
 
-        // Try to get current stock status
+        // Try to get current stock status - IMPORTANT: Use live data from InventoryStock
         $currentStock = InventoryStock::where('material_id', $cc->material_id)
             ->where('bin_id', $cc->warehouse_bin_id)
             ->first();
+
+        // Use live inventory data if available, otherwise fallback to cycle count snapshot
+        $onhandQty = $currentStock 
+            ? max(0, (float) ($currentStock->qty_on_hand - $currentStock->qty_reserved))
+            : (float) $cc->system_qty;
 
         return [
             'id' => $cc->id,
@@ -272,7 +277,7 @@ class CycleCountController extends Controller
             'code' => $cc->material->kode_item,
             'product_name' => $cc->material->nama_material,
             'category' => $cc->material->kategori,
-            'onhand' => (float) $cc->system_qty,
+            'onhand' => $onhandQty, // Now uses live data from InventoryStock
             'uom' => $cc->material->satuan,
             'location' => $cc->bin ? $cc->bin->bin_code : '-',
             'scan_serial' => $cc->scanned_serial,
@@ -284,7 +289,7 @@ class CycleCountController extends Controller
             'history_count' => $history->count(),
             'exp_date' => null, 
             'is_expired' => false,
-            'inventory_stock_id' => null,
+            'inventory_stock_id' => $currentStock ? $currentStock->id : null,
         ];
     }
 
