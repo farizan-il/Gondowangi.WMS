@@ -116,7 +116,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div class="flex space-x-2">
-                    <button v-if="item.statusQC === 'To QC'" @click="showItemDetail(item)"
+                    <button v-if="item.statusQC === 'To QC' && canCreateQC" @click="showItemDetail(item)"
                       class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded text-xs">
                       Periksa QC
                     </button>
@@ -234,7 +234,7 @@
                 class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
                 Tutup
               </button>
-              <button @click="openQCModal" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              <button v-if="canCreateQC" @click="openQCModal" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 Lanjut QC
               </button>
             </div>
@@ -434,7 +434,7 @@
               <button @click="backToDetail" :disabled="isSubmittingQC" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                 Kembali ke Detail
               </button>
-              <button @click="submitQC" :disabled="!isQCFormValid || isSubmittingQC"
+              <button v-if="canCreateQC" @click="submitQC" :disabled="!isQCFormValid || isSubmittingQC"
                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
                 <svg v-if="isSubmittingQC" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -693,6 +693,8 @@ import QRCode from 'qrcode';
 // ... (semua variabel ref, let qrScanner, dan props lainnya)
 const page = usePage()
 const canCreateQC = computed(() => page.props.permissions.includes('qc.create'))
+const canEditQC = computed(() => page.props.permissions.includes('qc.edit'))
+const canDeleteQC = computed(() => page.props.permissions.includes('qc.delete'))
 
 let qrScanner = null
 

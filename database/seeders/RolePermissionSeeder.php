@@ -94,45 +94,48 @@ class RolePermissionSeeder extends Seeder
         $roleIT = Role::create(['role_name' => 'IT', 'description' => 'IT Department - Full Access']);
         $roleIT->permissions()->attach(Permission::pluck('id'));
 
-        // B. Logistik SPV
+        // B. Logistik SPV - Full Access: Dashboard, On Hand, Cycle Count (Approve), Riwayat Aktivitas, Penerimaan Barang, QC (Read Only), Put Away, Bin to Bin, Reservation (Read Only - FOH only), Picking, Return
         $roleSpv = Role::create(['role_name' => 'Logistik SPV', 'description' => 'Supervisor Logistik']);
         $roleSpv->permissions()->attach([
             $permIds['dashboard.wms'],
-            $permIds['qc.view'],
             $permIds['onhand.view'],
-            $permIds['cycle_count.view'], $permIds['cycle_count.create'], $permIds['cycle_count.approve'],
+            $permIds['cycle_count.view'], $permIds['cycle_count.approve'],
             $permIds['activity_log.view'],
-            $permIds['reservation.view'], $permIds['reservation.create'],
-            $permIds['return.view'], $permIds['return.approve'],
+            $permIds['incoming.view'], $permIds['incoming.create'], $permIds['incoming.edit'], $permIds['incoming.approve'],
+            $permIds['qc.view'], // Read only - no create/edit/delete
+            $permIds['putaway.view'], $permIds['putaway.create'],
+            $permIds['bintobin.view'], $permIds['bintobin.create'],
+            $permIds['reservation.view'], // Read only untuk semua, tapi bisa create untuk FOH-RS only
+            $permIds['picking.view'], $permIds['picking.execute'],
+            $permIds['return.view'], $permIds['return.create'], $permIds['return.approve'],
         ]);
 
-        // C. Logistik Admin
+        // C. Logistik Admin - Full Access: Penerimaan Barang Only
         $roleAdm = Role::create(['role_name' => 'Logistik Admin', 'description' => 'Admin Logistik']);
         $roleAdm->permissions()->attach([
             $permIds['incoming.view'], $permIds['incoming.create'], $permIds['incoming.edit'], $permIds['incoming.delete'], $permIds['incoming.approve'],
         ]);
 
-        // D. Logistik Operator
+        // D. Logistik Operator - Full Access: Put Away, Bin to Bin, Picking List Only
         $roleOp = Role::create(['role_name' => 'Logistik Operator', 'description' => 'Operator Gudang']);
         $roleOp->permissions()->attach([
             $permIds['putaway.view'], $permIds['putaway.create'],
             $permIds['bintobin.view'], $permIds['bintobin.create'],
             $permIds['picking.view'], $permIds['picking.execute'],
-            $permIds['cycle_count.view'], $permIds['cycle_count.create'], // Added access
         ]);
 
-        // E. QAC
+        // E. QAC - Full Access: Quality Control, On Hand (Restricted - Only expiring materials)
         $roleQAC = Role::create(['role_name' => 'QAC', 'description' => 'Quality Assurance Control']);
         $roleQAC->permissions()->attach([
-            $permIds['qc.view'], $permIds['qc.create'], $permIds['qc.edit'], $permIds['qc.delete'], $permIds['qc.approve'], $permIds['qc.reject'],
-            $permIds['onhand.view'], // Restricted logic in Controller
+            $permIds['qc.view'], $permIds['qc.create'], $permIds['qc.edit'], $permIds['qc.approve'], $permIds['qc.reject'],
+            $permIds['onhand.view'], // Restricted in controller to only show materials expiring in 30 days or already expired
         ]);
 
-        // F. Produksi
+        // F. Produksi - Full Access: Reservation, Return (Create Only - From Produksi category)
         $roleProd = Role::create(['role_name' => 'Produksi', 'description' => 'Department Produksi']);
         $roleProd->permissions()->attach([
             $permIds['reservation.view'], $permIds['reservation.create'],
-            $permIds['return.view'], $permIds['return.create'],
+            $permIds['return.view'], $permIds['return.create'], // Create only - cannot approve
         ]);
 
         // 4. Create Users
@@ -150,7 +153,7 @@ class RolePermissionSeeder extends Seeder
                 'name' => $u['name'],
                 'email' => $u['email'],
                 'nik' => 'NIK-' . str_pad((string)($index + 1), 5, '0', STR_PAD_LEFT),
-                'password' => bcrypt('password'),
+                'password' => bcrypt('gondowangi-123'),
                 'role_id' => $u['role_id'],
                 'status' => 'active'
             ]);

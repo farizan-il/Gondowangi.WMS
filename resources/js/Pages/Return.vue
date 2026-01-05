@@ -187,7 +187,8 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Return</label>
                 <div class="flex gap-6">
-                  <label class="flex items-center">
+                  <!-- Return dari Produksi - Only visible to Produksi role -->
+                  <label v-if="userRole === 'Produksi'" class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
                       type="radio" 
@@ -196,7 +197,8 @@
                     >
                     <span class="ml-2 text-gray-900">Return dari Produksi</span>
                   </label>
-                  <label class="flex items-center">
+                  <!-- Return Material Reject - Only visible to Logistik SPV role -->
+                  <label v-if="userRole === 'Logistik SPV'" class="flex items-center">
                     <input 
                       v-model="newReturn.type" 
                       type="radio" 
@@ -205,6 +207,11 @@
                     >
                     <span class="ml-2 text-gray-900">Return Material Reject</span>
                   </label>
+                  
+                  <!-- Show message jika role tidak punya akses -->
+                  <div v-if="!['Produksi', 'Logistik SPV'].includes(userRole)" class="text-sm text-gray-500 italic">
+                    Role Anda tidak memiliki akses untuk membuat Return
+                  </div>
                 </div>
               </div>
 
@@ -618,7 +625,7 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import axios from 'axios'
 import { ref, computed, onMounted, watch } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 
 interface ReturnDetailItem {
   id?: number
@@ -677,6 +684,10 @@ const typeFilter = ref('')
 const statusFilter = ref('')
 const reasonFilter = ref('')
 
+// Get current user role from page props
+const page = usePage()
+const userRole = computed(() => page.props.auth.user.role?.name || '')
+
 // Modals
 const showAddModal = ref(false)
 const showDetailModal = ref(false)
@@ -713,6 +724,15 @@ watch(() => newReturn.value.type, (newType) => {
         newReturn.value.items = [];
     }
 });
+
+// Initialize form based on user role
+const initializeForm = () => {
+  if (userRole.value === 'Produksi') {
+    newReturn.value.type = 'Production'
+  } else if (userRole.value === 'Logistik SPV') {
+    newReturn.value.type = 'Rejected Material'
+  }
+}
 
 const handleShipmentNoChange = () => {
     if (newReturn.value.type === 'Production') {
@@ -1360,6 +1380,7 @@ onMounted(() => {
     isDarkMode.value = JSON.parse(savedDarkMode)
   }
 
+  initializeForm()
   fetchDeptReservations();
 
   if (props.initialReturns) {

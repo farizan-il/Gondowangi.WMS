@@ -581,6 +581,7 @@
                       <input type="checkbox" 
                              v-model="selectedMaterialsToRemove"
                              :value="material.reservationId"
+                             @change="startCountdownTimer"
                              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                     </td>
                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ material.materialCode }}</td>
@@ -627,13 +628,13 @@
               Batal
             </button>
             <button @click="confirmToGeneration" 
-                    :disabled="generatingTO"
+                    :disabled="isConfirmButtonDisabled"
                     class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center space-x-2">
               <svg v-if="generatingTO" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span>Generate TO Number</span>
+              <span>{{ confirmButtonText }}</span>
               <span v-if="selectedMaterialsToRemove.length > 0" class="bg-white text-blue-600 px-2 py-1 rounded text-xs font-bold">
                 -{{ selectedMaterialsToRemove.length }}
               </span>
@@ -774,6 +775,8 @@ const expiryAnalysis = ref({ hasIssues: false, materials: [] })
 const selectedMaterialsToRemove = ref([])
 const selectAllMaterials = ref(false)
 const generatingTO = ref(false)
+const countdownTimer = ref(0)
+let countdownInterval = null
 
 // NEW: Material Replacement Variables
 const showReplacementModal = ref(false)
@@ -1513,7 +1516,40 @@ const toggleSelectAll = () => {
   } else {
     selectedMaterialsToRemove.value = []
   }
+  // Reset countdown when selection changes
+  startCountdownTimer()
 }
+
+const startCountdownTimer = () => {
+  // Clear existing interval
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+  }
+  
+  // Reset countdown to 5 seconds
+  countdownTimer.value = 5
+  
+  // Start new countdown
+  countdownInterval = setInterval(() => {
+    countdownTimer.value--
+    if (countdownTimer.value <= 0) {
+      clearInterval(countdownInterval)
+      countdownInterval = null
+      countdownTimer.value = 0
+    }
+  }, 1000)
+}
+
+const isConfirmButtonDisabled = computed(() => {
+  return generatingTO.value || countdownTimer.value > 0
+})
+
+const confirmButtonText = computed(() => {
+  if (countdownTimer.value > 0) {
+    return `Generate TO Number (${countdownTimer.value}s)`
+  }
+  return 'Generate TO Number'
+})
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -1619,6 +1655,12 @@ const closeExpiryModal = () => {
   selectedMaterialsToRemove.value = []
   selectAllMaterials.value = false
   generatingTO.value = false
+  // Clear countdown timer
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
+  countdownTimer.value = 0
 }
 
 // NEW: Material Replacement Workflow Functions
@@ -1710,5 +1752,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     stopCamera()
+    // Clean up countdown interval
+    if (countdownInterval) {
+        clearInterval(countdownInterval)
+        countdownInterval = null
+    }
 })
 </script>

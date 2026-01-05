@@ -10,7 +10,7 @@ class ReservationRequest extends Model
 {
     protected $fillable = [
         'no_reservasi',
-        'request_type',
+        'request_type', // 'FOH-RS','Packaging','raw-material','Additional'
         'tanggal_permintaan',
         'status',
         'alasan_reservasi',

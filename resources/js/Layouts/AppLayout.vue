@@ -79,9 +79,9 @@
                         <span v-show="sidebarOpen" class="font-medium">Riwayat Aktivitas</span>
                     </Link>
 
-                    <!-- IT Admin Dashboard -->
+                    <!-- IT Admin Dashboard - Only for IT role -->
                     <Link 
-                        
+                        v-if="hasAnyPermission(['it_dashboard.view'])"
                         href="/it-dashboard"
                         :class="navLinkClass('/it-dashboard')"
                     >
@@ -243,7 +243,8 @@
 
                     <!-- Role Permission (hanya untuk admin) -->
                     <Link 
-                        
+                        v-if="hasAnyPermission(['central_data.role_management_view'])"
+                        href="/role-permission"
                         :class="navLinkClass('/role-permission')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

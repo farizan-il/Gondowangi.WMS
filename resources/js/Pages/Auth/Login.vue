@@ -1,6 +1,129 @@
 <template>
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-br px-4 py-8" style="background-color: #035930;">
-        <div class="max-w-md w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl w-full">
+            <!-- Auth Credentials Card -->
+            <div class="bg-white rounded-2xl shadow-2xl p-8 h-fit">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Akun Testing
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">Pilih salah satu akun di bawah untuk langsung login:</p>
+                
+                <div class="space-y-3">
+                    <!-- IT Account -->
+                    <div class="border border-blue-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-blue-700">IT</p>
+                                <p class="text-xs text-gray-600">it@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold">Full Access</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('it@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+
+                    <!-- Logistik SPV Account -->
+                    <div class="border border-purple-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-purple-700">Logistik SPV</p>
+                                <p class="text-xs text-gray-600">spv.log@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-semibold">Read+Write</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('spv.log@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+
+                    <!-- Logistik Admin Account -->
+                    <div class="border border-green-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-green-700">Logistik Admin</p>
+                                <p class="text-xs text-gray-600">adm.log@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">Admin</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('adm.log@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+
+                    <!-- Logistik Operator Account -->
+                    <div class="border border-orange-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-orange-700">Logistik Operator</p>
+                                <p class="text-xs text-gray-600">op.log@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-semibold">Operator</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('op.log@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+
+                    <!-- QAC Account -->
+                    <div class="border border-red-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-red-700">QAC</p>
+                                <p class="text-xs text-gray-600">qac@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-semibold">QC Only</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('qac@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+
+                    <!-- Produksi Account -->
+                    <div class="border border-indigo-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-indigo-700">Produksi</p>
+                                <p class="text-xs text-gray-600">prod@gondowangi.com</p>
+                            </div>
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded font-semibold">Limited</span>
+                        </div>
+                        <button 
+                            @click="quickLogin('prod@gondowangi.com', 'gondowangi-123')"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2 rounded transition"
+                        >
+                            Login
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-xs text-blue-700">
+                        <span class="font-semibold">💡 Tips:</span> Klik tombol "Login" untuk langsung login dengan akun tersebut
+                    </p>
+                </div>
+            </div>
+
+            <!-- Login Form Card -->
+            <div class="max-w-md w-full">
 
             <!-- Login Card -->
             <div class="bg-white rounded-2xl shadow-2xl p-8">
@@ -170,6 +293,7 @@
             <div class="text-center mt-8 text-blue-100 text-sm">
                 <p>© 2025 Gondowangi WMS. All rights reserved.</p>
             </div>
+            </div>
         </div>
     </div>
 </template>
@@ -196,5 +320,41 @@ const submit = () => {
             }
         },
     });
+};
+
+const quickLogin = (email, password) => {
+    console.log('🔐 Quick Login triggered for:', email);
+    
+    // Clear any previous errors
+    form.clearErrors();
+    
+    // Set form data
+    form.identifier = email;
+    form.password = password;
+    form.remember = true;
+    form.database_connection = 'mysql';
+    
+    console.log('📝 Form data set:', {
+        identifier: form.identifier,
+        password: '***',
+        database_connection: form.database_connection
+    });
+    
+    // Auto-submit after filling form
+    setTimeout(() => {
+        console.log('📤 Submitting form...');
+        form.post('/login', {
+            onSuccess: (page) => {
+                console.log('✅ Login successful!', page);
+            },
+            onError: (errors) => {
+                console.error('❌ Login error:', errors);
+                form.password = '';
+            },
+            onFinish: () => {
+                console.log('🏁 Request finished');
+            },
+        });
+    }, 100);
 };
 </script>
