@@ -243,9 +243,9 @@
 
                     <!-- Role Permission (hanya untuk admin) -->
                     <Link 
-                        v-if="hasAnyPermission(['central_data.role_management_view'])"
+                        v-if="hasAnyPermission(['it_dashboard.view'])"
                         href="/role-permission"
-                        :class="navLinkClass('/role-permission')"
+                        :class="navLinkClass('/it-dashboard')"
                     >
                         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>

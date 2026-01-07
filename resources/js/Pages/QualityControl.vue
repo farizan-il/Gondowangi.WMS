@@ -823,12 +823,12 @@ const formatQty = (qty: number | undefined): string => {
 }
 
 const getDisplayQtyReceived = (item: any): number => {
-    // Jika status masih "To QC", Qty Diambil (Sample) seharusnya 0
-    if (item.statusQC === 'To QC') {
-        return 0;
-    }
-    // Jika sudah PASS/REJECT, tampilkan Qty Sample yang sudah diambil (data dari backend)
-    return item.qcSampleQty ?? 0;
+  // Jika status masih "To QC", Qty Diambil (Sample) seharusnya 0
+  if (item.statusQC === 'To QC') {
+      return 0;
+  }
+  // Jika sudah PASS/REJECT, tampilkan Qty Sample yang sudah diambil (data dari backend)
+  return item.qcSampleQty ?? 0;
 }
 
 const scannerStatusClass = computed(() => {

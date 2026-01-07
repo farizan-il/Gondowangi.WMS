@@ -299,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 
 const showPassword = ref(false);
@@ -323,38 +323,15 @@ const submit = () => {
 };
 
 const quickLogin = (email, password) => {
-    console.log('🔐 Quick Login triggered for:', email);
-    
-    // Clear any previous errors
-    form.clearErrors();
-    
     // Set form data
     form.identifier = email;
     form.password = password;
     form.remember = true;
     form.database_connection = 'mysql';
     
-    console.log('📝 Form data set:', {
-        identifier: form.identifier,
-        password: '***',
-        database_connection: form.database_connection
+    // Wait for form to be reactive, then submit
+    nextTick(() => {
+        submit();
     });
-    
-    // Auto-submit after filling form
-    setTimeout(() => {
-        console.log('📤 Submitting form...');
-        form.post('/login', {
-            onSuccess: (page) => {
-                console.log('✅ Login successful!', page);
-            },
-            onError: (errors) => {
-                console.error('❌ Login error:', errors);
-                form.password = '';
-            },
-            onFinish: () => {
-                console.log('🏁 Request finished');
-            },
-        });
-    }, 100);
 };
 </script>
