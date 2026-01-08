@@ -63,7 +63,7 @@
           <p class="text-sm text-gray-600 mt-1">Total: {{ filteredTransferOrders.length }} TO</p>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto desktop-to-table-wrapper">
           <table class="w-full">
             <thead class="bg-gray-50">
               <tr>
@@ -161,6 +161,92 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Mobile Card View (visible only on mobile via CSS) -->
+        <div class="mobile-to-cards-container px-4 pb-4">
+          <!-- Empty State for Mobile -->
+          <div v-if="!filteredTransferOrders.length" class="mobile-to-card">
+            <div class="flex flex-col items-center justify-center py-8">
+              <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+              </svg>
+              <h3 class="text-base font-medium text-gray-900 mb-1">Belum Ada Transfer Order</h3>
+              <p class="text-gray-500 text-sm text-center">Generate putaway dari material QC Released untuk membuat TO</p>
+            </div>
+          </div>
+
+          <!-- Mobile Cards -->
+          <div v-for="to in filteredTransferOrders" :key="'mobile-' + to.id" class="mobile-to-card">
+            <!-- Card Header -->
+            <div class="mobile-to-card-header">
+              <div>
+                <div class="font-semibold text-gray-900">{{ to.toNumber }}</div>
+                <div v-if="to.reservationNo" class="text-xs text-gray-500 mt-0.5">{{ to.reservationNo }}</div>
+                <div v-if="to.hasRejected" class="mt-1">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">
+                    Reject Items
+                  </span>
+                </div>
+              </div>
+              <span :class="getStatusClass(to.status)"
+                class="px-2 py-1 text-xs font-semibold rounded-full">
+                {{ to.status }}
+              </span>
+            </div>
+
+            <!-- Card Body -->
+            <div class="mobile-to-card-body">
+              <div class="mobile-to-card-row">
+                <span class="mobile-to-card-label">Batch/Lot</span>
+                <span class="mobile-to-card-value">{{ to.items.length > 0 ? to.items[0].batchLot : 'N/A' }}</span>
+              </div>
+              <div class="mobile-to-card-row">
+                <span class="mobile-to-card-label">Tanggal</span>
+                <span class="mobile-to-card-value">{{ formatDate(to.creationDate) }}</span>
+              </div>
+              <div class="mobile-to-card-row">
+                <span class="mobile-to-card-label">Warehouse</span>
+                <span class="mobile-to-card-value">{{ to.warehouse }}</span>
+              </div>
+              <div class="mobile-to-card-row">
+                <span class="mobile-to-card-label">Items</span>
+                <span class="mobile-to-card-value">{{ to.items.length }} item(s)</span>
+              </div>
+              <div class="mobile-to-card-row col-span-2">
+                <span class="mobile-to-card-label">Tipe</span>
+                <span :class="getTypeClass(to.type)" class="px-2 py-0.5 text-xs font-semibold rounded-full mt-1 inline-block">
+                  {{ to.type }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="mobile-to-card-actions">
+              <button @click="viewDetail(to)"
+                class="flex items-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <span class="font-medium">Detail</span>
+              </button>
+              <button v-if="to.status !== 'Completed'" @click="executeTO(to)"
+                class="flex items-center gap-1.5 bg-green-100 text-green-700 hover:bg-green-200 px-3 py-2 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M6 6h3m5 0h3"></path>
+                </svg>
+                <span class="font-medium">Kerjakan</span>
+              </button>
+              <button @click="printTO(to)"
+                class="flex items-center gap-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-2 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2-2v4h10z"></path>
+                </svg>
+                <span class="font-medium">Cetak</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Auto Putaway Generation Modal -->
@@ -236,7 +322,7 @@
                         </div>
 
                         <!-- IF RELEASED: Show Current Searchable Input -->
-                        <div v-else class="relative w-64">
+                        <div v-else class="relative w-full sm:w-64">
                           <input 
                             type="text" 
                             v-model="material.binSearchQuery"
@@ -245,25 +331,27 @@
                             @blur="hideBinSuggestions(material)"
                             :disabled="!material.selected"
                             placeholder="Ketik kode bin..."
-                            class="w-full px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             :class="{'bg-gray-100': !material.selected}"
                           />
                           
-                          <button @click="showBinDetails(material)" class="absolute right-2 top-1.5 text-blue-600 hover:text-blue-800"
+                          <button @click="showBinDetails(material)" class="absolute right-2 top-2 text-blue-600 hover:text-blue-800"
                             title="Lihat detail bin" :disabled="!material.destinationBin">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </button>
+                          
+                          
                         </div>
-                        <!-- Suggestions Dropdown -->
+                        <!-- Suggestions Dropdown - positioned relative to parent -->
                         <div v-if="material.showBinSuggestions && getFilteredBins(material.binSearchQuery).length > 0" 
-                            class="absolute z-[99999] w-max min-w-[150px] mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            class="absolute left-0 right-0 z-[99999] text-center mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                           <div 
                             v-for="bin in getFilteredBins(material.binSearchQuery)" 
                             :key="bin.code"
                             @mousedown.prevent="selectBin(material, bin)"
-                            class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 text-gray-900 border-b border-gray-100 last:border-0 whitespace-nowrap"
+                            class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 text-gray-900 border-b border-gray-100 last:border-0"
                           >
                             {{ bin.code }} [{{ bin.zone }} - {{ bin.currentItems }}/{{ bin.capacity }}]
                           </div>
@@ -465,7 +553,9 @@
                           </svg>
                         </button>
                         
-                        <!-- Autocomplete Suggestions -->
+                        
+                      </div>
+                      <!-- Autocomplete Suggestions -->
                         <div 
                           v-if="allocation.showSuggestions && getFilteredBins(allocation.binCode).length > 0"
                           class="absolute z-[99999] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
@@ -485,7 +575,6 @@
                             </div>
                           </div>
                         </div>
-                      </div>
                     </td>
                     <td class="px-4 py-3">
                       <input 
@@ -2128,6 +2217,260 @@ onUnmounted(async () => {
 /* [PERBAIKAN] Gunakan :deep() untuk menargetkan elemen di dalam #qr-reader */
 :deep(#qr-reader__status_span) {
   display: none !important; /* Sembunyikan pesan status default */
+}
+
+/* ===== MOBILE RESPONSIVE STYLES ===== */
+/* Target mobile devices only (< 640px) - preserves desktop/tablet appearance */
+
+@media (max-width: 639px) {
+  /* Main container padding adjustment */
+  .min-h-screen.bg-gray-50.p-6 {
+    padding: 1rem;
+  }
+
+  /* Header text adjustment */
+  .text-2xl.font-bold {
+    font-size: 1.25rem;
+  }
+
+  /* Generate Auto Putaway button - full width on mobile */
+  .bg-blue-600.hover\:bg-blue-700.text-white.px-6.py-2 {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Filter grid - single column on mobile */
+  .grid.grid-cols-1.md\:grid-cols-4 {
+    gap: 0.75rem;
+  }
+
+  /* Hide table on mobile, show mobile cards only */
+  .overflow-x-auto table {
+    display: none;
+  }
+
+  /* Modal adjustments for mobile */
+  .fixed.inset-0 > div.bg-white.rounded-lg {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+    width: calc(100% - 1rem);
+  }
+
+  /* Full screen modals on very small screens */
+  .fixed.inset-0 > div.bg-white.rounded-lg.p-6.w-full.max-w-6xl,
+  .fixed.inset-0 > div.bg-white.rounded-lg.p-6.w-full.max-w-7xl,
+  .fixed.inset-0 > div.bg-white.rounded-lg.p-6.w-full.max-w-4xl {
+    margin: 0;
+    border-radius: 0;
+    max-height: 100vh;
+    width: 100%;
+    padding: 1rem;
+  }
+
+  /* Modal header adjustment */
+  .fixed.inset-0 > div .text-xl.font-semibold,
+  .fixed.inset-0 > div .text-lg.font-semibold {
+    font-size: 1rem;
+  }
+
+  /* Modal grid adjustments */
+  .grid.grid-cols-2.md\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* Tables inside modals - horizontal scroll with min-width */
+  .overflow-x-auto table {
+    display: table;
+    min-width: 600px;
+    font-size: 0.75rem;
+  }
+
+  .overflow-x-auto table th,
+  .overflow-x-auto table td {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* Action buttons in table - stack vertically */
+  .flex.items-center.justify-end.gap-2 {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .flex.items-center.justify-end.gap-2 button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modal footer buttons - full width */
+  .flex.gap-3.justify-end {
+    flex-direction: column-reverse;
+  }
+
+  .flex.gap-3.justify-end button {
+    width: 100%;
+  }
+
+  /* Split modal table adjustments - only for qty input */
+  .w-32 {
+    width: 100%;
+  }
+
+  /* Note: .w-64 removed - using responsive classes in HTML instead */
+
+  /* QR Scanner modal - full screen on mobile */
+  .fixed.inset-0 > div.bg-white.rounded-lg.p-6.w-full.max-w-md {
+    margin: 0;
+    border-radius: 0;
+    max-height: 100vh;
+    width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* Step indicators in scanner - smaller on mobile */
+  .w-10.h-10 {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.75rem;
+  }
+
+  /* Confirmation modal stays centered but with margin */
+  .fixed.inset-0 > div.bg-white.rounded-lg.max-w-md {
+    margin: 1rem;
+  }
+}
+
+/* ===== MOBILE CARD VIEW FOR TRANSFER ORDERS TABLE ===== */
+/* This creates a card-based layout for the TO list on mobile */
+
+/* Hide mobile cards container on desktop/tablet */
+.mobile-to-cards-container {
+  display: none;
+}
+
+/* Hide table wrapper on mobile, show cards */
+@media (max-width: 639px) {
+  /* Hide ONLY the main TO list table wrapper on mobile - NOT modal tables */
+  .desktop-to-table-wrapper {
+    display: none;
+  }
+  
+  /* Show mobile cards container */
+  .mobile-to-cards-container {
+    display: block;
+  }
+  
+  /* Ensure modal tables remain visible with horizontal scroll */
+  .fixed .overflow-x-auto {
+    display: block !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .fixed .overflow-x-auto table {
+    display: table !important;
+    min-width: 600px;
+    font-size: 0.75rem;
+  }
+  
+  .fixed .overflow-x-auto table th,
+  .fixed .overflow-x-auto table td {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* Mobile card view styles */
+.mobile-to-card {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .mobile-to-card {
+    display: block;
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+  }
+
+  .mobile-to-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .mobile-to-card-body {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .mobile-to-card-row {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-to-card-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .mobile-to-card-value {
+    color: #111827;
+    font-weight: 500;
+  }
+
+  .mobile-to-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .mobile-to-card-actions button {
+    flex: 1;
+    min-width: calc(50% - 0.25rem);
+    justify-content: center;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* ===== TOUCH-FRIENDLY IMPROVEMENTS ===== */
+@media (max-width: 639px) {
+  /* Larger touch targets for inputs */
+  input[type="text"],
+  input[type="number"],
+  select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Larger touch targets for buttons */
+  button {
+    min-height: 44px;
+  }
+
+  /* Checkbox larger touch area */
+  input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
 }
 </style>
 
