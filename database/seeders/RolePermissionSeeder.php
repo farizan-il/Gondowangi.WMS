@@ -48,7 +48,8 @@ class RolePermissionSeeder extends Seeder
             ['module' => 'cycle_count', 'action' => 'approve', 'description' => 'Approve Cycle Count'],
 
             // Activity Log
-            ['module' => 'activity_log', 'action' => 'view', 'description' => 'Lihat Riwayat Aktivitas'],
+            ['module' => 'activity_log', 'action' => 'view_all', 'description' => 'Lihat Semua Aktivitas'],
+            ['module' => 'activity_log', 'action' => 'view_self', 'description' => 'Lihat Aktivitas Sendiri'],
 
             // Reservation
             ['module' => 'reservation', 'action' => 'view', 'description' => 'Lihat Reservasi'],
@@ -100,7 +101,7 @@ class RolePermissionSeeder extends Seeder
             $permIds['dashboard.wms'],
             $permIds['onhand.view'],
             $permIds['cycle_count.view'], $permIds['cycle_count.approve'],
-            $permIds['activity_log.view'],
+            $permIds['activity_log.view_all'],
             $permIds['incoming.view'], $permIds['incoming.create'], $permIds['incoming.edit'], $permIds['incoming.approve'],
             $permIds['qc.view'], // Read only - no create/edit/delete
             $permIds['putaway.view'], $permIds['putaway.create'],
@@ -114,6 +115,7 @@ class RolePermissionSeeder extends Seeder
         $roleAdm = Role::create(['role_name' => 'Logistik Admin', 'description' => 'Admin Logistik']);
         $roleAdm->permissions()->attach([
             $permIds['incoming.view'], $permIds['incoming.create'], $permIds['incoming.edit'], $permIds['incoming.delete'], $permIds['incoming.approve'],
+            $permIds['activity_log.view_self'],
         ]);
 
         // D. Logistik Operator - Full Access: Put Away, Bin to Bin, Picking List Only
@@ -122,6 +124,7 @@ class RolePermissionSeeder extends Seeder
             $permIds['putaway.view'], $permIds['putaway.create'],
             $permIds['bintobin.view'], $permIds['bintobin.create'],
             $permIds['picking.view'], $permIds['picking.execute'],
+            $permIds['activity_log.view_self'],
         ]);
 
         // E. QAC - Full Access: Quality Control, On Hand (Restricted - Only expiring materials)
@@ -129,6 +132,7 @@ class RolePermissionSeeder extends Seeder
         $roleQAC->permissions()->attach([
             $permIds['qc.view'], $permIds['qc.create'], $permIds['qc.edit'], $permIds['qc.approve'], $permIds['qc.reject'],
             $permIds['onhand.view'], // Restricted in controller to only show materials expiring in 30 days or already expired
+            $permIds['activity_log.view_self'],
         ]);
 
         // F. Produksi - Full Access: Reservation, Return (Create Only - From Produksi category)
@@ -136,6 +140,7 @@ class RolePermissionSeeder extends Seeder
         $roleProd->permissions()->attach([
             $permIds['reservation.view'], $permIds['reservation.create'],
             $permIds['return.view'], $permIds['return.create'], // Create only - cannot approve
+            $permIds['activity_log.view_self'],
         ]);
 
         // 4. Create Users

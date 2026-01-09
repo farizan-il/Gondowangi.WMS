@@ -61,7 +61,34 @@ class AuthController extends Controller
                 'database' => $databaseConnection,
             ]);
 
-            return redirect()->intended('/dashboard');
+            // Determine redirect URL based on permissions
+            $redirectUrl = '/dashboard'; // Default fallback
+            
+            $user = Auth::user();
+            
+            if ($user->hasPermission('onhand.view')) {
+                $redirectUrl = '/dashboard';
+            } elseif ($user->hasPermission('incoming.view')) {
+                $redirectUrl = '/transaction/goods-receipt';
+            } elseif ($user->hasPermission('qc.view')) {
+                $redirectUrl = '/transaction/quality-control';
+            } elseif ($user->hasPermission('putaway.view')) {
+                $redirectUrl = '/transaction/putaway-transfer';
+            } elseif ($user->hasPermission('picking.view')) {
+                $redirectUrl = '/transaction/picking-list';
+            } elseif ($user->hasPermission('cycle_count.view')) {
+                $redirectUrl = '/transaction/cycle-count';
+            } elseif ($user->hasPermission('return.view')) {
+                $redirectUrl = '/transaction/return';
+            } elseif ($user->hasPermission('reservation.view')) {
+                $redirectUrl = '/transaction/reservation';
+            } elseif ($user->hasPermission('master_data.view')) {
+                $redirectUrl = '/master-data';
+            } elseif ($user->hasPermission('it_dashboard.view')) {
+                $redirectUrl = '/it-dashboard';
+            }
+
+            return redirect()->intended($redirectUrl);
         }
 
         return back()->withErrors([

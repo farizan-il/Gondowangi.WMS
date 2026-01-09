@@ -151,11 +151,27 @@ class ActivityLogController extends Controller
 
     public function index()
     {
-        $incomingLogs = IncomingActivityLog::with(['user.role', 'material'])->get();
-        $qcLogs = QcActivityLog::with(['user.role', 'material'])->get();
-        $reservationLogs = ReservationActivityLog::with(['user.role', 'material'])->get();
-        $returnLogs = ReturnActivityLog::with(['user.role', 'material'])->get();
-        $warehouseLogs = WarehouseActivityLog::with(['user.role', 'material'])->get();
+        $user = auth()->user();
+        $filterUserId = null;
+
+        // Jika TIDAK punya view_all tapi punya view_self, filter berdasarkan user ID
+        if (!$user->hasPermission('activity_log.view_all') && $user->hasPermission('activity_log.view_self')) {
+            $filterUserId = $user->id;
+        }
+        // Jika tidak punya keduanya (should be handled by middleware/sidebar), defaultnya kosong atau error.
+        // Asumsi middleware sudah handle akses dasar.
+
+        $queryCallback = function ($query) use ($filterUserId) {
+            if ($filterUserId) {
+                $query->where('user_id', $filterUserId);
+            }
+        };
+
+        $incomingLogs = IncomingActivityLog::with(['user.role', 'material'])->tap($queryCallback)->get();
+        $qcLogs = QcActivityLog::with(['user.role', 'material'])->tap($queryCallback)->get();
+        $reservationLogs = ReservationActivityLog::with(['user.role', 'material'])->tap($queryCallback)->get();
+        $returnLogs = ReturnActivityLog::with(['user.role', 'material'])->tap($queryCallback)->get();
+        $warehouseLogs = WarehouseActivityLog::with(['user.role', 'material'])->tap($queryCallback)->get();
         
         $stockMovementLogs = StockMovement::with([
             'executedBy.role', // Ambil user dan role
@@ -163,6 +179,9 @@ class ActivityLogController extends Controller
             'fromBin',
             'toBin',
         ])
+        ->when($filterUserId, function ($q) use ($filterUserId) {
+            $q->where('executed_by', $filterUserId);
+        })
         ->orderBy('movement_date', 'desc')
         ->get();
 
@@ -172,7 +191,7 @@ class ActivityLogController extends Controller
             'material', 
             'supplier', 
             'warehouseBin.zone'
-        ])->get();
+        ])->tap($queryCallback)->get();
 
         $activities = collect([])
             ->concat($this->mapIncomingLogs($incomingLogs))

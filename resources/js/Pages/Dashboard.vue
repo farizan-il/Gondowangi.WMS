@@ -135,11 +135,11 @@
         <!-- Expired Materials Widget -->
         <div v-if="expiredMaterialsCount > 0" class="mb-6">
           <form @submit.prevent="initiateReqc" method="POST">
-            <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center space-x-4">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white card-dashboard">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div class="flex items-start md:items-center space-x-4">
                   <!-- Animated Warning Icon -->
-                  <div class="relative">
+                  <div class="relative flex-shrink-0">
                     <div class="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
                     <div class="relative bg-white/30 p-4 rounded-full">
                       <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,10 +148,10 @@
                     </div>
                   </div>
                   <!-- Info -->
-                  <div>
-                    <h3 class="text-2xl font-bold mb-1">{{ expiredMaterialsCount }} Material Expired / Near Expiry!</h3>
-                    <p class="text-red-100 text-sm">Pilih material yang sudah/hampir expired (H-30) di bin QRT untuk proses Re-QC</p>
-                    <p class="text-red-100 text-xs mt-1">Bin QRT: QRT-HALAL, QRT-NON HALAL, QRT-HALAL-AC</p>
+                  <div class="min-w-0">
+                    <h3 class="text-xl md:text-2xl font-bold mb-1 break-words">{{ expiredMaterialsCount }} Material Expired / Near Expiry!</h3>
+                    <p class="text-red-100 text-sm leading-relaxed break-words">Pilih material yang sudah/hampir expired (H-30) di bin QRT untuk proses Re-QC</p>
+                    <p class="text-red-100 text-xs mt-1 opacity-80">Bin QRT: QRT-HALAL, QRT-NON HALAL, QRT-HALAL-AC</p>
                   </div>
                 </div>
                 <!-- Action Button -->
@@ -159,7 +159,7 @@
                   type="submit"
                   :disabled="selectedExpiredMaterials.length === 0"
                   :class="selectedExpiredMaterials.length > 0 ? 'bg-white hover:bg-red-50' : 'bg-white/50 cursor-not-allowed'"
-                  class="text-red-600 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all hover:scale-105 flex items-center space-x-2 group">
+                  class="text-red-600 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all hover:scale-105 flex items-center justify-center space-x-2 group w-full md:w-auto flex-shrink-0">
                   <span>Proses Re-QC ({{ selectedExpiredMaterials.length }})</span>
                   <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -225,7 +225,7 @@
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input v-model="searchQuery" type="text" placeholder="Cari kode, nama material, atau lot..."
-                  class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-80 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full md:w-80 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
               </div>
 
               <!-- Filters -->
@@ -290,8 +290,8 @@
         </div>
       </div>
 
-      <!-- Main Table -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <!-- Main Table (Desktop Only) -->
+      <div class="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50">
@@ -386,6 +386,75 @@
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
           <p class="mt-1 text-sm text-gray-500">Data material tidak ditemukan atau filter terlalu spesifik</p>
+        </div>
+      </div>
+
+      <!-- Mobile Card View (Mobile Only) -->
+      <div class="md:hidden space-y-4">
+        <div v-for="item in filteredItems" :key="item.id" @click="openDetailPanel(item)" 
+             class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 active:scale-[0.98] transition-transform">
+            
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-3">
+                <span :class="item.type === 'Raw Material' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
+                      class="px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ item.type }}
+                </span>
+                <span :class="getStatusClass(item.qr_type)" class="px-2 py-1 text-xs font-semibold rounded-full border">
+                    {{ item.status }}
+                </span>
+            </div>
+
+            <!-- Content -->
+            <div class="mb-3">
+                <h4 class="font-bold text-gray-900 text-base mb-1">{{ item.nama }}</h4>
+                <div class="text-sm text-gray-500 font-mono">{{ item.kode }} • {{ item.lot }}</div>
+            </div>
+
+            <!-- Details Grid -->
+            <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-sm text-gray-600 mb-4 bg-gray-50 p-2 rounded">
+                <div>
+                    <span class="text-xs text-gray-500 block">Lokasi</span>
+                    <span class="font-medium text-gray-900">{{ item.lokasi }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 block">Qty</span>
+                    <span class="font-medium text-gray-900">{{ formatQty(item.qty, item.type) }} {{ item.uom }}</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="text-xs text-gray-500 block">Expired</span>
+                    <span :class="getExpiredClass(item.expiredDate)">{{ formatDate(item.expiredDate) }}</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-2 border-t pt-3">
+                 <template v-if="item.requiresPutAway">
+                    <button @click.stop="router.get('/transaction/putaway-transfer')"
+                      class="flex-1 px-3 py-2 text-xs font-semibold bg-indigo-500 text-white rounded hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      Put Away
+                  </button>
+                 </template>
+                 
+                 <button @click.stop="openQRDetailModal(item)" 
+                    class="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5a3 3 0 000 6H4V4zm3 2h.01M8 16h.01" />
+                    </svg>
+                    QR Info
+                </button>
+            </div>
+        </div>
+
+        <!-- Empty State Mobile -->
+        <div v-if="filteredItems.length === 0" class="text-center py-8 bg-white rounded-lg shadow-sm border border-gray-200">
+             <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-4.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 009.586 13H7" />
+             </svg>
+             <p class="mt-2 text-sm text-gray-500">Tidak ada data ditemukan</p>
         </div>
       </div>
 
@@ -557,7 +626,7 @@
 
       <!-- Detail Panel -->
       <div v-if="selectedItem"
-        class="fixed inset-y-0 right-0 w-96 bg-white shadow-xl z-[998] transform transition-transform duration-300 border-l border-gray-200"
+        class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-xl z-[998] transform transition-transform duration-300 border-l border-gray-200"
         :class="showDetailPanel ? 'translate-x-0' : 'translate-x-full'" style="max-height: 100vh; overflow: hidden;">
         <div class="h-full flex flex-col">
           <!-- Panel Header -->

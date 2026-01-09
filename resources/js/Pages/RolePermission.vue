@@ -2,17 +2,29 @@
     <AppLayout title="Role & Permission Management">
         <div class="role-permission-management">
             <!-- Header -->
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h1 class="text-2xl font-bold text-gray-800">Role & Permission Management</h1>
-                <button 
-                    @click="showAddRoleModal = true"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Role
-                </button>
+                <div class="flex gap-2">
+                    <button 
+                        @click="showManagePermissionsModal = true"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Kelola Permission
+                    </button>
+                    <button 
+                        @click="showAddRoleModal = true"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Tambah Role
+                    </button>
+                </div>
             </div>
 
             <!-- Success/Error Message -->
@@ -130,71 +142,281 @@
 
             <!-- Modal Atur Permission -->
             <div v-if="showPermissionModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
-        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Atur Permission - {{ selectedRole?.name }}</h3>
-                <button @click="closePermissionModal" class="text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="space-y-6">
-                <div 
-                    v-for="moduleData in allPermissions" 
-                    :key="moduleData.module_key" 
-                    class="border border-gray-200 rounded-lg p-4 bg-gray-50"
-                >
-                    <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
-                        <h4 class="text-md font-semibold text-gray-800 flex items-center">
-                            <span v-html="moduleData.module_name"></span>
-                        </h4>
-
-                        <label class="flex items-center text-blue-600 font-medium cursor-pointer">
-                            <input
-                                type="checkbox"
-                                :checked="isModuleAllSelected(moduleData.module_key)"
-                                @change="toggleSelectAllModule(moduleData.module_key, $event)"
-                                class="mr-2 rounded border-blue-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                            >
-                            Pilih Semua
-                        </label>
+                <div class="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl">
+                    <!-- Modal Header -->
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Atur Otorisasi Role</h3>
+                            <p class="text-sm text-gray-600 mt-1">Mengatur hak akses untuk role: <span class="font-bold text-blue-600">{{ selectedRole?.name }}</span></p>
                         </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <label 
-                            v-for="permission in moduleData.permissions" 
-                            :key="permission.name" 
-                            class="flex items-center text-gray-700 cursor-pointer" 
-                            :title="permission.description"
-                        >
-                            <input 
-                                type="checkbox" 
-                                :checked="hasPermission(permission.name)"
-                                @change="togglePermission(permission.name, $event)"
-                                class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        <button @click="closePermissionModal" class="text-gray-400 hover:text-gray-600 transition p-2 hover:bg-gray-200 rounded-full">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body (Scrollable) -->
+                    <div class="flex-1 overflow-y-auto p-6 bg-gray-100">
+                        <div class="grid grid-cols-1 gap-6">
+                            <div 
+                                v-for="moduleData in allPermissions" 
+                                :key="moduleData.module_key" 
+                                class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
                             >
-                            <span class="text-sm">{{ permission.display_name }}</span>
-                        </label>
+                                <!-- Module Header -->
+                                <div class="bg-blue-50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
+                                    <h4 class="font-bold text-blue-800 flex items-center text-lg">
+                                        <span v-html="moduleData.module_name" class="mr-2"></span>
+                                        <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">{{ moduleData.permissions.length }}</span>
+                                    </h4>
+                                    <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-50 transition">
+                                        <input
+                                            type="checkbox"
+                                            :checked="isModuleAllSelected(moduleData.module_key)"
+                                            @change="toggleSelectAllModule(moduleData.module_key, $event)"
+                                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                        >
+                                        <span class="text-sm font-semibold text-blue-700 select-none">Pilih Semua</span>
+                                    </label>
+                                </div>
+                                
+                                <!-- Permission Grid -->
+                                <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <label 
+                                        v-for="permission in moduleData.permissions" 
+                                        :key="permission.name" 
+                                        :class="[
+                                            'flex items-start p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md',
+                                            hasPermission(permission.name) 
+                                                ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' 
+                                                : 'bg-white border-gray-200 hover:border-blue-300'
+                                        ]"
+                                    >
+                                        <div class="flex items-center h-5">
+                                            <input 
+                                                type="checkbox" 
+                                                :checked="hasPermission(permission.name)"
+                                                @change="togglePermission(permission.name, $event)"
+                                                class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                                            >
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <span class="font-semibold text-gray-900 block mb-0.5">
+                                                {{ permission.display_name }}
+                                            </span>
+                                            <span class="text-gray-500 text-xs block leading-tight">
+                                                {{ permission.description || 'Tidak ada deskripsi' }}
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="px-6 py-4 border-t border-gray-200 bg-white rounded-b-xl flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            Terpilih: <span class="font-bold text-blue-600 text-lg">{{ selectedPermissionCount }}</span> permission
+                        </div>
+                        <div class="flex space-x-3">
+                            <button 
+                                @click="closePermissionModal"
+                                class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                @click="savePermissions"
+                                :disabled="isSaving"
+                                class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-lg shadow-blue-200 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                                <svg v-if="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>{{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-           
             </div>
-                    <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                        <button 
-                            @click="closePermissionModal"
-                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-                        >
-                            Batal
-                        </button>
-                        <button 
-                            @click="savePermissions"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                            Simpan Permission
+
+            <!-- Modal Kelola Permission (CRUD) -->
+            <div v-if="showManagePermissionsModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style="background-color: rgba(43, 51, 63, 0.67);">
+                <div class="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Kelola Daftar Permission</h3>
+                        <button @click="showManagePermissionsModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
                         </button>
                     </div>
+
+                    <!-- Add Permission Form -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h4 class="text-md font-semibold text-blue-800 mb-3">Tambah Permission Baru</h4>
+                        <form @submit.prevent="addPermission" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+                                <input 
+                                    v-model="newPermission.module"
+                                    type="text" 
+                                    required
+                                    placeholder="cycle_count"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                                <input 
+                                    v-model="newPermission.action"
+                                    type="text" 
+                                    required
+                                    placeholder="approve"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                                <input 
+                                    v-model="newPermission.description"
+                                    type="text" 
+                                    placeholder="Approve Cycle Count"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                >
+                            </div>
+                            <div class="flex items-end">
+                                <button 
+                                    type="submit"
+                                    class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                                >
+                                    + Tambah
+                                </button>
+                            </div>
+                        </form>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Permission name akan dibuat otomatis: <code class="bg-gray-100 px-1 rounded">{{ newPermission.module || 'module' }}.{{ newPermission.action || 'action' }}</code>
+                        </p>
+                    </div>
+
+                    <!-- Permission List by Module -->
+                    <div class="space-y-4">
+                        <div 
+                            v-for="moduleData in allPermissions" 
+                            :key="moduleData.module_key" 
+                            class="border border-gray-200 rounded-lg overflow-hidden"
+                        >
+                            <div class="bg-gray-100 px-4 py-2 font-semibold text-gray-800 flex items-center">
+                                <span v-html="moduleData.module_name"></span>
+                                <span class="ml-2 text-xs text-gray-500">({{ moduleData.permissions.length }} permissions)</span>
+                            </div>
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Name</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr v-for="permission in moduleData.permissions" :key="permission.id" class="hover:bg-gray-50">
+                                        <td class="px-4 py-2 text-sm text-gray-900 font-mono">{{ permission.name }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600">{{ permission.display_name }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">{{ permission.description || '-' }}</td>
+                                        <td class="px-4 py-2 text-right space-x-2">
+                                            <button 
+                                                @click="openEditPermissionModal(permission, moduleData.module_key)"
+                                                class="text-indigo-600 hover:text-indigo-900 text-sm"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button 
+                                                @click="deletePermission(permission.id, permission.name)"
+                                                class="text-red-600 hover:text-red-900 text-sm"
+                                            >
+                                                Hapus
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                        <button 
+                            @click="showManagePermissionsModal = false"
+                            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Edit Permission -->
+            <div v-if="showEditPermissionModal" class="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[10000]" style="background-color: rgba(43, 51, 63, 0.67);">
+                <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Edit Permission</h3>
+                        <button @click="showEditPermissionModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form @submit.prevent="updatePermission">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+                            <input 
+                                v-model="editingPermission.module"
+                                type="text" 
+                                required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                            <input 
+                                v-model="editingPermission.action"
+                                type="text" 
+                                required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                            <input 
+                                v-model="editingPermission.description"
+                                type="text" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                        <p class="text-xs text-gray-500 mb-4">
+                            Permission name akan menjadi: <code class="bg-gray-100 px-1 rounded">{{ editingPermission.module || 'module' }}.{{ editingPermission.action || 'action' }}</code>
+                        </p>
+                        
+                        <div class="flex justify-end space-x-3">
+                            <button 
+                                type="button"
+                                @click="showEditPermissionModal = false"
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                Update
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -247,10 +469,26 @@ const props = defineProps<{
 // State
 const showAddRoleModal = ref(false)
 const showPermissionModal = ref(false)
+const showManagePermissionsModal = ref(false)
+const showEditPermissionModal = ref(false)
 const selectedRole = ref<Role | null>(null)
+const isSaving = ref(false)
 
 const newRole = reactive({
     name: '',
+    description: ''
+})
+
+const newPermission = reactive({
+    module: '',
+    action: '',
+    description: ''
+})
+
+const editingPermission = reactive({
+    id: 0,
+    module: '',
+    action: '',
     description: ''
 })
 
@@ -258,6 +496,11 @@ const currentPermissions = ref<PermissionState[]>([])
 
 const permissionMap = computed<Map<string, PermissionState>>(() => {
     return new Map(currentPermissions.value.map(p => [p.name, p]));
+});
+
+// Computed baru untuk UI
+const selectedPermissionCount = computed(() => {
+    return currentPermissions.value.filter(p => p.allowed).length;
 });
 
 const isModuleAllSelected = (moduleKey: string): boolean => {
@@ -278,16 +521,17 @@ const toggleSelectAllModule = (moduleKey: string, event: Event) => {
     const module = props.allPermissions.find(m => m.module_key === moduleKey)
     if (!module) return
 
+    // Kita update currentPermissions secara reactive
+    // Loop permissions di modul ini dan update state mereka
     module.permissions.forEach(permission => {
         const permName = permission.name
         const existingPerm = currentPermissions.value.find(p => p.name === permName)
 
         if (existingPerm) {
             existingPerm.allowed = checkAll
-        } else if (checkAll) {
-            // Jika belum ada di state (seharusnya tidak terjadi jika loadRolePermissions sudah benar), 
-            // tambahkan sebagai allowed: true
-            currentPermissions.value.push({ name: permName, allowed: true })
+        } else {
+            // Fallback (seharusnya tidak terjadi jika load benar)
+             currentPermissions.value.push({ name: permName, allowed: checkAll })
         }
     })
 }
@@ -330,19 +574,20 @@ const closePermissionModal = () => {
 }
 
 const loadRolePermissions = (role: Role) => {
+    // 1. Ambil semua master permission
     const initialPermissions: PermissionState[] = props.allPermissions
         .flatMap(module => module.permissions)
         .map(p => ({
             name: p.name,
-            allowed: false // Default ke false
+            allowed: false // Default
         }))
     
-    // Override status allowed berdasarkan permission yang dimiliki role
-    const rolePermissionsMap = new Set(role.permissions) // permissions dari role sekarang adalah array of string
+    // 2. Set allowed = true jika role punya permission tersebut
+    const rolePermissionsMap = new Set(role.permissions) // array of permission_name
     
     currentPermissions.value = initialPermissions.map(p => ({
         ...p,
-        allowed: rolePermissionsMap.has(p.name) // Cek apakah role memiliki permission ini
+        allowed: rolePermissionsMap.has(p.name)
     }))
 }
 
@@ -359,8 +604,6 @@ const togglePermission = (permissionName: string, event: Event) => {
     
     if (existingPerm) {
         existingPerm.allowed = allowed;
-    } else {
-        currentPermissions.value.push({ name: permissionName, allowed: allowed });
     }
 }
 
@@ -382,6 +625,8 @@ const getPermissionName = (module: string, action: string): string => {
 const savePermissions = () => {
     if (!selectedRole.value) return
     
+    isSaving.value = true
+    
     // TIDAK PERLU lagi filter yang allowed: true, karena di Controller sudah di-filter
     router.put(`/role-permission/${selectedRole.value.id}/permissions`, {
         permissions: currentPermissions.value
@@ -396,6 +641,53 @@ const savePermissions = () => {
              alert("Terjadi kesalahan saat menyimpan permissions. Cek console untuk detail.");
         }
     })
+}
+
+// Permission CRUD Functions
+const addPermission = () => {
+    router.post('/role-permission/permissions', {
+        module: newPermission.module,
+        action: newPermission.action,
+        description: newPermission.description
+    }, {
+        onSuccess: () => {
+            newPermission.module = ''
+            newPermission.action = ''
+            newPermission.description = ''
+            router.reload({ only: ['allPermissions'] });
+        }
+    })
+}
+
+const openEditPermissionModal = (permission: AllPermissionItem, moduleKey: string) => {
+    editingPermission.id = permission.id
+    editingPermission.module = moduleKey
+    editingPermission.action = permission.display_name.toLowerCase().replace(/ /g, '_')
+    editingPermission.description = permission.description
+    showEditPermissionModal.value = true
+}
+
+const updatePermission = () => {
+    router.put(`/role-permission/permissions/${editingPermission.id}`, {
+        module: editingPermission.module,
+        action: editingPermission.action,
+        description: editingPermission.description
+    }, {
+        onSuccess: () => {
+            showEditPermissionModal.value = false
+            router.reload({ only: ['allPermissions'] });
+        }
+    })
+}
+
+const deletePermission = (permissionId: number, permissionName: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus permission "${permissionName}"? Permission ini akan dihapus dari semua role.`)) {
+        router.delete(`/role-permission/permissions/${permissionId}`, {
+            onSuccess: () => {
+                router.reload({ only: ['allPermissions', 'roles'] });
+            }
+        })
+    }
 }
 
 const getModuleCount = (permissions: string[]): number => {

@@ -43,7 +43,7 @@
                 <div class="space-y-1 px-2">
                     <!-- WMS Dashboard (New) -->
                     <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view'])"
+                        v-if="hasAnyPermission(['dashboard.wms'])"
                         href="/wms-dashboard"
                         :class="navLinkClass('/wms-dashboard')"
                     >
@@ -55,7 +55,7 @@
 
                     <!-- Dashboard (visible to all) -->
                     <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view', 'central_data.user_management_view'])"
+                        v-if="hasAnyPermission(['onhand.view'])"
                         href="/dashboard"
                         :class="navLinkClass('/dashboard')"
                     >
@@ -66,7 +66,7 @@
                     </Link>
 
                     <Link 
-                        v-if="$page.props.permissions"
+                        v-if="hasAnyPermission(['cycle_count.view'])"
                         href="/transaction/cycle-count"
                         :class="navLinkClass('/transaction/cycle-count')"
                     >
@@ -78,7 +78,7 @@
 
                     <!-- Riwayat Aktivitas -->
                     <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view'])"
+                        v-if="hasAnyPermission(['activity_log.view_all', 'activity_log.view_self'])"
                         href="/activity-log"
                         :class="navLinkClass('/activity-log')"
                     >
@@ -240,7 +240,7 @@
 
                     <!-- Master Data -->
                     <Link 
-                        
+                        v-if="hasAnyPermission(['master_data.view'])"
                         href="/master-data"
                         :class="navLinkClass('/master-data')"
                     >
@@ -327,7 +327,7 @@
                 <div class="space-y-1 px-2">
                     <!-- WMS Dashboard -->
                     <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view'])"
+                        v-if="hasAnyPermission(['dashboard.wms'])"
                         href="/wms-dashboard"
                         :class="mobileNavLinkClass('/wms-dashboard')"
                         @click="mobileMenuOpen = false"
@@ -340,7 +340,7 @@
 
                     <!-- Dashboard -->
                     <Link 
-                        v-if="hasAnyPermission(['incoming.view', 'qc.view', 'putaway.view', 'picking.view', 'reservation.view', 'return.view', 'central_data.user_management_view'])"
+                        v-if="hasAnyPermission(['onhand.view'])"
                         href="/dashboard"
                         :class="mobileNavLinkClass('/dashboard')"
                         @click="mobileMenuOpen = false"
@@ -352,7 +352,7 @@
                     </Link>
 
                     <Link 
-                        v-if="$page.props.permissions"
+                        v-if="hasAnyPermission(['cycle_count.view'])"
                         href="/transaction/cycle-count"
                         :class="mobileNavLinkClass('/transaction/cycle-count')"
                         @click="mobileMenuOpen = false"
@@ -531,6 +531,7 @@
 
                     <!-- Master Data -->
                     <Link 
+                        v-if="hasAnyPermission(['master_data.view'])"
                         href="/master-data"
                         :class="mobileNavLinkClass('/master-data')"
                         @click="mobileMenuOpen = false"
@@ -631,13 +632,13 @@
                             </span>
                         </div>
                         
-                        <!-- Notification -->
+                        <!-- Notification
                         <button class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
                             <svg class="w-5 lg:w-6 h-5 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                             </svg>
                             <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+                        </button> -->
                         <!-- User Info - Hidden on mobile -->
                         <div class="hidden lg:flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
                             <div class="text-right">

@@ -259,7 +259,7 @@
                       <span v-if="!isUnlocked(item)" class="text-[9px] text-red-400 mt-1">(Belum Scan)</span>
                   </div>
 
-                  <button v-else-if="item.status === 'REVIEW_NEEDED'" 
+                  <button v-else-if="item.status === 'REVIEW_NEEDED' && canApprove" 
                     @click="approveItem(item)"
                     type="button" 
                     class="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-1 px-3 rounded shadow flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 animate-pulse">

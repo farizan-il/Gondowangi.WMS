@@ -157,4 +157,82 @@ class RolePermissionController extends Controller
 
         return redirect()->back()->with('success', 'Permission berhasil disimpan!');
     }
+
+    /**
+     * Store a new permission
+     */
+    public function storePermission(Request $request)
+    {
+        $validated = $request->validate([
+            'module' => 'required|string|max:100',
+            'action' => 'required|string|max:100',
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        // Generate permission_name from module.action
+        $permissionName = Str::slug($validated['module'], '_') . '.' . Str::slug($validated['action'], '_');
+
+        // Check if permission already exists
+        if (Permission::where('permission_name', $permissionName)->exists()) {
+            return redirect()->back()->with('error', "Permission '{$permissionName}' sudah ada!");
+        }
+
+        Permission::create([
+            'permission_name' => $permissionName,
+            'module' => Str::slug($validated['module'], '_'),
+            'action' => Str::slug($validated['action'], '_'),
+            'description' => $validated['description'] ?? ''
+        ]);
+
+        return redirect()->back()->with('success', 'Permission berhasil ditambahkan!');
+    }
+
+    /**
+     * Update an existing permission
+     */
+    public function updatePermission(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'module' => 'required|string|max:100',
+            'action' => 'required|string|max:100',
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        $permission = Permission::findOrFail($id);
+
+        // Generate new permission_name
+        $newPermissionName = Str::slug($validated['module'], '_') . '.' . Str::slug($validated['action'], '_');
+
+        // Check if new permission_name conflicts with another permission
+        if (Permission::where('permission_name', $newPermissionName)
+            ->where('id', '!=', $id)
+            ->exists()) {
+            return redirect()->back()->with('error', "Permission '{$newPermissionName}' sudah ada!");
+        }
+
+        $permission->update([
+            'permission_name' => $newPermissionName,
+            'module' => Str::slug($validated['module'], '_'),
+            'action' => Str::slug($validated['action'], '_'),
+            'description' => $validated['description'] ?? ''
+        ]);
+
+        return redirect()->back()->with('success', 'Permission berhasil diupdate!');
+    }
+
+    /**
+     * Delete a permission
+     */
+    public function destroyPermission($id)
+    {
+        $permission = Permission::findOrFail($id);
+
+        // Detach from all roles first
+        $permission->roles()->detach();
+
+        // Delete the permission
+        $permission->delete();
+
+        return redirect()->back()->with('success', 'Permission berhasil dihapus!');
+    }
 }

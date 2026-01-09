@@ -147,7 +147,7 @@
                       Detail
                     </button>
                     <button 
-                          v-if="returnItem.status === 'Pending Approval'"
+                          v-if="returnItem.status === 'Pending Approval' && canApprove"
                           @click="openApproveModal(returnItem)"
                           class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
                     >
@@ -615,7 +615,6 @@
                 </div>
              </div>
         </div>
-
       </div>
     </div>
   </AppLayout>
@@ -687,6 +686,10 @@ const reasonFilter = ref('')
 // Get current user role from page props
 const page = usePage()
 const userRole = computed(() => page.props.auth.user.role?.name || '')
+const canApprove = computed(() => {
+    const permissions = page.props.permissions as string[] || [];
+    return permissions.includes('return.approve');
+})
 
 // Modals
 const showAddModal = ref(false)

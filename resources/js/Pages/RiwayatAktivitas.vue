@@ -5,23 +5,26 @@
     <div class="flex justify-between items-center">
       <h2 class="text-2xl font-bold text-gray-900">Riwayat Aktivitas</h2>
       <div class="flex space-x-3">
-        <button @click="exportToExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <
+        <!-- <button @click="exportToExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           Export Excel
         </button>
-        <button @click="exportToPDF" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <button @click="exportToPDF" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
           Export PDF
-        </button>
+        </button> -->
       </div>
     </div>
 
     <!-- Advanced Filter Panel -->
     <div class="bg-white rounded-lg shadow">
+      
+
       <div class="p-4 border-b border-gray-200">
         <button @click="showAdvancedFilter = !showAdvancedFilter" class="flex items-center justify-between w-full text-left">
           <h3 class="text-lg font-semibold text-gray-900">Advanced Filter</h3>
@@ -129,6 +132,10 @@
             Showing {{ filteredActivities.length }} of {{ activities.length }} records
           </div>
           <div class="flex space-x-3">
+            <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                <input type="checkbox" v-model="hideAuthLogs" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                <span class="text-sm font-medium text-gray-700 select-none">Sembunyikan Login/Logout</span>
+            </label>
             <button @click="resetFilters" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
               Reset Filter
             </button>
@@ -387,6 +394,7 @@ const props = defineProps({
 // Reactive data
 const showAdvancedFilter = ref(true)
 const showDetailModalFlag = ref(false)
+const hideAuthLogs = ref(false)
 const selectedActivity = ref(null)
 const currentPage = ref(1)
 const perPage = ref(25)
@@ -463,6 +471,14 @@ const filteredActivities = computed(() => {
     filtered = filtered.filter(activity => 
       activity.bin_from === filters.value.bin || activity.bin_to === filters.value.bin
     )
+  }
+
+  // Filter Hide Login/Logout
+  if (hideAuthLogs.value) {
+    filtered = filtered.filter(activity => {
+        const action = activity.action ? activity.action.toLowerCase() : '';
+        return action !== 'login' && action !== 'logout';
+    })
   }
 
   return filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))

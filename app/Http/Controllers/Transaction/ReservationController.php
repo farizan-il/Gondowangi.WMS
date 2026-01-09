@@ -597,6 +597,22 @@ class ReservationController extends Controller
 
     public function store(Request $request)
     {
+        // ** SECURITY CHECK: Validasi Permission Frontend vs Backend **
+        $requestType = $request->input('request_type');
+        $permissionMap = [
+            'foh-rs' => 'reservation.create.foh',
+            'packaging' => 'reservation.create.packaging',
+            'raw-material' => 'reservation.create.raw_material',
+            'add' => 'reservation.create.add',
+        ];
+
+        if (isset($permissionMap[$requestType])) {
+            $requiredPermission = $permissionMap[$requestType];
+            if (!Auth::user()->can($requiredPermission) && !Auth::user()->can('reservation.create')) {
+                abort(403, "Anda tidak memiliki izin untuk membuat reservasi kategori: {$requestType}");
+            }
+        }
+
         // ** PERBAIKAN UTAMA: Menerapkan required_if untuk semua field header yang spesifik per kategori **
         $validated = $request->validate([
             'noReservasi' => 'required|string|unique:reservation_requests,no_reservasi',

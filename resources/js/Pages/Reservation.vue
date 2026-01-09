@@ -895,22 +895,32 @@ const filters = ref({
   dateTo: ''
 })
 
-// Category configuration (Computed based on Role)
+// Category configuration (Computed based on Permissions)
 const categories = computed(() => {
   const allCategories = [
-    { id: 'packaging', name: 'Request Packaging Material' },
-    { id: 'raw-material', name: 'Request Raw Material' },
-    { id: 'foh-rs', name: 'FOH & RS' },
-    { id: 'add', name: 'ADD (Additional Request)' }
+    { id: 'packaging', name: 'Request Packaging Material', permission: 'reservation.create.packaging' },
+    { id: 'raw-material', name: 'Request Raw Material', permission: 'reservation.create.raw_material' },
+    { id: 'foh-rs', name: 'FOH & RS', permission: 'reservation.create.foh' },
+    { id: 'add', name: 'ADD (Additional Request)', permission: 'reservation.create.add' }
   ]
 
-  // RBAC: Logistik SPV hanya boleh FOH & RS
+  // Ambil permissions dari global page props (atau local props jika ada)
+  // Fallback ke array kosong jika tidak ada
+  const userPermissions = page.props.auth?.permissions || props.permissions || [];
   const userRole = page.props.auth.user?.role?.name;
-  if (userRole === 'Logistik SPV') {
-      return allCategories.filter(c => c.id === 'foh-rs');
-  }
 
-  return allCategories;
+  // Jika IT, tampilkan semua (bypass check) - opsional, tapi aman karena IT punya semua permission
+  if (userRole === 'IT') return allCategories;
+
+  return allCategories.filter(c => {
+      // 1. Cek permission spesifik (granular)
+      if (userPermissions.includes(c.permission)) return true;
+      
+      // 2. Fallback: Cek permission legacy 'reservation.create' (jika masih digunakan)
+      if (userPermissions.includes('reservation.create')) return true;
+      
+      return false;
+  });
 })
 
 // Form data
